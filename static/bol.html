@@ -1,0 +1,361 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8">
+  <title>Bill of Lading</title>
+  <style>
+    /* --- Print page setup --- */
+    @page { size: letter; margin: 0.4in; }
+
+    * { box-sizing: border-box; }
+    body {
+      font: 10pt/1.2 Arial, sans-serif;
+      background: #f0f0f0;
+      padding: 20px 0;
+      margin: 0;
+      color: #000;
+    }
+
+    .page-container {
+      width: 8.5in;
+      height: 11in;
+      margin: 0 auto;
+      background: #fff;
+      box-shadow: 0 0 10px rgba(0,0,0,.3);
+      display: flex;
+    }
+    .page-content { padding: 0.5in; width: 100%; }
+
+    /* --- BOL table --- */
+    table.bol { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    .bol td { border: 1.5px solid #000; vertical-align: middle; padding: 6px 8px; word-break: keep-all; overflow-wrap: normal; }
+    .bol td.no-border { border: none !important; }
+
+    /* 12 equal columns (8.3333% each) so we can compose full/halves/thirds with colspan */
+    .cols-12 col { width: 8.3333%; }
+
+    /* Typography & UI bits */
+    .doc-title { font-family: Arial, sans-serif; font-size: 36pt; font-weight: 800; text-align: center; line-height: 1; padding: 10px 0 6px; }
+    .bar { background: #d9d9d9; font-weight: 700; text-align: center; padding: 8px; }
+    .mini-label { font-family: Arial, sans-serif; font-size: 10pt; font-weight: 700; text-align: right; padding-right: 8px; }
+    .addr { text-align: center; line-height: 1.4; vertical-align: middle; padding: 12px; }
+    .addr .co { font-family: Arial, sans-serif; font-size: 12pt; font-weight: bold; }
+    .addr .mono { font-family: Arial, sans-serif; font-weight: normal; }
+
+    .logo { display: flex; justify-content: center; align-items: center; margin-bottom: 10px; }
+    .logo-img { height: 60px; width: auto; display: inline-block; }
+
+    .analysis-title { font-weight: 700; text-align: center; font-size: 16pt; margin-bottom: 12px; }
+    .analysis { text-align: center; line-height: 1.3; font-size: 14pt; }
+
+    .note { background: #efefef; font-size: 8pt; text-align: center; padding: 8px; line-height: 1.3; }
+
+    .sig-title { font-size: 12pt; font-weight: 800; text-align: center; margin-bottom: 8px; }
+    .sig-name  { font-weight: 800; text-decoration: underline; text-align: center; margin: 8px 0; font-size: 12pt; }
+    .sig-text  { font-size: 9pt; line-height: 1.4; text-align: left; }
+    .bullets   { font-size: 10pt; line-height: 1.6; text-align: left; }
+
+    .ship-to-content { height: 90px; padding: 10px; }
+    .info-box { text-align: center; padding: 4px; border-left: none; }
+
+    @media print { 
+      body { 
+        background: #fff; 
+        padding: 0; 
+        font-size: 9pt;
+        line-height: 1.1;
+      } 
+      .page-container { 
+        box-shadow: none; 
+        width: auto; 
+        height: auto;
+        margin: 0;
+      }
+      .page-content {
+        padding: 0.3in;
+      }
+      /* Compress signature section for print */
+      .bol td[style*="height: 140px"] {
+        height: 100px !important;
+      }
+      /* Compress analysis section */
+      .bol td[style*="height: 180px"] {
+        height: 140px !important;
+      }
+      /* Make ship-to content more compact */
+      .ship-to-content {
+        height: 80px !important;
+        padding: 8px !important;
+      }
+      /* Reduce font sizes slightly for print */
+      .doc-title {
+        font-size: 28pt !important;
+        padding: 6px 0 !important;
+      }
+      .analysis-title {
+        font-size: 14pt !important;
+        margin-bottom: 8px !important;
+      }
+      .analysis {
+        font-size: 12pt !important;
+      }
+      /* Ensure table cells don't get too tall */
+      .bol td {
+        padding: 4px 6px;
+      }
+    }
+  </style>
+</head>
+<body>
+<div class="page-container">
+  <div class="page-content">
+
+    <!-- BOL TABLE (12-col grid) -->
+    <table class="bol cols-12">
+      <colgroup>
+        <col><col><col><col><col><col><col><col><col><col><col><col>
+      </colgroup>
+      <tbody>
+        <!-- Title (full width = 12) -->
+        <tr>
+          <td class="doc-title no-border" colspan="12">BILL OF LADING</td>
+        </tr>
+      </tbody>
+    </table>
+
+    <table class="bol cols-12" style="margin-top: 12px;">
+      <colgroup>
+        <col><col><col><col><col><col><col><col><col><col><col><col>
+      </colgroup>
+      <tbody>
+        <!-- Header bar (halves 6/6) -->
+        <tr>
+          <td class="bar" colspan="6">SHIP FROM:</td>
+          <td class="bar" colspan="6" style="text-align:right; padding-right:10px;">Page 1 of 1</td>
+        </tr>
+
+        <!-- Company block (left half) + mini-grid (right half in 3/3 per row) -->
+        <tr>
+          <td class="addr" colspan="6" rowspan="6">
+            <div class="logo">
+              <!-- Swap to your optimized SVG file path -->
+              <img src="/static/cbrt-logo-optimized.svg" alt="CBRT" class="logo-img"/>
+            </div>
+            <div>
+              1707 Riverside Drive<br>
+              Cincinnati, Ohio 45202<br>
+              <span class="mono">www.barge2rail.com</span><br>
+              <strong>C/O PrimeTrade, LLC</strong>
+            </div>
+          </td>
+          <td class="mini-label" colspan="3">BOL Number:</td>
+          <td class="info-box" colspan="3" id="bolNumber" style="font-weight:bold;font-size:13pt;">&nbsp;</td>
+        </tr>
+        <tr>
+          <td class="mini-label" colspan="3">Customer PO#:</td>
+          <td class="info-box" colspan="3" id="customerPO">&nbsp;</td>
+        </tr>
+        <tr>
+          <td class="mini-label" colspan="3">Carrier:</td>
+          <td class="info-box" colspan="3" id="carrier">&nbsp;</td>
+        </tr>
+        <tr>
+          <td class="mini-label" colspan="3">Truck #:</td>
+          <td class="info-box" colspan="3" id="truckNo">&nbsp;</td>
+        </tr>
+        <tr>
+          <td class="mini-label" colspan="3">Trailer #:</td>
+          <td class="info-box" colspan="3" id="trailerNo">&nbsp;</td>
+        </tr>
+        <tr>
+          <td class="mini-label" colspan="3">Loaded Date:</td>
+          <td class="info-box" colspan="3" id="loadedDate">&nbsp;</td>
+        </tr>
+
+        <!-- Ship To (full) -->
+        <tr>
+          <td class="bar" colspan="12">SHIP TO:</td>
+        </tr>
+        <tr>
+          <td class="ship-to-content" colspan="12" id="shipTo" style="text-align:center;font-size:17pt;">&nbsp;</td>
+        </tr>
+
+        <!-- Lot / Commodity (thirds 4/8) -->
+        <tr>
+          <td class="bar" colspan="4" id="lotNumber">Lot Number: CRT-050N-711A</td>
+          <td class="bar" colspan="8" id="productName">Nodular Pig Iron</td>
+        </tr>
+
+        <!-- Analysis (thirds 4/8) -->
+        <tr>
+          <td colspan="4" style="height: 150px; vertical-align: top; padding: 12px;">
+            <div class="analysis-title">Analysis:</div>
+            <div class="analysis" id="analysis">
+              <strong>C 4.244%</strong><br>
+              <strong>Si 0.05%</strong><br>
+              <strong>S 0.018%</strong><br>
+              <strong>P 0.026%</strong><br>
+              <strong>Mn 0.013%</strong>
+            </div>
+          </td>
+          <td colspan="8" style="background:#f9f9f9; padding: 14px; text-align: center; vertical-align: middle;">
+            <div style="font-size: 18pt; font-weight: bold; margin-bottom: 10px;">Total Weight</div>
+            <div id="totalWeight" style="font-size: 24pt; font-weight: bold;">-</div>
+            <div style="font-size: 12pt; margin-top: 5px;">LBS</div>
+            <div style="margin-top: 20px; font-size: 18pt; font-weight: bold;">Net Tons</div>
+            <div id="netTons" style="font-size: 24pt; font-weight: bold;">-</div>
+            <div style="font-size: 12pt; margin-top: 5px;">N.T.</div>
+          </td>
+        </tr>
+
+        <!-- Note (full) -->
+        <tr>
+          <td class="note" colspan="12">
+            NOTE: Liability Limitation for loss or damage in this shipment may be applicable. See 49 U.S.C. § 14706(c)(1)(A) and (B). Non-hazardous
+          </td>
+        </tr>
+
+        <!-- Signatures (thirds 4/4/4 like your mockup) -->
+        <tr>
+          <td colspan="4" style="vertical-align: top; padding: 10px; height: 120px;">
+            <div class="sig-title">SHIPPER SIGNATURE</div>
+            <div class="sig-name">James Rose</div>
+            <div class="sig-text">
+              This is to certify that the above named materials are properly classified, packaged, marked and labeled, and are in proper condition for transportation according to the applicable regulations of the DOT.
+            </div>
+          </td>
+
+         <td colspan="4" style="vertical-align: middle; padding: 12px; text-align: center;">
+  <!-- Trailer Loaded section -->
+  <div style="font-weight: 700; font-size: 10pt; margin-bottom: 8px;">
+    Trailer Loaded:
+  </div>
+  <div style="display: inline-block; text-align: left; margin-bottom: 12px;">
+    • By Shipper<br>
+    • By Driver
+  </div>
+
+  <!-- Freight Counted section -->
+  <div style="font-weight: 700; font-size: 10pt; margin: 12px 0 8px;">
+    Freight Counted:
+  </div>
+  <div style="display: inline-block; text-align: left;">
+    • By Shipper<br>
+    • By Driver
+  </div>
+</td>
+
+          <td colspan="4" style="vertical-align: top; padding: 12px;">
+            <div class="sig-title">CARRIER SIGNATURE</div>
+            <div style="text-align:center; margin: 12px 0; border-bottom: 1px solid #000; height: 20px;"></div>
+            <div class="sig-text">
+              Carrier acknowledges receipt of packages and required placards. Carrier certifies emergency response information was made available and/or carrier has the DOT emergency response guidebook or equivalent documentation in the vehicle.
+            </div>
+          </td>
+        </tr>
+
+      </tbody>
+    </table>
+
+  </div>
+</div>
+<script>
+  // Function to populate BOL with data
+  function populateBOL(data) {
+    // BOL Number
+    if (data.bolNo) {
+      document.getElementById('bolNumber').textContent = data.bolNo;
+    }
+    
+    // Customer PO
+    if (data.customerPO) {
+      document.getElementById('customerPO').textContent = data.customerPO;
+    }
+    
+    // Carrier
+    if (data.carrierName) {
+      document.getElementById('carrier').textContent = data.carrierName;
+    }
+    
+    // Truck Number
+    if (data.truckNo) {
+      document.getElementById('truckNo').textContent = data.truckNo;
+    }
+    
+    // Trailer Number
+    if (data.trailerNo) {
+      document.getElementById('trailerNo').textContent = data.trailerNo;
+    }
+    
+    // Loaded Date
+    if (data.date) {
+      const date = new Date(data.date);
+      document.getElementById('loadedDate').textContent = date.toLocaleDateString('en-US');
+    }
+    
+    // Ship To Address - include customer name if available
+    if (data.shipTo) {
+      let shipToContent = data.shipTo;
+      
+      // If we have buyer name, prepend it to the address
+      if (data.buyerName) {
+        shipToContent = data.buyerName + '\n' + shipToContent;
+      }
+      
+      document.getElementById('shipTo').innerHTML = shipToContent.replace(/\n/g, '<br>');
+    } else if (data.buyerName) {
+      // If we only have buyer name but no address
+      document.getElementById('shipTo').innerHTML = data.buyerName;
+    }
+    
+    // Product Name
+    if (data.productName) {
+      document.getElementById('productName').textContent = data.productName;
+    }
+    
+    // Lot Number (keep default for now)
+    // document.getElementById('lotNumber').textContent = 'Lot Number: ' + (data.lotNumber || 'CRT-050N-711A');
+    
+    // Weights
+    if (data.netTons) {
+      const netTons = parseFloat(data.netTons);
+      const lbs = Math.round(netTons * 2204.62); // Convert tons to pounds
+      document.getElementById('totalWeight').textContent = lbs.toLocaleString();
+      document.getElementById('netTons').textContent = netTons.toFixed(2);
+    }
+  }
+
+  // Check if data is passed via URL parameters or stored in sessionStorage
+  window.addEventListener('DOMContentLoaded', function() {
+    // Try to get data from URL parameters
+    const urlParams = new URLSearchParams(window.location.search);
+    const bolId = urlParams.get('id');
+    
+    if (bolId) {
+      // Fetch BOL data from API
+      fetch(`/api/bol/${bolId}`)
+        .then(response => response.json())
+        .then(data => {
+          if (data) {
+            populateBOL(data);
+          }
+        })
+        .catch(error => console.error('Error loading BOL:', error));
+    } else {
+      // Try sessionStorage for preview data
+      const previewData = sessionStorage.getItem('bolPreview');
+      if (previewData) {
+        try {
+          const data = JSON.parse(previewData);
+          populateBOL(data);
+        } catch (e) {
+          console.error('Error parsing preview data:', e);
+        }
+      }
+    }
+    
+    // Sample data removed for production
+  });
+</script>
+</body>
+</html>

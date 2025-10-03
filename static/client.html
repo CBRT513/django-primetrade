@@ -1,0 +1,87 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Shipment History</title>
+  <style>
+    body{font:14px/1.35 system-ui,-apple-system,Segoe UI,Roboto,sans-serif;padding:24px}
+    .wrap{max-width:980px;margin:0 auto}
+    .cards{display:flex;gap:12px;flex-wrap:wrap;margin:10px 0}
+    .card{border:1px solid #ddd;border-radius:8px;padding:10px 12px}
+    table{width:100%;border-collapse:collapse;margin-top:10px}
+    th,td{border:1px solid #ddd;padding:8px} th{background:#f5f5f5;text-align:left}
+    .ta-r{text-align:right}
+    select{padding:5px;font-size:14px;border:1px solid #ddd;border-radius:4px}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h2>Shipment History</h2>
+    <div id="productSelector" style="margin:10px 0;display:none;"></div>
+    <div id="summary" class="cards" style="display:none;"></div>
+    <table id="tbl">
+      <thead><tr><th>Date</th><th>BOL #</th><th>Truck #</th><th class="ta-r">Net Tons</th></tr></thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script>
+    async function getJSON(u){ const r=await fetch(u); if(!r.ok) throw new Error(await r.text()); return r.json(); }
+    (async () => {
+      let pid = new URLSearchParams(location.search).get("productId");
+      
+      // If no productId, show product selector
+      if (!pid) {
+        const products = await getJSON('/api/products');
+        const selector = document.getElementById("productSelector");
+        selector.style.display = 'block';
+        let optionsHTML = '<option value="">-- Choose Product --</option>';
+        products.forEach(p => {
+          optionsHTML += '<option value="' + p.id + '">' + p.name + '</option>';
+        });
+        selector.innerHTML = '<label>Select Product: </label>' +
+          '<select id="productSelect" onchange="if(this.value) location.search=\'?productId=\'+this.value">' +
+          optionsHTML + '</select>';
+        document.getElementById("summary").style.display = 'none';
+        document.querySelector("#tbl tbody").innerHTML = '<tr><td colspan="4" style="text-align:center">Select a product to view history</td></tr>';
+        return;
+      }
+      
+      // Show history for selected product
+      document.getElementById("productSelector").style.display = 'none';
+      document.getElementById("summary").style.display = 'flex';
+      
+      const [data, products] = await Promise.all([
+        getJSON('/api/history?productId=' + encodeURIComponent(pid)),
+        getJSON('/api/products')
+      ]);
+      
+      // Find product name
+      const product = products.find(p => p.id === pid);
+      if (product) {
+        document.querySelector('h2').textContent = 'Shipment History - ' + product.name;
+      }
+      
+      const s = document.getElementById("summary");
+      s.innerHTML = '<div class="card">Starting: <b>' + Number(data.summary.start||0).toFixed(2) + '</b> NT</div>' +
+        '<div class="card">Shipped: <b>' + Number(data.summary.shipped||0).toFixed(2) + '</b> NT</div>' +
+        '<div class="card">Remaining: <b>' + Number(data.summary.remaining||0).toFixed(2) + '</b> NT</div>';
+      const tb = document.querySelector("#tbl tbody");
+      if (data.rows && data.rows.length > 0) {
+        let rowsHTML = '';
+        data.rows.forEach(r => {
+          rowsHTML += '<tr>';
+          rowsHTML += '<td>' + (r.date || "") + '</td>';
+          rowsHTML += '<td>' + (r.pdfUrl ? '<a target="_blank" href="' + r.pdfUrl + '">' + r.bolNo + '</a>' : (r.bolNo || "")) + '</td>';
+          rowsHTML += '<td>' + (r.truckNo || "") + '</td>';
+          rowsHTML += '<td class="ta-r">' + Number(r.netTons||0).toFixed(2) + '</td>';
+          rowsHTML += '</tr>';
+        });
+        tb.innerHTML = rowsHTML;
+      } else {
+        tb.innerHTML = '<tr><td colspan="4" style="text-align:center">No shipments yet for this product</td></tr>';
+      }
+    })().catch(e => alert(e.message || String(e)));
+  </script>
+</body>
+</html>

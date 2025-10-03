@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>BOL Portal</title>
+  <link rel="stylesheet" href="/static/css/cbrt-brand.css">
+  <style>
+    /* Page-specific customizations */
+    .balances-table {
+      background: var(--surface-elevated);
+      border-radius: 8px;
+      overflow: hidden;
+      margin-top: 1rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="cbrt-header" id="brandingHeader">
+      <img id="brandingLogo" class="cbrt-logo" style="display:none;" />
+      <div class="cbrt-company">
+        <div class="cbrt-company-name" id="brandingName">Cincinnati Barge & Rail Terminal, LLC</div>
+        <div class="cbrt-company-info" id="brandingInfo">1707 Riverside Drive • Cincinnati, Ohio 45202 • (513) 721-1707 • www.barge2rail.com</div>
+      </div>
+    </div>
+
+    <div class="dashboard-grid">
+      <div class="card">
+        <h3>Admin</h3>
+        <div class="admin-grid">
+          <a class="btn" href="/products.html">Manage Products</a>
+          <a class="btn" href="/customers.html">Manage Customers</a>
+          <a class="btn" href="/carriers.html">Manage Carriers</a>
+          <a class="btn" href="/branding.html">Branding Settings</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Office</h3>
+        <div class="office-controls">
+          <div class="form-group">
+            <label>Product</label>
+            <select id="product"></select>
+          </div>
+          <a class="btn btn-accent" id="office" href="/office.html">Create BOL</a>
+        </div>
+        <div class="office-management">
+          <a class="btn" href="/customers.html">Manage Customers</a>
+          <a class="btn" href="/carriers.html">Manage Carriers</a>
+        </div>
+      </div>
+
+      <div class="card">
+        <h3>Client View</h3>
+        <div class="client-controls">
+          <div class="form-group">
+            <label>Product</label>
+            <select id="clientProduct"></select>
+          </div>
+          <a class="btn btn-accent" id="client" href="/client.html">Open Client History</a>
+        </div>
+        <div class="table-container">
+          <table id="quick">
+            <thead>
+              <tr><th>Product</th><th>Starting</th><th>Shipped</th><th>Remaining</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    async function getJSON(u){ const r=await fetch(u); if(!r.ok) throw new Error(await r.text()); return r.json(); }
+    function qs(id){ return document.getElementById(id); }
+
+    (async () => {
+      // Load custom branding if available
+      try {
+        const branding = await getJSON("/api/branding");
+        if (branding) {
+          if (branding.logoUrl) {
+            qs("brandingLogo").src = branding.logoUrl;
+            qs("brandingLogo").style.display = "block";
+          }
+          if (branding.companyName) {
+            qs("brandingName").textContent = branding.companyName;
+          }
+          if (branding.addressLine1 || branding.addressLine2 || branding.phone || branding.website) {
+            const info = [];
+            if (branding.addressLine1) info.push(branding.addressLine1);
+            if (branding.addressLine2) info.push(branding.addressLine2);
+            if (branding.phone) info.push(branding.phone);
+            if (branding.website) info.push(branding.website);
+            qs("brandingInfo").textContent = info.join(" • ");
+          }
+        }
+      } catch (e) {
+        console.log("Could not load custom branding, using defaults:", e);
+      }
+      
+      const products = await getJSON("/api/products");
+      const pSel = qs("product"), cSel = qs("clientProduct");
+      products.forEach(p => {
+        pSel.add(new Option(p.name, p.id));
+        cSel.add(new Option(p.name, p.id));
+      });
+
+      const balances = await getJSON("/api/balances");
+      qs("quick").querySelector("tbody").innerHTML = balances.map(b => `
+        <tr><td>${b.name}</td><td>${Number(b.startTons||0).toFixed(2)}</td><td>${Number(b.shipped||0).toFixed(2)}</td><td>${Number(b.remaining||0).toFixed(2)}</td></tr>
+      `).join("");
+
+      qs("office").addEventListener("click", (e) => {
+        e.preventDefault();
+        const pid = pSel.value || "";
+        window.location.href = `/office.html?productId=${encodeURIComponent(pid)}`;
+      });
+      qs("client").addEventListener("click", (e) => {
+        e.preventDefault();
+        const pid = cSel.value || "";
+        window.location.href = `/client.html?productId=${encodeURIComponent(pid)}`;
+      });
+    })().catch(err => alert(err.message || String(err)));
+  </script>
+</body>
+</html>

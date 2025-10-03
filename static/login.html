@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Login - PrimeTrade</title>
+  <link rel="stylesheet" href="/css/cbrt-brand.css">
+  <link rel="manifest" href="/manifest.json">
+  <meta name="theme-color" content="#005500">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="PrimeTrade">
+  <link rel="apple-touch-icon" href="/cbrt-logo-optimized.svg">
+  <style>
+    body {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0 !important;
+      padding: 0 !important;
+    }
+    .login-container {
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 3rem;
+      box-shadow: var(--shadow-xl);
+      border: 1px solid var(--border);
+      width: 100%;
+      max-width: 400px;
+      margin: 0 auto;
+    }
+    .logo-section {
+      margin-bottom: 2rem;
+      text-align: center;
+    }
+    .logo-section img {
+      height: 80px;
+      width: auto;
+      margin: 0 auto 1rem auto;
+      display: block;
+    }
+    .logo-section h1 {
+      font-size: 1.5rem;
+      font-weight: var(--font-weight-bold);
+      color: var(--text-primary);
+      margin: 0 0 0.5rem 0;
+    }
+    .logo-section p {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      margin: 0;
+      text-align: center;
+    }
+    .form-title {
+      font-size: 1.25rem;
+      font-weight: var(--font-weight-semibold);
+      color: var(--text-primary);
+      margin-bottom: 1.5rem;
+      text-align: center;
+    }
+    .form-group {
+      margin-bottom: 1.5rem;
+      text-align: left;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: var(--font-weight-medium);
+      color: var(--text-primary);
+    }
+    .form-group input {
+      width: 100%;
+      padding: 0.75rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 1rem;
+      transition: all 0.2s ease;
+    }
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(0, 85, 0, 0.1);
+    }
+    .btn-login {
+      width: 100%;
+      padding: 1rem;
+      font-size: 1rem;
+      margin-top: 1rem;
+    }
+    .status {
+      margin-top: 1rem;
+      padding: 0.75rem;
+      border-radius: 8px;
+      font-size: 0.875rem;
+      display: none;
+    }
+    .status.error {
+      background: #fee;
+      color: var(--error);
+      border: 1px solid #fcc;
+      display: block;
+    }
+    .status.success {
+      background: #efe;
+      color: var(--primary);
+      border: 1px solid #cfc;
+      display: block;
+    }
+    .divider {
+      margin: 1.5rem 0;
+      text-align: center;
+      position: relative;
+    }
+    .divider::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 0;
+      right: 0;
+      height: 1px;
+      background: var(--border);
+    }
+    .divider span {
+      background: var(--surface);
+      padding: 0 1rem;
+      position: relative;
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      font-weight: 500;
+    }
+    .btn-google {
+      background: white;
+      color: #3c4043;
+      border: 1px solid #dadce0;
+      font-weight: 500;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s ease;
+    }
+    .btn-google:hover {
+      background: #f7f8f8;
+      border-color: #d2d3d3;
+      box-shadow: 0 1px 2px 0 rgba(60,64,67,.3), 0 1px 3px 1px rgba(60,64,67,.15);
+      transform: translateY(-1px);
+    }
+    .footer-text {
+      margin-top: 2rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      text-align: center;
+    }
+  </style>
+  <!-- Shared JavaScript Modules -->
+  <script src="/js/firebase-config.js"></script>
+  <script src="/js/auth.js"></script>
+  <script src="/js/api.js"></script>
+  <script src="/js/utils.js"></script>
+</head>
+<body>
+  <div class="login-container">
+    <div class="logo-section">
+      <img src="/cbrt-logo-optimized.svg" alt="CBRT" />
+      <p>BOL Management System</p>
+    </div>
+    
+    <h2 class="form-title">Sign In</h2>
+    
+    <form id="loginForm">
+      <div class="form-group">
+        <label for="email">Email Address</label>
+        <input type="email" id="email" placeholder="Enter your email" required />
+      </div>
+      
+      <div class="form-group">
+        <label for="password">Password</label>
+        <input type="password" id="password" placeholder="Enter your password" required />
+      </div>
+      
+      <button type="submit" class="btn btn-primary btn-login">Sign In</button>
+    </form>
+    
+    <div id="status" class="status"></div>
+    
+    <p class="footer-text">© 2025 Cincinnati Barge & Rail Terminal, LLC</p>
+  </div>
+
+  <script>
+    // Check if already logged in
+    document.addEventListener('DOMContentLoaded', function() {
+      const logoutRequested = localStorage.getItem('logout_requested');
+      
+      if (logoutRequested === 'true') {
+        localStorage.removeItem('logout_requested');
+        Utils.showStatus('You have been logged out successfully', 'success', 3000);
+      } else if (Auth.isAuthenticated()) {
+        // Already logged in, redirect to appropriate page
+        const params = Utils.getQueryParams();
+        window.location.href = params.redirect || '/';
+      }
+    });
+    
+    document.getElementById('loginForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      
+      const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
+      
+      if (!email || !password) {
+        Utils.showStatus('Please enter both email and password.', 'error');
+        return;
+      }
+      
+      try {
+        Utils.showStatus('Signing in...', 'info');
+        
+        // Use Firebase Auth via enhanced Auth module
+        const result = await Auth.signInWithFirebase(email, password);
+        
+        console.log('Login successful:', result.profile);
+        
+        // Show success message
+        Utils.showStatus('Login successful! Redirecting...', 'success');
+        
+        // Redirect to requested page or home
+        const params = Utils.getQueryParams();
+        
+        setTimeout(() => {
+          window.location.href = params.redirect || '/';
+        }, 1000);
+        
+      } catch (error) {
+        console.error('Login error:', error);
+        
+        // Show user-friendly error message
+        Utils.showStatus(error.message || 'Login failed. Please check your credentials.', 'error');
+        
+        // Clear password field on error
+        document.getElementById('password').value = '';
+        document.getElementById('password').focus();
+      }
+    });
+    
+    // Auto-focus email field
+    document.getElementById('email').focus();
+    
+    // Register service worker for PWA functionality
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('/sw.js')
+          .then((registration) => {
+            console.log('SW registered: ', registration);
+          })
+          .catch((registrationError) => {
+            console.log('SW registration failed: ', registrationError);
+          });
+      });
+    }
+  </script>
+</body>
+</html>

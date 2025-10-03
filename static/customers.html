@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Customer Management - CBRT</title>
+  <link rel="stylesheet" href="/static/css/cbrt-brand.css">
+  <style>
+    .wrap { max-width: 1200px; }
+    .nav-links {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .nav-links a {
+      color: white !important;
+      background: rgba(255, 255, 255, 0.1) !important;
+      border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    }
+    .nav-links a:hover {
+      background: rgba(255, 255, 255, 0.2) !important;
+      border-color: rgba(255, 255, 255, 0.3) !important;
+    }
+    .nav-links a.active {
+      background: rgba(255, 255, 255, 0.25) !important;
+      border-color: rgba(255, 255, 255, 0.4) !important;
+    }
+    .content {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 20px;
+    }
+    .form-container {
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 2rem;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border);
+    }
+    .table-container {
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 1.5rem;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border);
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 2fr 1fr;
+      gap: 1rem;
+    }
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 15px 0;
+    }
+    .checkbox-group input {
+      width: auto;
+    }
+    .address-display {
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+      line-height: 1.4;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .badge.active {
+      background: #d4edda;
+      color: #155724;
+    }
+    .badge.inactive {
+      background: #f8d7da;
+      color: #721c24;
+    }
+    tr.inactive {
+      opacity: 0.6;
+      background: #fafafa;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-secondary);
+    }
+    .status {
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border-radius: 8px;
+      display: none;
+    }
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      display: block;
+    }
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="cbrt-header">
+      <div class="company-info">
+        <img src="/static/cbrt-logo-optimized.svg" alt="CBRT" class="company-logo">
+        <div>
+          <h1 class="company-name">Cincinnati Barge & Rail Terminal</h1>
+          <p class="company-tagline">Customer Management System</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-links">
+      <a href="/">Portal</a>
+      <a href="/office.html">Create BOL</a>
+      <a href="/products.html">Products</a>
+      <a href="/customers.html" class="active">Customers</a>
+      <a href="/carriers.html">Carriers</a>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <div class="content">
+      <div class="form-container">
+        <h2 id="formTitle">Add Customer</h2>
+        <form id="customerForm">
+          <input type="hidden" id="editId" />
+          
+          <div class="form-group">
+            <label>Customer Name *</label>
+            <input type="text" id="customer" placeholder="e.g., ABC Steel Corp" required />
+          </div>
+          
+          <div class="form-group">
+            <label>Street Address *</label>
+            <input type="text" id="address" placeholder="e.g., 123 Main Street" required />
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>City *</label>
+              <input type="text" id="city" placeholder="e.g., Cincinnati" required />
+            </div>
+            
+            <div class="form-group">
+              <label>State *</label>
+              <input type="text" id="state" placeholder="e.g., OH" maxlength="2" required />
+            </div>
+          </div>
+          
+          <div class="form-group">
+            <label>ZIP Code *</label>
+            <input type="text" id="zip" placeholder="e.g., 45202" pattern="[0-9]{5}(-[0-9]{4})?" required />
+          </div>
+
+          <div class="checkbox-group">
+            <input type="checkbox" id="isActive" checked />
+            <label for="isActive" style="margin:0;font-weight:normal">Active (Available for BOLs)</label>
+          </div>
+
+          <div class="button-group">
+            <button type="submit" class="btn btn-primary" id="submitBtn">Add Customer</button>
+            <button type="button" class="btn btn-secondary" onclick="resetForm()">Cancel</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="table-container">
+        <h2>Customers</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Customer</th>
+              <th>Ship-To Address</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="customerList">
+            <tr class="empty-state">
+              <td colspan="4">Loading customers...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Simple helpers
+    async function getJSON(url) {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(await r.text());
+      return r.json();
+    }
+
+    async function postJSON(url, body) {
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body)
+      });
+      if (!r.ok) throw new Error(await r.text());
+      return r.json();
+    }
+
+    function showStatus(msg, type) {
+      const el = document.getElementById('status');
+      el.textContent = msg;
+      el.className = 'status ' + type;
+      setTimeout(() => { el.className = 'status'; }, 3000);
+    }
+
+    // Customer management
+    let customers = [];
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadCustomers();
+      
+      // Auto-format state to uppercase
+      document.getElementById('state').addEventListener('input', (e) => {
+        e.target.value = e.target.value.toUpperCase();
+      });
+    });
+
+    async function loadCustomers() {
+      try {
+        customers = await getJSON('/api/customers/');
+        renderCustomers();
+      } catch (error) {
+        console.error('Error loading customers:', error);
+        showStatus('Error loading customers: ' + error.message, 'error');
+      }
+    }
+
+    function renderCustomers() {
+      const tbody = document.getElementById('customerList');
+
+      if (customers.length === 0) {
+        tbody.innerHTML = '<tr class="empty-state"><td colspan="4">No customers found. Add your first customer above.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = customers.map(customer => {
+        const isActive = customer.is_active !== false;
+        const fullAddress = `${customer.address}<br>${customer.city}, ${customer.state} ${customer.zip}`;
+
+        return `
+          <tr class="${isActive ? '' : 'inactive'}">
+            <td>
+              <span class="badge ${isActive ? 'active' : 'inactive'}">
+                ${isActive ? 'Active' : 'Inactive'}
+              </span>
+            </td>
+            <td>${customer.customer}</td>
+            <td class="address-display">${fullAddress}</td>
+            <td class="actions">
+              <button class="btn btn-sm" onclick="editCustomer(${customer.id})">Edit</button>
+              <button class="btn btn-accent btn-sm" onclick="toggleStatus(${customer.id}, ${isActive})">
+                ${isActive ? 'Deactivate' : 'Activate'}
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function editCustomer(id) {
+      const customer = customers.find(c => c.id === id);
+      if (!customer) return;
+
+      document.getElementById('editId').value = id;
+      document.getElementById('customer').value = customer.customer;
+      document.getElementById('address').value = customer.address;
+      document.getElementById('city').value = customer.city;
+      document.getElementById('state').value = customer.state;
+      document.getElementById('zip').value = customer.zip;
+      document.getElementById('isActive').checked = customer.is_active !== false;
+
+      document.getElementById('formTitle').textContent = 'Edit Customer';
+      document.getElementById('submitBtn').textContent = 'Update Customer';
+
+      document.getElementById('customerForm').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    async function toggleStatus(id, currentStatus) {
+      const customer = customers.find(c => c.id === id);
+      if (!customer) return;
+
+      try {
+        await postJSON('/api/customers/', {
+          id: customer.id,
+          customer: customer.customer,
+          address: customer.address,
+          city: customer.city,
+          state: customer.state,
+          zip: customer.zip,
+          is_active: !currentStatus
+        });
+
+        showStatus(`Customer ${!currentStatus ? 'activated' : 'deactivated'} successfully`, 'success');
+        await loadCustomers();
+      } catch (error) {
+        showStatus('Error updating customer status: ' + error.message, 'error');
+      }
+    }
+
+    function resetForm() {
+      document.getElementById('customerForm').reset();
+      document.getElementById('editId').value = '';
+      document.getElementById('formTitle').textContent = 'Add Customer';
+      document.getElementById('submitBtn').textContent = 'Add Customer';
+      document.getElementById('isActive').checked = true;
+    }
+
+    document.getElementById('customerForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const editId = document.getElementById('editId').value;
+      const customerData = {
+        customer: document.getElementById('customer').value.trim(),
+        address: document.getElementById('address').value.trim(),
+        city: document.getElementById('city').value.trim(),
+        state: document.getElementById('state').value.trim().toUpperCase(),
+        zip: document.getElementById('zip').value.trim(),
+        is_active: document.getElementById('isActive').checked
+      };
+
+      if (editId) {
+        customerData.id = editId;
+      }
+
+      try {
+        await postJSON('/api/customers/', customerData);
+
+        showStatus(editId ? 'Customer updated successfully' : 'Customer added successfully', 'success');
+        resetForm();
+        await loadCustomers();
+      } catch (error) {
+        showStatus('Error saving customer: ' + error.message, 'error');
+      }
+    });
+  </script>
+</body>
+</html>

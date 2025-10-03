@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Carrier Management - CBRT</title>
+  <link rel="stylesheet" href="/static/css/cbrt-brand.css">
+  <style>
+    .wrap { max-width: 1400px; }
+    .nav-links {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .nav-links a {
+      color: white !important;
+      background: rgba(255, 255, 255, 0.1) !important;
+      border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    }
+    .nav-links a:hover {
+      background: rgba(255, 255, 255, 0.2) !important;
+      border-color: rgba(255, 255, 255, 0.3) !important;
+    }
+    .nav-links a.active {
+      background: rgba(255, 255, 255, 0.25) !important;
+      border-color: rgba(255, 255, 255, 0.4) !important;
+    }
+    .content {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 20px;
+    }
+    .form-container {
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 2rem;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border);
+    }
+    .table-container {
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 1.5rem;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border);
+    }
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1rem;
+    }
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 15px 0;
+    }
+    .checkbox-group input {
+      width: auto;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .badge.active {
+      background: #d4edda;
+      color: #155724;
+    }
+    .badge.inactive {
+      background: #f8d7da;
+      color: #721c24;
+    }
+    tr.inactive {
+      opacity: 0.6;
+      background: #fafafa;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-secondary);
+    }
+    .truck-section {
+      background: var(--surface-elevated);
+      padding: 1rem;
+      border-radius: 8px;
+      margin-top: 1rem;
+    }
+    .truck-list {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+      margin-top: 0.5rem;
+    }
+    .truck-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0.5rem;
+      background: white;
+      border-radius: 4px;
+      border: 1px solid var(--border);
+    }
+    .status {
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border-radius: 8px;
+      display: none;
+    }
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      display: block;
+    }
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="cbrt-header">
+      <div class="company-info">
+        <img src="/static/cbrt-logo-optimized.svg" alt="CBRT" class="company-logo">
+        <div>
+          <h1 class="company-name">Cincinnati Barge & Rail Terminal</h1>
+          <p class="company-tagline">Carrier Management System</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-links">
+      <a href="/">Portal</a>
+      <a href="/office.html">Create BOL</a>
+      <a href="/products.html">Products</a>
+      <a href="/customers.html">Customers</a>
+      <a href="/carriers.html" class="active">Carriers</a>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <div class="content">
+      <div class="form-container">
+        <h2 id="formTitle">Add Carrier</h2>
+        <form id="carrierForm">
+          <input type="hidden" id="editId" />
+          
+          <div class="form-group">
+            <label>Carrier Name *</label>
+            <input type="text" id="carrierName" placeholder="e.g., ABC Transport LLC" required />
+          </div>
+          
+          <div class="form-group">
+            <label>Contact Person</label>
+            <input type="text" id="contactName" placeholder="e.g., John Smith" />
+          </div>
+          
+          <div class="form-row">
+            <div class="form-group">
+              <label>Phone</label>
+              <input type="tel" id="phone" placeholder="e.g., (555) 123-4567" />
+            </div>
+            
+            <div class="form-group">
+              <label>Email</label>
+              <input type="email" id="email" placeholder="e.g., contact@carrier.com" />
+            </div>
+          </div>
+
+          <div class="checkbox-group">
+            <input type="checkbox" id="isActive" checked />
+            <label for="isActive" style="margin:0;font-weight:normal">Active (Available for BOLs)</label>
+          </div>
+
+          <div class="button-group">
+            <button type="submit" class="btn btn-primary" id="submitBtn">Add Carrier</button>
+            <button type="button" class="btn btn-secondary" onclick="resetForm()">Cancel</button>
+          </div>
+        </form>
+
+        <div class="truck-section" id="truckSection" style="display:none">
+          <h3>Manage Trucks</h3>
+          <div class="form-row">
+            <input type="text" id="newTruckNo" placeholder="Truck Number" class="form-control" />
+            <input type="text" id="newTrailerNo" placeholder="Trailer Number" class="form-control" />
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="addTruck()" style="margin-top:10px">Add Truck</button>
+          
+          <div class="truck-list" id="truckList"></div>
+        </div>
+      </div>
+
+      <div class="table-container">
+        <h2>Carriers</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Carrier</th>
+              <th>Contact</th>
+              <th>Trucks</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="carrierList">
+            <tr class="empty-state">
+              <td colspan="5">Loading carriers...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Simple helpers
+    async function getJSON(url) {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(await r.text());
+      return r.json();
+    }
+
+    async function postJSON(url, body) {
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body)
+      });
+      if (!r.ok) throw new Error(await r.text());
+      return r.json();
+    }
+
+    function showStatus(msg, type) {
+      const el = document.getElementById('status');
+      el.textContent = msg;
+      el.className = 'status ' + type;
+      setTimeout(() => { el.className = 'status'; }, 3000);
+    }
+
+    // Carrier management
+    let carriers = [];
+    let currentEditId = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadCarriers();
+    });
+
+    async function loadCarriers() {
+      try {
+        carriers = await getJSON('/api/carriers/');
+        renderCarriers();
+      } catch (error) {
+        console.error('Error loading carriers:', error);
+        showStatus('Error loading carriers: ' + error.message, 'error');
+      }
+    }
+
+    function renderCarriers() {
+      const tbody = document.getElementById('carrierList');
+
+      if (carriers.length === 0) {
+        tbody.innerHTML = '<tr class="empty-state"><td colspan="5">No carriers found. Add your first carrier above.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = carriers.map(carrier => {
+        const isActive = carrier.is_active !== false;
+        const truckCount = carrier.trucks ? carrier.trucks.length : 0;
+        const contactInfo = carrier.phone || carrier.email || 'No contact info';
+
+        return `
+          <tr class="${isActive ? '' : 'inactive'}">
+            <td>
+              <span class="badge ${isActive ? 'active' : 'inactive'}">
+                ${isActive ? 'Active' : 'Inactive'}
+              </span>
+            </td>
+            <td>${carrier.carrier_name}</td>
+            <td>${contactInfo}</td>
+            <td>${truckCount} truck${truckCount !== 1 ? 's' : ''}</td>
+            <td class="actions">
+              <button class="btn btn-sm" onclick="editCarrier(${carrier.id})">Edit</button>
+              <button class="btn btn-accent btn-sm" onclick="toggleStatus(${carrier.id}, ${isActive})">
+                ${isActive ? 'Deactivate' : 'Activate'}
+              </button>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function editCarrier(id) {
+      const carrier = carriers.find(c => c.id === id);
+      if (!carrier) return;
+
+      currentEditId = id;
+      document.getElementById('editId').value = id;
+      document.getElementById('carrierName').value = carrier.carrier_name;
+      document.getElementById('contactName').value = carrier.contact_name || '';
+      document.getElementById('phone').value = carrier.phone || '';
+      document.getElementById('email').value = carrier.email || '';
+      document.getElementById('isActive').checked = carrier.is_active !== false;
+
+      document.getElementById('formTitle').textContent = 'Edit Carrier';
+      document.getElementById('submitBtn').textContent = 'Update Carrier';
+      document.getElementById('truckSection').style.display = 'block';
+
+      renderTrucks(carrier.trucks || []);
+      document.getElementById('carrierForm').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    function renderTrucks(trucks) {
+      const truckList = document.getElementById('truckList');
+      if (trucks.length === 0) {
+        truckList.innerHTML = '<div class="empty-state">No trucks added yet</div>';
+        return;
+      }
+
+      truckList.innerHTML = trucks.map((truck, index) => `
+        <div class="truck-item">
+          <span>Truck: ${truck.truck_number} | Trailer: ${truck.trailer_number || 'N/A'}</span>
+          <button class="btn btn-danger btn-sm" onclick="removeTruck(${index})">Remove</button>
+        </div>
+      `).join('');
+    }
+
+    async function addTruck() {
+      if (!currentEditId) return;
+
+      const truckNo = document.getElementById('newTruckNo').value.trim();
+      const trailerNo = document.getElementById('newTrailerNo').value.trim();
+
+      if (!truckNo) {
+        showStatus('Truck number is required', 'error');
+        return;
+      }
+
+      const carrier = carriers.find(c => c.id === currentEditId);
+      if (!carrier) return;
+
+      if (!carrier.trucks) carrier.trucks = [];
+      carrier.trucks.push({ truck_number: truckNo, trailer_number: trailerNo });
+
+      try {
+        await postJSON('/api/carriers/', {
+          id: carrier.id,
+          carrier_name: carrier.carrier_name,
+          contact_name: carrier.contact_name,
+          phone: carrier.phone,
+          email: carrier.email,
+          is_active: carrier.is_active,
+          trucks: carrier.trucks
+        });
+
+        document.getElementById('newTruckNo').value = '';
+        document.getElementById('newTrailerNo').value = '';
+        renderTrucks(carrier.trucks);
+        showStatus('Truck added successfully', 'success');
+        await loadCarriers();
+      } catch (error) {
+        showStatus('Error adding truck: ' + error.message, 'error');
+      }
+    }
+
+    async function removeTruck(index) {
+      if (!currentEditId) return;
+
+      const carrier = carriers.find(c => c.id === currentEditId);
+      if (!carrier || !carrier.trucks) return;
+
+      carrier.trucks.splice(index, 1);
+
+      try {
+        await postJSON('/api/carriers/', {
+          id: carrier.id,
+          carrier_name: carrier.carrier_name,
+          contact_name: carrier.contact_name,
+          phone: carrier.phone,
+          email: carrier.email,
+          is_active: carrier.is_active,
+          trucks: carrier.trucks
+        });
+
+        renderTrucks(carrier.trucks);
+        showStatus('Truck removed successfully', 'success');
+        await loadCarriers();
+      } catch (error) {
+        showStatus('Error removing truck: ' + error.message, 'error');
+      }
+    }
+
+    async function toggleStatus(id, currentStatus) {
+      const carrier = carriers.find(c => c.id === id);
+      if (!carrier) return;
+
+      try {
+        await postJSON('/api/carriers/', {
+          id: carrier.id,
+          carrier_name: carrier.carrier_name,
+          contact_name: carrier.contact_name,
+          phone: carrier.phone,
+          email: carrier.email,
+          is_active: !currentStatus,
+          trucks: carrier.trucks
+        });
+
+        showStatus(`Carrier ${!currentStatus ? 'activated' : 'deactivated'} successfully`, 'success');
+        await loadCarriers();
+      } catch (error) {
+        showStatus('Error updating carrier status: ' + error.message, 'error');
+      }
+    }
+
+    function resetForm() {
+      document.getElementById('carrierForm').reset();
+      document.getElementById('editId').value = '';
+      document.getElementById('formTitle').textContent = 'Add Carrier';
+      document.getElementById('submitBtn').textContent = 'Add Carrier';
+      document.getElementById('isActive').checked = true;
+      document.getElementById('truckSection').style.display = 'none';
+      currentEditId = null;
+    }
+
+    document.getElementById('carrierForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const editId = document.getElementById('editId').value;
+      const carrierData = {
+        carrier_name: document.getElementById('carrierName').value.trim(),
+        contact_name: document.getElementById('contactName').value.trim(),
+        phone: document.getElementById('phone').value.trim(),
+        email: document.getElementById('email').value.trim(),
+        is_active: document.getElementById('isActive').checked
+      };
+
+      if (editId) {
+        carrierData.id = editId;
+        const existingCarrier = carriers.find(c => c.id == editId);
+        if (existingCarrier && existingCarrier.trucks) {
+          carrierData.trucks = existingCarrier.trucks;
+        }
+      }
+
+      try {
+        await postJSON('/api/carriers/', carrierData);
+
+        showStatus(editId ? 'Carrier updated successfully' : 'Carrier added successfully', 'success');
+        resetForm();
+        await loadCarriers();
+      } catch (error) {
+        showStatus('Error saving carrier: ' + error.message, 'error');
+      }
+    });
+  </script>
+</body>
+</html>

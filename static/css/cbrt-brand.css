@@ -1,0 +1,538 @@
+/* 
+  CBRT Brand CSS Architecture
+  Cincinnati Barge & Rail Terminal Official Branding
+  Based on CBRT Branding Kit color palette and guidelines
+*/
+
+:root {
+  /* CBRT Official Brand Colors */
+  --cbrt-barge-green: #005500;
+  --cbrt-river-blue: #2A6F97;
+  --cbrt-steel-gray: #4B4B4B;
+  --cbrt-concrete-light: #E5E5E5;
+  --cbrt-rust-red: #9E3B2E;
+  --cbrt-sun-yellow: #FFC72C;
+  
+  /* Color Variations for UI */
+  --cbrt-barge-green-light: #007700;
+  --cbrt-barge-green-dark: #003300;
+  --cbrt-river-blue-light: #3A7FA7;
+  --cbrt-river-blue-dark: #1A5F87;
+  
+  /* Semantic Color Assignments */
+  --primary: var(--cbrt-barge-green);
+  --primary-light: var(--cbrt-barge-green-light);
+  --primary-dark: var(--cbrt-barge-green-dark);
+  --secondary: var(--cbrt-river-blue);
+  --secondary-light: var(--cbrt-river-blue-light);
+  --secondary-dark: var(--cbrt-river-blue-dark);
+  --accent: var(--cbrt-sun-yellow);
+  --surface: #ffffff;
+  --surface-elevated: #f8fafc;
+  --border: var(--cbrt-concrete-light);
+  --text-primary: var(--cbrt-steel-gray);
+  --text-secondary: #6b7280;
+  --text-light: #9ca3af;
+  --error: var(--cbrt-rust-red);
+  
+  /* Shadows using CBRT colors */
+  --shadow-sm: 0 1px 2px 0 rgba(0, 85, 0, 0.05);
+  --shadow-md: 0 4px 6px -1px rgba(0, 85, 0, 0.1), 0 2px 4px -2px rgba(0, 85, 0, 0.1);
+  --shadow-lg: 0 10px 15px -3px rgba(0, 85, 0, 0.1), 0 4px 6px -4px rgba(0, 85, 0, 0.1);
+  --shadow-xl: 0 20px 25px -5px rgba(0, 85, 0, 0.1), 0 8px 10px -6px rgba(0, 85, 0, 0.1);
+  
+  /* Typography */
+  --font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+  --font-weight-normal: 400;
+  --font-weight-medium: 500;
+  --font-weight-semibold: 600;
+  --font-weight-bold: 700;
+  --font-weight-extrabold: 800;
+}
+
+/* Base Styles */
+* { 
+  box-sizing: border-box; 
+}
+
+body {
+  font-family: var(--font-family);
+  line-height: 1.6;
+  margin: 0;
+  background: linear-gradient(135deg, var(--cbrt-barge-green) 0%, var(--cbrt-river-blue) 100%);
+  min-height: 100vh;
+  padding: 2rem;
+  color: var(--text-primary);
+}
+
+/* CBRT Header */
+.cbrt-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+  border: 1px solid var(--border);
+}
+
+.company-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.company-logo {
+  height: 45px;
+  width: auto;
+}
+
+.cbrt-logo {
+  height: 45px;
+  margin-right: 1rem;
+  border-radius: 8px;
+}
+
+.cbrt-company { 
+  flex: 1; 
+}
+
+.cbrt-company-name {
+  font-size: 1.5rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.company-name {
+  font-size: 1.5rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+  margin: 0;
+}
+
+.company-tagline {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+  margin: 0.25rem 0 0 0;
+}
+
+.auth-section {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.user-email {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+}
+
+.cbrt-company-info {
+  font-size: 0.875rem;
+  color: var(--text-secondary);
+}
+
+/* Main Header */
+.main-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: var(--surface);
+  border-radius: 12px;
+  box-shadow: var(--shadow-md);
+}
+
+.main-header h1 {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: var(--font-weight-extrabold);
+  background: linear-gradient(135deg, var(--primary), var(--secondary));
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* Navigation */
+.nav-links {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.nav-links a {
+  color: white;
+  text-decoration: none;
+  font-weight: var(--font-weight-medium);
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  transition: all 0.2s ease;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.nav-links a:hover {
+  background: rgba(255, 255, 255, 0.2);
+  color: white;
+  border-color: rgba(255, 255, 255, 0.3);
+  transform: translateY(-1px);
+}
+
+/* Cards */
+.dashboard-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 1.5rem;
+  margin-bottom: 2rem;
+}
+
+.card {
+  background: var(--surface);
+  border-radius: 16px;
+  padding: 1.5rem;
+  box-shadow: var(--shadow-lg);
+  border: 1px solid var(--border);
+  transition: all 0.3s ease;
+  position: relative;
+  overflow: hidden;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 4px;
+  background: linear-gradient(90deg, var(--primary), var(--secondary));
+}
+
+.card:hover {
+  transform: translateY(-2px);
+  box-shadow: var(--shadow-xl);
+}
+
+.card h3 {
+  margin: 0 0 1rem 0;
+  font-size: 1.25rem;
+  font-weight: var(--font-weight-bold);
+  color: var(--text-primary);
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.card h3::before {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--primary);
+}
+
+/* Buttons */
+.btn {
+  display: inline-block;
+  padding: 0.5rem 1rem;
+  border-radius: 6px;
+  background: var(--primary);
+  color: white;
+  font-weight: var(--font-weight-semibold);
+  text-decoration: none;
+  transition: all 0.2s ease;
+  box-shadow: var(--shadow-sm);
+  border: none;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-family: inherit;
+  line-height: 1.2;
+  text-align: center;
+  vertical-align: middle;
+}
+
+.btn:hover {
+  background: var(--primary-light);
+  transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
+}
+
+.btn-secondary {
+  background: var(--secondary);
+}
+
+.btn-secondary:hover {
+  background: var(--secondary-light);
+}
+
+.btn-accent {
+  background: var(--accent);
+  color: var(--text-primary);
+}
+
+.btn-accent:hover {
+  background: #FFD952;
+  transform: translateY(-1px);
+}
+
+.btn-danger {
+  background: var(--error);
+}
+
+.btn-danger:hover {
+  background: #B8442A;
+}
+
+.btn-sm {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.75rem;
+  min-width: auto;
+}
+
+/* Forms */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.form-group label {
+  font-weight: var(--font-weight-semibold);
+  color: var(--text-primary);
+  font-size: 0.875rem;
+}
+
+input, textarea, select {
+  width: 100%;
+  padding: 0.75rem;
+  border-radius: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  font-size: 0.875rem;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: var(--primary);
+  box-shadow: 0 0 0 3px rgba(0, 85, 0, 0.1);
+}
+
+input[readonly], textarea[readonly] {
+  background: var(--surface-elevated);
+  color: var(--text-secondary);
+}
+
+/* Tables */
+.table-container {
+  background: var(--surface-elevated);
+  border-radius: 8px;
+  overflow: hidden;
+  margin-top: 1rem;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+th {
+  background: var(--primary);
+  color: white;
+  padding: 1rem;
+  text-align: left;
+  font-weight: var(--font-weight-semibold);
+  font-size: 0.875rem;
+}
+
+td {
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid var(--border);
+  font-size: 0.875rem;
+}
+
+tr:last-child td {
+  border-bottom: none;
+}
+
+tr:hover {
+  background: var(--surface-elevated);
+}
+
+/* Table actions column */
+td.actions {
+  white-space: nowrap;
+  width: 200px;
+}
+
+.actions {
+  display: flex;
+  gap: 0.25rem;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.actions .btn {
+  margin: 0;
+  white-space: nowrap;
+}
+
+.actions .btn-sm {
+  padding: 0.2rem 0.4rem;
+  font-size: 0.7rem;
+}
+
+/* Auth Section */
+#authSection {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+#userEmail {
+  font-weight: var(--font-weight-medium);
+  color: var(--text-secondary);
+}
+
+/* Grid Layouts */
+.grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+}
+
+.admin-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 1rem;
+}
+
+.office-controls, .client-controls {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+  flex-wrap: wrap;
+  margin-bottom: 1rem;
+}
+
+.office-management {
+  display: flex;
+  gap: 1rem;
+  margin-top: 1rem;
+  padding-top: 1rem;
+  border-top: 1px solid var(--border);
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  body { 
+    padding: 1rem; 
+  }
+  
+  .dashboard-grid { 
+    grid-template-columns: 1fr; 
+  }
+  
+  .main-header { 
+    flex-direction: column; 
+    gap: 1rem; 
+    text-align: center; 
+  }
+  
+  .office-controls, .client-controls { 
+    flex-direction: column; 
+    align-items: stretch; 
+  }
+  
+  .admin-grid { 
+    grid-template-columns: 1fr; 
+  }
+  
+  .grid {
+    grid-template-columns: 1fr;
+  }
+  
+  .nav-links {
+    flex-wrap: wrap;
+  }
+  
+  .office-management {
+    flex-direction: column;
+  }
+}
+
+/* Utility Classes */
+.text-center { text-align: center; }
+.text-right { text-align: right; }
+.text-muted { color: var(--text-secondary); }
+.text-success { color: var(--primary); }
+.text-warning { color: var(--accent); }
+.text-danger { color: var(--error); }
+
+.mt-1 { margin-top: 0.25rem; }
+.mt-2 { margin-top: 0.5rem; }
+.mt-3 { margin-top: 1rem; }
+.mt-4 { margin-top: 1.5rem; }
+
+.mb-1 { margin-bottom: 0.25rem; }
+.mb-2 { margin-bottom: 0.5rem; }
+.mb-3 { margin-bottom: 1rem; }
+.mb-4 { margin-bottom: 1.5rem; }
+
+.p-1 { padding: 0.25rem; }
+.p-2 { padding: 0.5rem; }
+.p-3 { padding: 1rem; }
+.p-4 { padding: 1.5rem; }
+
+.rounded { border-radius: 8px; }
+.shadow { box-shadow: var(--shadow-md); }
+
+/* Status Messages */
+.status {
+  margin-left: 1rem;
+  font-weight: var(--font-weight-medium);
+}
+
+.status.success {
+  color: var(--primary);
+}
+
+.status.error {
+  color: var(--error);
+}
+
+/* Loading States */
+.loading {
+  opacity: 0.7;
+  pointer-events: none;
+}
+
+.loading::after {
+  content: '';
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  margin-left: 0.5rem;
+  border: 2px solid var(--border);
+  border-radius: 50%;
+  border-top-color: var(--primary);
+  animation: spin 1s ease-in-out infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Content Wrapper */
+.wrap {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+/* Page-specific overrides can go below */

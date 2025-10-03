@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Product Management - CBRT</title>
+  <link rel="stylesheet" href="/static/css/cbrt-brand.css">
+  <style>
+    .wrap { max-width: 1200px; }
+    .nav-links {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1.5rem;
+    }
+    .nav-links a {
+      color: white !important;
+      background: rgba(255, 255, 255, 0.1) !important;
+      border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    }
+    .nav-links a:hover {
+      background: rgba(255, 255, 255, 0.2) !important;
+      border-color: rgba(255, 255, 255, 0.3) !important;
+    }
+    .nav-links a.active {
+      background: rgba(255, 255, 255, 0.25) !important;
+      border-color: rgba(255, 255, 255, 0.4) !important;
+    }
+    .content {
+      display: grid;
+      grid-template-columns: 1fr 2fr;
+      gap: 20px;
+    }
+    .form-container {
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 2rem;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border);
+    }
+    .table-container {
+      background: var(--surface);
+      border-radius: 16px;
+      padding: 1.5rem;
+      box-shadow: var(--shadow-lg);
+      border: 1px solid var(--border);
+    }
+    .checkbox-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin: 15px 0;
+    }
+    .checkbox-group input {
+      width: auto;
+    }
+    .badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .badge.active {
+      background: #d4edda;
+      color: #155724;
+    }
+    .badge.inactive {
+      background: #f8d7da;
+      color: #721c24;
+    }
+    tr.inactive {
+      opacity: 0.6;
+      background: #fafafa;
+    }
+    .confirm-dialog {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      background: white;
+      padding: 2rem;
+      border-radius: 16px;
+      box-shadow: var(--shadow-xl);
+      z-index: 1000;
+      display: none;
+      min-width: 400px;
+    }
+    .confirm-dialog.show {
+      display: block;
+    }
+    .overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.5);
+      z-index: 999;
+      display: none;
+    }
+    .overlay.show {
+      display: block;
+    }
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-secondary);
+    }
+    .tons-display {
+      font-size: 1.125rem;
+      font-weight: 600;
+      color: var(--primary);
+    }
+    .table-container td.actions {
+      white-space: nowrap;
+      text-align: right;
+      padding-right: 1rem;
+    }
+    .table-container .actions {
+      display: inline-flex;
+      gap: 0.35rem;
+      align-items: center;
+    }
+    .table-container .actions .btn-sm {
+      padding: 0.4rem 0.75rem;
+      font-size: 0.825rem;
+      font-weight: 600;
+      min-width: auto;
+      white-space: nowrap;
+      line-height: 1;
+      display: inline-block;
+    }
+    .table-container .actions .btn-primary.btn-sm {
+      background: var(--primary);
+      color: white;
+    }
+    .table-container .actions .btn-accent.btn-sm {
+      background: var(--accent);
+      color: var(--text-primary);
+    }
+    .table-container .actions .btn-danger.btn-sm {
+      background: var(--error);
+      color: white;
+    }
+    .table-container th:last-child {
+      text-align: center;
+      width: 280px;
+    }
+    .table-container td:last-child {
+      width: 280px;
+    }
+    .status {
+      padding: 1rem;
+      margin-bottom: 1rem;
+      border-radius: 8px;
+      display: none;
+    }
+    .status.success {
+      background: #d4edda;
+      color: #155724;
+      display: block;
+    }
+    .status.error {
+      background: #f8d7da;
+      color: #721c24;
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="cbrt-header">
+      <div class="company-info">
+        <img src="/static/cbrt-logo-optimized.svg" alt="CBRT" class="company-logo">
+        <div>
+          <h1 class="company-name">Cincinnati Barge & Rail Terminal</h1>
+          <p class="company-tagline">Product Management System</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="nav-links">
+      <a href="/">Portal</a>
+      <a href="/office.html">Create BOL</a>
+      <a href="/products.html" class="active">Products</a>
+      <a href="/customers.html">Customers</a>
+      <a href="/carriers.html">Carriers</a>
+    </div>
+
+    <div id="status" class="status"></div>
+
+    <div class="content">
+      <div class="form-container">
+        <h2 id="formTitle">Add Product</h2>
+        <form id="productForm">
+          <input type="hidden" id="editId" />
+          
+          <div class="form-group">
+            <label>Product Name *</label>
+            <input type="text" id="name" placeholder="e.g., Nodular Pig Iron" required />
+          </div>
+          
+          <div class="form-group">
+            <label>Starting Tons *</label>
+            <input type="number" id="startTons" step="0.01" min="0" placeholder="e.g., 1000.00" required />
+          </div>
+
+          <div class="checkbox-group">
+            <input type="checkbox" id="isActive" checked />
+            <label for="isActive" style="margin:0;font-weight:normal">Active (Available for BOLs)</label>
+          </div>
+
+          <div class="button-group">
+            <button type="submit" class="btn btn-primary" id="submitBtn">Add Product</button>
+            <button type="button" class="btn btn-secondary" onclick="resetForm()">Cancel</button>
+          </div>
+        </form>
+      </div>
+
+      <div class="table-container">
+        <h2>Products</h2>
+        <table>
+          <thead>
+            <tr>
+              <th>Status</th>
+              <th>Product</th>
+              <th>Starting Tons</th>
+              <th>Shipped</th>
+              <th>Remaining</th>
+              <th>Actions</th>
+            </tr>
+          </thead>
+          <tbody id="productList">
+            <tr class="empty-state">
+              <td colspan="6">Loading products...</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <div class="overlay" id="overlay" onclick="closeDeleteDialog()"></div>
+  <div class="confirm-dialog" id="deleteDialog">
+    <h3 style="margin-top:0">Confirm Delete</h3>
+    <p>Are you sure you want to delete this product?</p>
+    <p id="deleteMessage"></p>
+    <div class="button-group">
+      <button class="btn btn-danger" onclick="confirmDelete()">Delete</button>
+      <button class="btn btn-secondary" onclick="closeDeleteDialog()">Cancel</button>
+    </div>
+  </div>
+
+  <script>
+    // Simple helpers
+    async function getJSON(url) {
+      const r = await fetch(url);
+      if (!r.ok) throw new Error(await r.text());
+      return r.json();
+    }
+
+    async function postJSON(url, body) {
+      const r = await fetch(url, {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(body)
+      });
+      if (!r.ok) throw new Error(await r.text());
+      return r.json();
+    }
+
+    function showStatus(msg, type) {
+      const el = document.getElementById('status');
+      el.textContent = msg;
+      el.className = 'status ' + type;
+      setTimeout(() => { el.className = 'status'; }, 3000);
+    }
+
+    // Product management
+    let products = [];
+    let balances = {};
+    let deleteProductId = null;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadProducts();
+    });
+
+    async function loadProducts() {
+      try {
+        const [productsData, balancesData] = await Promise.all([
+          getJSON('/api/products/'),
+          getJSON('/api/balances/')
+        ]);
+
+        products = productsData;
+        balances = {};
+        if (Array.isArray(balancesData)) {
+          balancesData.forEach(b => { balances[b.id] = b; });
+        }
+
+        renderProducts();
+      } catch (error) {
+        console.error('Error loading products:', error);
+        showStatus('Error loading products: ' + error.message, 'error');
+      }
+    }
+
+    function renderProducts() {
+      const tbody = document.getElementById('productList');
+
+      if (products.length === 0) {
+        tbody.innerHTML = '<tr class="empty-state"><td colspan="6">No products found. Add your first product above.</td></tr>';
+        return;
+      }
+
+      tbody.innerHTML = products.map(product => {
+        const isActive = product.is_active !== false;
+        const balance = balances[product.id] || { startTons: 0, shipped: 0, remaining: 0 };
+
+        return `
+          <tr class="${isActive ? '' : 'inactive'}">
+            <td>
+              <span class="badge ${isActive ? 'active' : 'inactive'}">
+                ${isActive ? 'Active' : 'Inactive'}
+              </span>
+            </td>
+            <td>${product.name}</td>
+            <td class="tons-display">${balance.startTons.toFixed(2)}</td>
+            <td>${balance.shipped.toFixed(2)}</td>
+            <td>${balance.remaining.toFixed(2)}</td>
+            <td class="actions">
+              <div class="actions">
+                <button class="btn btn-primary btn-sm" onclick="editProduct(${product.id})">Edit</button>
+                <button class="btn btn-accent btn-sm" onclick="toggleStatus(${product.id}, ${isActive})">
+                  ${isActive ? 'Deactivate' : 'Activate'}
+                </button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
+
+    function editProduct(id) {
+      const product = products.find(p => p.id === id);
+      if (!product) return;
+
+      document.getElementById('editId').value = id;
+      document.getElementById('name').value = product.name;
+      document.getElementById('startTons').value = product.start_tons;
+      document.getElementById('isActive').checked = product.is_active !== false;
+
+      document.getElementById('formTitle').textContent = 'Edit Product';
+      document.getElementById('submitBtn').textContent = 'Update Product';
+
+      document.getElementById('productForm').scrollIntoView({ behavior: 'smooth' });
+    }
+
+    async function toggleStatus(id, currentStatus) {
+      const product = products.find(p => p.id === id);
+      if (!product) return;
+
+      try {
+        await postJSON('/api/products/', {
+          id: product.id,
+          name: product.name,
+          start_tons: product.start_tons,
+          is_active: !currentStatus
+        });
+
+        showStatus(`Product ${!currentStatus ? 'activated' : 'deactivated'} successfully`, 'success');
+        await loadProducts();
+      } catch (error) {
+        showStatus('Error updating product status: ' + error.message, 'error');
+      }
+    }
+
+    function resetForm() {
+      document.getElementById('productForm').reset();
+      document.getElementById('editId').value = '';
+      document.getElementById('formTitle').textContent = 'Add Product';
+      document.getElementById('submitBtn').textContent = 'Add Product';
+      document.getElementById('isActive').checked = true;
+    }
+
+    document.getElementById('productForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+
+      const editId = document.getElementById('editId').value;
+      const productData = {
+        name: document.getElementById('name').value.trim(),
+        start_tons: parseFloat(document.getElementById('startTons').value),
+        is_active: document.getElementById('isActive').checked
+      };
+
+      if (editId) {
+        productData.id = editId;
+      }
+
+      try {
+        await postJSON('/api/products/', productData);
+
+        showStatus(editId ? 'Product updated successfully' : 'Product added successfully', 'success');
+        resetForm();
+        await loadProducts();
+      } catch (error) {
+        showStatus('Error saving product: ' + error.message, 'error');
+      }
+    });
+  </script>
+</body>
+</html>
