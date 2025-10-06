@@ -118,7 +118,7 @@ const Utils = (function() {
   function validateForm(formId) {
     const form = document.getElementById(formId);
     if (!form) return false;
-    
+
     const requiredFields = form.querySelectorAll('[required]');
     for (const field of requiredFields) {
       if (!field.value.trim()) {
@@ -129,7 +129,28 @@ const Utils = (function() {
     }
     return true;
   }
-  
+
+  // Get cookie value by name
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  // Get CSRF token from cookie
+  function getCSRFToken() {
+    return getCookie('csrftoken');
+  }
+
   // Public API
   return {
     qs,
@@ -142,7 +163,9 @@ const Utils = (function() {
     resetForm,
     debounce,
     initCommonUI,
-    validateForm
+    validateForm,
+    getCookie,
+    getCSRFToken
   };
 })();
 

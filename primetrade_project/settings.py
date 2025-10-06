@@ -79,11 +79,12 @@ LOGOUT_REDIRECT_URL = '/login/'
 # CSRF and Session Security
 CSRF_COOKIE_SECURE = not DEBUG
 SESSION_COOKIE_SECURE = not DEBUG
-CSRF_COOKIE_HTTPONLY = True
+CSRF_COOKIE_HTTPONLY = False  # Must be False for JavaScript to read CSRF token
 SESSION_COOKIE_HTTPONLY = True
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
+CSRF_TRUSTED_ORIGINS = ['http://localhost:8000', 'http://127.0.0.1:8000']
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'
