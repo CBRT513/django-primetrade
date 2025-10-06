@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Login - BOL Portal</title>
+    <link rel="stylesheet" href="/static/css/cbrt-brand.css">
+</head>
+<body>
+    <div class="wrap">
+        <div class="card" style="max-width: 400px; margin: 100px auto;">
+            <h2>Login</h2>
+            <form method="post" action="/login/">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" name="username" required>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" name="password" required>
+                </div>
+                {% if error %}
+                <p style="color: red;">{{ error }}</p>
+                {% endif %}
+                <button type="submit" class="btn btn-accent">Login</button>
+            </form>
+        </div>
+    </div>
+</body>
+</html>

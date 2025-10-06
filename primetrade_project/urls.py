@@ -4,6 +4,8 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import RedirectView
 from django.views.static import serve
+from django.contrib.auth.decorators import login_required
+from bol_system import auth_views
 import os
 
 def serve_static_html(request, file_name):
@@ -15,15 +17,18 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('bol_system.urls')),
 
-    # Frontend HTML pages
-    path('', serve_static_html, {'file_name': 'index.html'}, name='index'),
-    path('office.html', serve_static_html, {'file_name': 'office.html'}, name='office'),
-    path('client.html', serve_static_html, {'file_name': 'client.html'}, name='client'),
-    path('bol.html', serve_static_html, {'file_name': 'bol.html'}, name='bol'),
-    path('products.html', serve_static_html, {'file_name': 'products.html'}, name='products'),
-    path('customers.html', serve_static_html, {'file_name': 'customers.html'}, name='customers'),
-    path('carriers.html', serve_static_html, {'file_name': 'carriers.html'}, name='carriers'),
-    path('login.html', serve_static_html, {'file_name': 'login.html'}, name='login'),
+    # Authentication URLs
+    path('login/', auth_views.login_view, name='login'),
+    path('logout/', auth_views.logout_view, name='logout'),
+    path('', auth_views.index_view, name='index'),
+
+    # Protected frontend HTML pages
+    path('office.html', login_required(lambda request: serve_static_html(request, 'office.html')), name='office'),
+    path('client.html', login_required(lambda request: serve_static_html(request, 'client.html')), name='client'),
+    path('bol.html', login_required(lambda request: serve_static_html(request, 'bol.html')), name='bol'),
+    path('products.html', login_required(lambda request: serve_static_html(request, 'products.html')), name='products'),
+    path('customers.html', login_required(lambda request: serve_static_html(request, 'customers.html')), name='customers'),
+    path('carriers.html', login_required(lambda request: serve_static_html(request, 'carriers.html')), name='carriers'),
 ]
 
 # Serve media files in development

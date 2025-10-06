@@ -1,9 +1,10 @@
 from rest_framework import generics, status
-from rest_framework.decorators import api_view
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from django.db import models
-from .models import *
-from .serializers import *
+from .models import Product, Customer, Carrier, Truck, BOL
+from .serializers import ProductSerializer, CustomerSerializer, CarrierSerializer, TruckSerializer
 from .pdf_generator import generate_bol_pdf
 import logging
 
@@ -12,91 +13,150 @@ logger = logging.getLogger(__name__)
 # Product endpoints
 class ProductListView(generics.ListCreateAPIView):
     serializer_class = ProductSerializer
-    
+    permission_classes = [IsAuthenticated]
+
     def get_queryset(self):
         return Product.objects.filter(is_active=True).order_by('name')
 
-# Customer endpoints  
+# Customer endpoints
 class CustomerListView(generics.ListCreateAPIView):
     serializer_class = CustomerSerializer
-    
+    permission_classes = [IsAuthenticated]
+
     def get_queryset(self):
         return Customer.objects.filter(is_active=True).order_by('customer')
 
 # Carrier endpoints with trucks
 @api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
 def carrier_list(request):
-    if request.method == 'POST':
-        # Create or update carrier
-        data = request.data
-        carrier_id = data.get('id')
-        
-        if carrier_id:
-            # Update existing carrier
-            try:
-                carrier = Carrier.objects.get(id=carrier_id)
-                carrier.carrier_name = data.get('carrier_name', carrier.carrier_name)
-                carrier.contact_name = data.get('contact_name', '')
-                carrier.phone = data.get('phone', '')
-                carrier.email = data.get('email', '')
-                carrier.is_active = data.get('is_active', True)
-                carrier.save()
-                
-                # Handle trucks if provided
-                if 'trucks' in data:
-                    # Delete existing trucks and recreate
-                    carrier.trucks.all().delete()
-                    for truck_data in data['trucks']:
-                        Truck.objects.create(
-                            carrier=carrier,
-                            truck_number=truck_data.get('truck_number', ''),
-                            trailer_number=truck_data.get('trailer_number', ''),
-                            is_active=truck_data.get('is_active', True)
-                        )
-                
+    try:
+        if request.method == 'POST':
+            # Create or update carrier
+            data = request.data
+            carrier_id = data.get('id')
+
+            if carrier_id:
+                # Update existing carrier
+                try:
+                    carrier = Carrier.objects.get(id=carrier_id)
+                    carrier.carrier_name = data.get('carrier_name', carrier.carrier_name)
+                    carrier.contact_name = data.get('contact_name', '')
+                    carrier.phone = data.get('phone', '')
+                    carrier.email = data.get('email', '')
+                    carrier.is_active = data.get('is_active', True)
+                    carrier.save()
+
+                    # Handle trucks if provided
+                    if 'trucks' in data:
+                        # Delete existing trucks and recreate
+                        carrier.trucks.all().delete()
+                        for truck_data in data['trucks']:
+                            Truck.objects.create(
+                                carrier=carrier,
+                                truck_number=truck_data.get('truck_number', ''),
+                                trailer_number=truck_data.get('trailer_number', ''),
+                                is_active=truck_data.get('is_active', True)
+                            )
+
+                    logger.info(f"Carrier {carrier.id} updated by {request.user.username}")
+                    return Response({'ok': True, 'id': carrier.id})
+                except Carrier.DoesNotExist:
+                    logger.error(f"Carrier {carrier_id} not found")
+                    return Response({'error': 'Carrier not found'}, status=status.HTTP_404_NOT_FOUND)
+            else:
+                # Create new carrier
+                if not data.get('carrier_name'):
+                    return Response(
+                        {'error': 'carrier_name is required'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+
+                carrier = Carrier.objects.create(
+                    carrier_name=data.get('carrier_name'),
+                    contact_name=data.get('contact_name', ''),
+                    phone=data.get('phone', ''),
+                    email=data.get('email', ''),
+                    is_active=data.get('is_active', True)
+                )
+                logger.info(f"Carrier {carrier.id} created by {request.user.username}")
                 return Response({'ok': True, 'id': carrier.id})
-            except Carrier.DoesNotExist:
-                return Response({'error': 'Carrier not found'}, status=404)
-        else:
-            # Create new carrier
-            carrier = Carrier.objects.create(
-                carrier_name=data.get('carrier_name'),
-                contact_name=data.get('contact_name', ''),
-                phone=data.get('phone', ''),
-                email=data.get('email', ''),
-                is_active=data.get('is_active', True)
-            )
-            return Response({'ok': True, 'id': carrier.id})
-    
-    # GET request - list carriers
-    carriers = Carrier.objects.filter(is_active=True).order_by('carrier_name')
-    result = []
-    for carrier in carriers:
-        trucks = carrier.trucks.filter(is_active=True)
-        carrier_data = CarrierSerializer(carrier).data
-        carrier_data['trucks'] = TruckSerializer(trucks, many=True).data
-        result.append(carrier_data)
-    return Response(result)
+
+        # GET request - list carriers
+        carriers = Carrier.objects.filter(is_active=True).order_by('carrier_name')
+        result = []
+        for carrier in carriers:
+            trucks = carrier.trucks.filter(is_active=True)
+            carrier_data = CarrierSerializer(carrier).data
+            carrier_data['trucks'] = TruckSerializer(trucks, many=True).data
+            result.append(carrier_data)
+        return Response(result)
+    except ValueError as e:
+        logger.error(f"Validation error in carrier_list: {str(e)}")
+        return Response(
+            {'error': 'Invalid input data', 'detail': str(e)},
+            status=status.HTTP_400_BAD_REQUEST
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error in carrier_list: {str(e)}")
+        return Response(
+            {'error': 'An unexpected error occurred'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 # BOL creation
 @api_view(['POST'])
+@permission_classes([IsAuthenticated])
 def create_bol(request):
     try:
         data = request.data
-        
+
         # Validation
         required_fields = ['date', 'productId', 'buyerName', 'shipTo', 'netTons']
         for field in required_fields:
             if not data.get(field):
-                return Response({'error': f'Missing field: {field}'}, 
+                return Response({'error': f'Missing field: {field}'},
                               status=status.HTTP_400_BAD_REQUEST)
-        
+
+        # Validate net_tons is positive number
+        try:
+            net_tons = float(data['netTons'])
+            if net_tons <= 0:
+                return Response(
+                    {'error': 'net_tons must be positive'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+        except (ValueError, TypeError):
+            return Response(
+                {'error': 'net_tons must be a valid number'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
         # Get related objects
-        product = Product.objects.get(id=data['productId'])
-        carrier = Carrier.objects.get(id=data.get('carrierId', ''))
-        customer = Customer.objects.get(id=data.get('customerId', '')) if data.get('customerId') else None
-        truck = Truck.objects.get(id=data.get('truckId', '')) if data.get('truckId') else None
-        
+        try:
+            product = Product.objects.get(id=data['productId'])
+        except Product.DoesNotExist:
+            return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        try:
+            carrier = Carrier.objects.get(id=data.get('carrierId', ''))
+        except Carrier.DoesNotExist:
+            return Response({'error': 'Carrier not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        customer = None
+        if data.get('customerId'):
+            try:
+                customer = Customer.objects.get(id=data.get('customerId'))
+            except Customer.DoesNotExist:
+                return Response({'error': 'Customer not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        truck = None
+        if data.get('truckId'):
+            try:
+                truck = Truck.objects.get(id=data.get('truckId'))
+            except Truck.DoesNotExist:
+                return Response({'error': 'Truck not found'}, status=status.HTTP_404_NOT_FOUND)
+
         # Create BOL
         bol = BOL.objects.create(
             product=product,
@@ -109,12 +169,14 @@ def create_bol(request):
             truck=truck,
             truck_number=truck.truck_number if truck else data.get('truckNo', ''),
             trailer_number=truck.trailer_number if truck else data.get('trailerNo', ''),
-            net_tons=float(data['netTons']),
+            net_tons=net_tons,
             notes=data.get('notes', ''),
             customer=customer,
             customer_po=data.get('customerPO', ''),
-            created_by_email='system@primetrade.com'
+            created_by_email=f'{request.user.username}@primetrade.com'
         )
+
+        logger.info(f"BOL {bol.bol_number} created by {request.user.username} with {net_tons} tons")
 
         # Generate PDF
         try:
@@ -135,45 +197,65 @@ def create_bol(request):
             'bolId': bol.id,
             'pdfUrl': pdf_url
         })
-        
+
+    except ValueError as e:
+        logger.error(f"Validation error in create_bol: {str(e)}")
+        return Response(
+            {'error': 'Invalid input data', 'detail': str(e)},
+            status=status.HTTP_400_BAD_REQUEST
+        )
     except Exception as e:
-        return Response({'ok': False, 'error': str(e)}, 
+        logger.error(f"Unexpected error in create_bol: {str(e)}")
+        return Response({'ok': False, 'error': 'An unexpected error occurred'},
                       status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # Inventory balances
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def balances(request):
-    products = Product.objects.filter(is_active=True)
-    result = []
-    for product in products:
-        shipped = BOL.objects.filter(product=product).aggregate(
-            total=models.Sum('net_tons')
-        )['total'] or 0
-        
-        result.append({
-            'id': product.id,
-            'name': product.name,
-            'startTons': float(product.start_tons),
-            'shipped': float(shipped),
-            'remaining': float(product.start_tons - shipped)
-        })
-    
-    return Response(result)
+    try:
+        products = Product.objects.filter(is_active=True)
+        result = []
+        for product in products:
+            shipped = BOL.objects.filter(product=product).aggregate(
+                total=models.Sum('net_tons')
+            )['total'] or 0
+
+            result.append({
+                'id': product.id,
+                'name': product.name,
+                'startTons': float(product.start_tons),
+                'shipped': float(shipped),
+                'remaining': float(product.start_tons - shipped)
+            })
+
+        return Response(result)
+    except Exception as e:
+        logger.error(f"Error in balances: {str(e)}")
+        return Response(
+            {'error': 'An unexpected error occurred'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 # BOL history
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def bol_history(request):
-    product_id = request.GET.get('productId')
-    if not product_id:
-        return Response({'error': 'productId required'}, status=400)
-    
     try:
-        product = Product.objects.get(id=product_id)
+        product_id = request.GET.get('productId')
+        if not product_id:
+            return Response({'error': 'productId required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            product = Product.objects.get(id=product_id)
+        except Product.DoesNotExist:
+            return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
+
         bols = BOL.objects.filter(product=product).order_by('date')
-        
+
         shipped = sum(float(bol.net_tons) for bol in bols)
         remaining = float(product.start_tons) - shipped
-        
+
         return Response({
             'summary': {
                 'start': float(product.start_tons),
@@ -192,12 +274,17 @@ def bol_history(request):
                 for bol in bols
             ]
         })
-        
-    except Product.DoesNotExist:
-        return Response({'error': 'Product not found'}, status=404)
+
+    except Exception as e:
+        logger.error(f"Error in bol_history: {str(e)}")
+        return Response(
+            {'error': 'An unexpected error occurred'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
 
 # BOL detail view
 @api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def bol_detail(request, bol_id):
     try:
         bol = BOL.objects.get(id=bol_id)
@@ -216,4 +303,11 @@ def bol_detail(request, bol_id):
             'pdfUrl': bol.pdf_url
         })
     except BOL.DoesNotExist:
-        return Response({'error': 'BOL not found'}, status=404)
+        logger.error(f"BOL {bol_id} not found")
+        return Response({'error': 'BOL not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Error in bol_detail: {str(e)}")
+        return Response(
+            {'error': 'An unexpected error occurred'},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

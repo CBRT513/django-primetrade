@@ -124,6 +124,7 @@ class BOL(TimestampedModel):
             self.product_name = self.product.name
         if self.carrier and not self.carrier_name:
             self.carrier_name = self.carrier.carrier_name
+        logger.info(f"BOL {self.bol_number} saved with {self.net_tons} tons")
         super().save(*args, **kwargs)
     
     def __str__(self):
@@ -131,6 +132,8 @@ class BOL(TimestampedModel):
     
     @property
     def total_weight_lbs(self):
+        if self.net_tons is None:
+            return 0.0
         return float(self.net_tons) * 2204.62
 
 class CompanyBranding(TimestampedModel):

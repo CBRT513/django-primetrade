@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import *
+from .models import Product, Customer, Carrier, Truck, BOL, BOLCounter, CompanyBranding
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
