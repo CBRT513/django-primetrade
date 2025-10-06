@@ -22,7 +22,7 @@ urlpatterns = [
     # Authentication URLs
     path('login/', auth_views.login_view, name='login'),
     path('logout/', auth_views.logout_view, name='logout'),
-    path('', auth_views.index_view, name='index'),
+    path('', login_required(lambda request: serve_static_html(request, 'index.html')), name='index'),
 
     # Protected frontend HTML pages
     path('office.html', login_required(lambda request: serve_static_html(request, 'office.html')), name='office'),
