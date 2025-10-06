@@ -1,7 +1,7 @@
 from django.contrib.auth import login, logout
 from django.contrib.auth.forms import AuthenticationForm
 from django.shortcuts import render, redirect
-from django.views.decorators.csrf import csrf_protect
+from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from django.contrib.auth.decorators import login_required
 
 @csrf_protect
@@ -22,5 +22,6 @@ def logout_view(request):
     return redirect('/login/')
 
 @login_required
+@ensure_csrf_cookie
 def index_view(request):
     return render(request, 'index.html')

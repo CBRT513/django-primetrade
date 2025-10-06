@@ -5,11 +5,13 @@ from django.conf.urls.static import static
 from django.views.generic import RedirectView
 from django.views.static import serve
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import ensure_csrf_cookie
 from bol_system import auth_views
 import os
 
+@ensure_csrf_cookie
 def serve_static_html(request, file_name):
-    """Serve static HTML files from the static directory"""
+    """Serve static HTML files from the static directory with CSRF cookie"""
     file_path = os.path.join(settings.BASE_DIR, 'static', file_name)
     return serve(request, file_name, document_root=os.path.join(settings.BASE_DIR, 'static'))
 
