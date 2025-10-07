@@ -48,6 +48,10 @@
   <div class="wrap">
     <div class="page-header">
       <h2 style="margin:0;">Create BOL</h2>
+      <div style="display: flex; align-items: center; gap: 15px;">
+        <span id="usernameDisplay" style="color: #fff; font-weight: 500;">Loading...</span>
+        <a href="/logout/" class="btn" style="background: #dc3545; color: white; padding: 8px 20px;">Logout</a>
+      </div>
     </div>
     <div class="nav-links">
       <a href="/">Portal</a>
@@ -226,6 +230,16 @@
     });
 
     (async () => {
+      // Load current user info
+      try {
+        const user = await getJSON("/api/auth/me/");
+        if (user && user.username) {
+          qs("usernameDisplay").textContent = `Welcome, ${user.username}`;
+        }
+      } catch (e) {
+        qs("usernameDisplay").textContent = "Welcome";
+      }
+
       // Load products, customers, and carriers in parallel
       const [productsData, customersData, carriersData] = await Promise.all([
         getJSON("/api/products/"),

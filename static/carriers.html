@@ -123,13 +123,17 @@
 </head>
 <body>
   <div class="wrap">
-    <div class="cbrt-header">
+    <div class="cbrt-header" style="position: relative;">
       <div class="company-info">
         <img src="/static/cbrt-logo-optimized.svg" alt="CBRT" class="company-logo">
         <div>
           <h1 class="company-name">Cincinnati Barge & Rail Terminal</h1>
           <p class="company-tagline">Carrier Management System</p>
         </div>
+      </div>
+      <div class="user-actions" style="position: absolute; top: 20px; right: 20px;">
+        <span id="usernameDisplay" style="margin-right: 15px; color: #fff; font-weight: 500;">Loading...</span>
+        <a href="/logout/" class="btn" style="background: #dc3545; color: white; padding: 8px 20px;">Logout</a>
       </div>
     </div>
 
@@ -252,7 +256,17 @@
     let carriers = [];
     let currentEditId = null;
 
-    document.addEventListener('DOMContentLoaded', () => {
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Load current user info
+      try {
+        const user = await getJSON("/api/auth/me/");
+        if (user && user.username) {
+          document.getElementById("usernameDisplay").textContent = `Welcome, ${user.username}`;
+        }
+      } catch (e) {
+        document.getElementById("usernameDisplay").textContent = "Welcome";
+      }
+
       loadCarriers();
     });
 

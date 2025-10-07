@@ -3,6 +3,9 @@ from django.contrib.auth.forms import AuthenticationForm
 from django.shortcuts import render, redirect
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from django.contrib.auth.decorators import login_required
+from rest_framework.decorators import api_view, permission_classes
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.response import Response
 
 @csrf_protect
 def login_view(request):
@@ -25,3 +28,13 @@ def logout_view(request):
 @ensure_csrf_cookie
 def index_view(request):
     return render(request, 'index.html')
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def current_user(request):
+    """Return current authenticated user information"""
+    return Response({
+        'username': request.user.username,
+        'email': request.user.email,
+        'is_staff': request.user.is_staff
+    })

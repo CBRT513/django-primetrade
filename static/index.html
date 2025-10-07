@@ -16,11 +16,15 @@
 </head>
 <body>
   <div class="wrap">
-    <div class="cbrt-header" id="brandingHeader">
+    <div class="cbrt-header" id="brandingHeader" style="position: relative;">
       <img id="brandingLogo" class="cbrt-logo" style="display:none;" />
       <div class="cbrt-company">
         <div class="cbrt-company-name" id="brandingName">Cincinnati Barge & Rail Terminal, LLC</div>
         <div class="cbrt-company-info" id="brandingInfo">1707 Riverside Drive • Cincinnati, Ohio 45202 • (513) 721-1707 • www.barge2rail.com</div>
+      </div>
+      <div class="user-actions" style="position: absolute; top: 20px; right: 20px;">
+        <span id="usernameDisplay" style="margin-right: 15px; color: #fff; font-weight: 500;">Loading...</span>
+        <a href="/logout/" class="btn" style="background: #dc3545; color: white; padding: 8px 20px;">Logout</a>
       </div>
     </div>
 
@@ -80,6 +84,17 @@
     function qs(id){ return document.getElementById(id); }
 
     (async () => {
+      // Load current user info
+      try {
+        const user = await getJSON("/api/auth/me/");
+        if (user && user.username) {
+          qs("usernameDisplay").textContent = `Welcome, ${user.username}`;
+        }
+      } catch (e) {
+        console.log("Could not load user info:", e);
+        qs("usernameDisplay").textContent = "Welcome";
+      }
+
       // Load custom branding if available
       try {
         const branding = await getJSON("/api/branding");
