@@ -9,6 +9,22 @@ SECRET_KEY = config('SECRET_KEY')  # No default - must be set in .env
 DEBUG = config('DEBUG', default=False, cast=bool)
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
 
+# SSO Configuration
+SSO_BASE_URL = config('SSO_BASE_URL', default='https://sso.barge2rail.com')
+SSO_CLIENT_ID = config('SSO_CLIENT_ID', default=None)
+SSO_CLIENT_SECRET = config('SSO_CLIENT_SECRET', default=None)
+SSO_REDIRECT_URI = config('SSO_REDIRECT_URI', default='http://localhost:8001/auth/callback/')
+SSO_SCOPES = config('SSO_SCOPES', default='openid email profile')
+
+# Validate SSO credentials are configured
+if not SSO_CLIENT_ID or not SSO_CLIENT_SECRET:
+    import warnings
+    warnings.warn(
+        "SSO credentials not configured! "
+        "Copy .env.example to .env and add your credentials from SSO admin panel.",
+        UserWarning
+    )
+
 INSTALLED_APPS = [
     'django.contrib.admin',
     'django.contrib.auth',

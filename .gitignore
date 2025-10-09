@@ -33,10 +33,13 @@ staticfiles/
 /static/
 *.pot
 
-# Environment
+# Environment variables with secrets
 .env
 .env.local
+*.env
 .env.*.local
+# Allow .env.example to be committed
+!.env.example
 
 # IDE
 .vscode/
