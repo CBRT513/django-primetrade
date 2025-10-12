@@ -14,9 +14,7 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Collect static files
-RUN python manage.py collectstatic --noinput
-
-# Run migrations and start server
+# Run migrations, collect static files, and start server (at runtime when env vars exist)
 CMD python manage.py migrate && \
+    python manage.py collectstatic --noinput && \
     gunicorn primetrade_project.wsgi:application --bind 0.0.0.0:$PORT
