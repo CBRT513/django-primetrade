@@ -17,28 +17,43 @@
         <div class="card" style="max-width: 450px; margin: 80px auto; padding: 2.5rem;">
             <h2 style="text-align: center; margin-bottom: 10px; color: var(--primary);">Sign In</h2>
             <p style="text-align: center; color: var(--text-secondary); margin-bottom: 30px; font-size: 0.95rem;">
-                Enter your credentials to access the BOL system
+                Sign in with your company SSO account
             </p>
 
-            <form method="post" action="/login/">
-                {% csrf_token %}
-                <div class="form-group">
-                    <label>Username</label>
-                    <input type="text" name="username" required autofocus>
-                </div>
-                <div class="form-group">
-                    <label>Password</label>
-                    <input type="password" name="password" required>
-                </div>
-                {% if error %}
-                <div style="padding: 12px; margin-bottom: 20px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px; color: #721c24; font-size: 0.95rem;">
-                    {{ error }}
-                </div>
-                {% endif %}
-                <button type="submit" class="btn btn-accent" style="width: 100%; padding: 12px; font-size: 1rem; font-weight: 600;">Sign In</button>
-            </form>
+            <!-- SSO Login Button (Primary) -->
+            <a href="{% url 'sso_login' %}" class="btn btn-accent" style="width: 100%; padding: 12px; font-size: 1rem; font-weight: 600; text-align: center; text-decoration: none; display: block; margin-bottom: 20px;">
+                Login with SSO
+            </a>
 
-            <p style="text-align: center; margin-top: 20px; color: var(--text-secondary); font-size: 0.85rem;">
+            <!-- Divider -->
+            <div style="text-align: center; margin: 30px 0; position: relative;">
+                <span style="background: white; padding: 0 15px; position: relative; z-index: 1; color: var(--text-secondary); font-size: 0.85rem;">or use legacy login</span>
+                <div style="position: absolute; top: 50%; left: 0; right: 0; height: 1px; background: var(--border); transform: translateY(-50%); z-index: 0;"></div>
+            </div>
+
+            <!-- Legacy Login Form (Collapsed) -->
+            <details style="margin-top: 20px;">
+                <summary style="cursor: pointer; color: var(--text-secondary); text-align: center; padding: 10px; font-size: 0.9rem;">Legacy Username/Password Login</summary>
+                <form method="post" action="/auth/legacy/login/" style="margin-top: 20px;">
+                    {% csrf_token %}
+                    <div class="form-group">
+                        <label>Username</label>
+                        <input type="text" name="username" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Password</label>
+                        <input type="password" name="password" required>
+                    </div>
+                    {% if error %}
+                    <div style="padding: 12px; margin-bottom: 20px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px; color: #721c24; font-size: 0.95rem;">
+                        {{ error }}
+                    </div>
+                    {% endif %}
+                    <button type="submit" class="btn" style="width: 100%; padding: 12px; font-size: 1rem;">Sign In (Legacy)</button>
+                </form>
+            </details>
+
+            <p style="text-align: center; margin-top: 30px; color: var(--text-secondary); font-size: 0.85rem;">
                 Need help? Contact your system administrator.
             </p>
         </div>

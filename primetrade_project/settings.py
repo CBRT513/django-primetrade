@@ -75,6 +75,19 @@ DATABASES = {
     }
 }
 
+# Cache configuration for OAuth state storage
+# Using database cache for portability (no Redis dependency)
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.db.DatabaseCache',
+        'LOCATION': 'primetrade_cache_table',
+        'TIMEOUT': 600,  # 10 minutes default
+        'OPTIONS': {
+            'MAX_ENTRIES': 10000
+        }
+    }
+}
+
 # REST Framework - Require authentication
 REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
@@ -102,6 +115,13 @@ SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
 CSRF_TRUSTED_ORIGINS = ['http://localhost:8000', 'http://127.0.0.1:8000']
+
+# Session Configuration for OAuth Compatibility
+SESSION_ENGINE = 'django.contrib.sessions.backends.db'  # Use database sessions
+SESSION_COOKIE_SAMESITE = 'Lax'  # Allow cookies across OAuth redirects
+SESSION_COOKIE_AGE = 1209600  # 2 weeks
+SESSION_SAVE_EVERY_REQUEST = False  # Only save when modified
+SESSION_COOKIE_NAME = 'primetrade_sessionid'  # Unique session cookie name
 
 # Internationalization
 LANGUAGE_CODE = 'en-us'
@@ -160,6 +180,14 @@ LOGGING = {
         'django': {
             'handlers': ['console', 'file'],
             'level': 'INFO',
+        },
+        'primetrade_project.auth_views': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+        },
+        'oauth.security': {
+            'handlers': ['console', 'file'],
+            'level': 'WARNING',
         },
     },
 }

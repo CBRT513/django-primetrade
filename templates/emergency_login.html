@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Emergency Login - BOL Management Portal</title>
+    <link rel="stylesheet" href="/static/css/cbrt-brand.css">
+</head>
+<body>
+    <div class="wrap">
+        <div class="cbrt-header">
+            <div class="cbrt-company">
+                <div class="cbrt-company-name">Cincinnati Barge & Rail Terminal, LLC</div>
+                <div class="cbrt-company-info">BOL Management Portal</div>
+            </div>
+        </div>
+
+        <div class="card" style="max-width: 450px; margin: 80px auto; padding: 2.5rem;">
+            <h2 style="text-align: center; margin-bottom: 10px; color: var(--danger, #dc3545);">⚠️ Emergency Login</h2>
+            <p style="text-align: center; color: var(--text-secondary); margin-bottom: 30px; font-size: 0.95rem;">
+                Legacy local authentication - For emergency access only
+            </p>
+
+            <div style="padding: 12px; margin-bottom: 20px; background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; color: #856404; font-size: 0.9rem;">
+                <strong>Warning:</strong> This is a backup login method. Use SSO authentication for normal access.
+            </div>
+
+            <!-- Legacy Login Form -->
+            <form method="post" action="/auth/legacy/login/">
+                {% csrf_token %}
+                <div class="form-group">
+                    <label>Username</label>
+                    <input type="text" name="username" required autofocus>
+                </div>
+                <div class="form-group">
+                    <label>Password</label>
+                    <input type="password" name="password" required>
+                </div>
+                {% if error %}
+                <div style="padding: 12px; margin-bottom: 20px; background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 4px; color: #721c24; font-size: 0.95rem;">
+                    {{ error }}
+                </div>
+                {% endif %}
+                <button type="submit" class="btn" style="width: 100%; padding: 12px; font-size: 1rem;">Emergency Sign In</button>
+            </form>
+
+            <p style="text-align: center; margin-top: 30px;">
+                <a href="/login/" style="color: var(--primary); text-decoration: none; font-size: 0.9rem;">← Back to SSO Login</a>
+            </p>
+        </div>
+
+        <p style="text-align: center; color: var(--text-secondary); font-size: 0.85rem; margin-top: 20px;">
+            © 2025 Cincinnati Barge & Rail Terminal, LLC. All rights reserved.
+        </p>
+    </div>
+</body>
+</html>
