@@ -14,10 +14,13 @@ RUN pip install --no-cache-dir -r requirements.txt
 # Copy application code
 COPY . .
 
-# Create logs directory
-RUN mkdir -p /app/logs
+# Create ALL necessary directories
+RUN mkdir -p /app/logs /app/staticfiles /app/media
 
-# Run migrations, collect static files, and start server
+# Set proper permissions
+RUN chmod -R 755 /app/logs /app/staticfiles /app/media
+
+# Run everything at runtime when env vars exist
 CMD python manage.py migrate && \
     python manage.py collectstatic --noinput && \
-    gunicorn primetrade_project.wsgi:application --bind 0.0.0.0:$PORT
+    gunicorn primetrade_project.wsgi:application --bind 0.0.0.0:$PORT --workers 3 --timeout 120
