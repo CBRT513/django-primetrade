@@ -191,3 +191,19 @@ LOGGING = {
         },
     },
 }
+# Production Database Configuration
+import dj_database_url
+if config('DATABASE_URL', default=None):
+    DATABASES['default'] = dj_database_url.parse(
+        config('DATABASE_URL'),
+        conn_max_age=600,
+        conn_health_checks=True,
+    )
+
+# Production CSRF Origins
+if not DEBUG:
+    CSRF_TRUSTED_ORIGINS = [
+        'https://prt.barge2rail.com',
+        'https://primetrade-u2a6.onrender.com',
+        'https://sso.barge2rail.com'
+    ]
