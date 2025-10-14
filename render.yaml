@@ -1,0 +1,28 @@
+services:
+  - type: web
+    name: primetrade
+    runtime: docker
+    region: ohio  # Columbus region
+    plan: starter
+    healthCheckPath: /api/health/  # Health check endpoint
+    envVars:
+      - key: DEBUG
+        value: "False"  # String format for environment variables
+      - key: BASE_URL
+        value: "https://primetrade.barge2rail.com"
+      - key: ALLOWED_HOSTS
+        value: "primetrade.barge2rail.com,primetrade.onrender.com"  # Include both custom domain and Render URL
+      - key: CSRF_TRUSTED_ORIGINS
+        value: "https://primetrade.barge2rail.com,https://primetrade.onrender.com"  # Include https:// prefix
+      - key: SSO_BASE_URL
+        value: "https://sso.barge2rail.com"  # SSO server for OAuth
+      - key: SSO_CLIENT_ID
+        sync: false  # You'll set this manually in Render dashboard
+      - key: SSO_CLIENT_SECRET
+        sync: false
+      - key: CORS_ALLOWED_ORIGINS
+        value: "https://primetrade.barge2rail.com,https://sso.barge2rail.com,http://localhost:8000,http://127.0.0.1:8000"
+      - key: DATABASE_URL
+        sync: false  # Set via Render PostgreSQL database connection
+      - key: SECRET_KEY
+        generateValue: true  # Auto-generate Django secret key

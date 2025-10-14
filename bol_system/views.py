@@ -1,8 +1,8 @@
 from rest_framework import generics, status
 from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
-from django.db import models
+from django.db import models, connection
 from .models import Product, Customer, Carrier, Truck, BOL
 from .serializers import ProductSerializer, CustomerSerializer, CarrierSerializer, TruckSerializer
 from .pdf_generator import generate_bol_pdf
@@ -12,6 +12,26 @@ import base64
 import tempfile
 
 logger = logging.getLogger(__name__)
+
+# Health check endpoint (no auth required for monitoring)
+@api_view(['GET'])
+@permission_classes([AllowAny])
+def health_check(request):
+    """Health check endpoint for monitoring and deployment verification"""
+    try:
+        # Check database connectivity
+        connection.ensure_connection()
+        return Response({
+            'status': 'healthy',
+            'database': 'connected',
+            'service': 'primetrade'
+        })
+    except Exception as e:
+        logger.error(f"Health check failed: {str(e)}")
+        return Response({
+            'status': 'unhealthy',
+            'error': str(e)
+        }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
 # Product endpoints
 class ProductListView(generics.ListCreateAPIView):

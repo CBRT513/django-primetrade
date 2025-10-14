@@ -1,28 +1,38 @@
 FROM python:3.11-slim
 
+# Set working directory
 WORKDIR /app
 
-# Install system dependencies including PostgreSQL client
+# Install system dependencies
 RUN apt-get update && apt-get install -y \
-    gcc \
-    libpq-dev \
+    postgresql-client \
     && rm -rf /var/lib/apt/lists/*
 
-# Copy requirements first for better caching
+# Copy requirements and install Python dependencies
 COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Copy application code
+# Copy project files
 COPY . .
 
-# Create ALL necessary directories
-RUN mkdir -p /app/logs /app/staticfiles /app/media
+# Create logs directory
+RUN mkdir -p logs
 
-# Set proper permissions
-RUN chmod -R 755 /app/logs /app/staticfiles /app/media
+# Expose port
+EXPOSE 8000
 
-# Run everything at runtime when env vars exist
-CMD python manage.py migrate && \
-    python manage.py createcachetable && \
-    python manage.py collectstatic --noinput && \
-    gunicorn primetrade_project.wsgi:application --bind 0.0.0.0:$PORT --workers 3 --timeout 120
+# Create startup script that runs migrations, cache table, collectstatic, then starts server
+RUN echo '#!/bin/bash\n\
+set -e\n\
+echo "Running migrations..."\n\
+python manage.py migrate --noinput\n\
+echo "Creating cache table..."\n\
+python manage.py createcachetable\n\
+echo "Collecting static files..."\n\
+python manage.py collectstatic --noinput\n\
+echo "Starting server..."\n\
+gunicorn primetrade_project.wsgi:application --bind 0.0.0.0:8000 --workers 2 --threads 4 --timeout 60\n\
+' > /app/start.sh && chmod +x /app/start.sh
+
+# Use startup script as entrypoint
+CMD ["/app/start.sh"]

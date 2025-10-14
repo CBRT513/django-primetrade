@@ -3,6 +3,7 @@ from . import views
 from . import auth_views
 
 urlpatterns = [
+    path('health/', views.health_check, name='health_check'),
     path('products/', views.ProductListView.as_view(), name='products'),
     path('customers/', views.CustomerListView.as_view(), name='customers'),
     path('carriers/', views.carrier_list, name='carriers'),
