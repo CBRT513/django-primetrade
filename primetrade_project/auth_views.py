@@ -211,8 +211,8 @@ def sso_callback(request):
         return HttpResponseForbidden(f"Invalid JWT token: {str(e)}")
 
     # Extract user information
-    email = decoded.get('email')
-    user_roles = tokens.get('user', {}).get('roles', {})
+#     email = decoded.get('email')
+#     user_roles = tokens.get('user', {}).get('roles', {})
     primetrade_role = user_roles.get('primetrade', {}).get('role')
 
     if not primetrade_role:
