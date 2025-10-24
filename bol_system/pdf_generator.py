@@ -5,26 +5,80 @@ Matches the design from bol.html
 from reportlab.lib.pagesizes import letter
 from reportlab.lib.units import inch
 from reportlab.lib import colors
-from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from datetime import datetime
 import os
 from django.conf import settings
 
+try:
+    from svglib.svglib import svg2rlg
+    from reportlab.graphics import renderPDF
+    SVGLIB_AVAILABLE = True
+except ImportError:
+    SVGLIB_AVAILABLE = False
 
-def generate_bol_pdf(bol):
-    """
-    Generate a PDF for a BOL object
-    Returns the file path relative to MEDIA_ROOT
-    """
-    # Ensure directory exists
-    pdf_dir = os.path.join(settings.MEDIA_ROOT, 'bol_pdfs')
-    os.makedirs(pdf_dir, exist_ok=True)
 
-    # Generate filename
-    filename = f"{bol.bol_number}.pdf"
-    filepath = os.path.join(pdf_dir, filename)
+def generate_bol_pdf(bol_data, output_path=None):
+    """
+    Generate a PDF for a BOL object or dictionary
+
+    Args:
+        bol_data: BOL model object or dictionary with BOL data
+        output_path: Optional custom output path. If None, uses default media path
+
+    Returns:
+        The file path (relative URL if using default path, absolute path if custom)
+    """
+    # Convert model object to dict-like accessor if needed
+    if hasattr(bol_data, '__dict__'):
+        # It's a model object, wrap it to use dict-style access
+        data = bol_data
+    else:
+        # It's already a dictionary, create attribute-style accessor
+        class DictWrapper:
+            def __init__(self, d):
+                self._data = d
+            def __getattr__(self, key):
+                # Handle camelCase to snake_case conversion
+                if key == 'bol_number':
+                    return self._data.get('bolNumber') or self._data.get('bol_number', 'PREVIEW')
+                elif key == 'customer_po':
+                    return self._data.get('customerPO') or self._data.get('customer_po', '')
+                elif key == 'carrier_name':
+                    return self._data.get('carrierName') or self._data.get('carrier_name', '')
+                elif key == 'truck_number':
+                    return self._data.get('truckNumber') or self._data.get('truck_number', '')
+                elif key == 'trailer_number':
+                    return self._data.get('trailerNumber') or self._data.get('trailer_number', '')
+                elif key == 'buyer_name':
+                    return self._data.get('buyerName') or self._data.get('buyer_name', '')
+                elif key == 'ship_to':
+                    return self._data.get('shipTo') or self._data.get('ship_to', '')
+                elif key == 'product_name':
+                    return self._data.get('productName') or self._data.get('product_name', '')
+                elif key == 'net_tons':
+                    return self._data.get('netTons') or self._data.get('net_tons', 0)
+                elif key == 'total_weight_lbs':
+                    net_tons = self._data.get('netTons') or self._data.get('net_tons', 0)
+                    return float(net_tons) * 2204.62 if net_tons else 0
+                elif key == 'date':
+                    return self._data.get('date', '')
+                return self._data.get(key, '')
+        data = DictWrapper(bol_data)
+
+    # Determine output path
+    if output_path:
+        filepath = output_path
+        os.makedirs(os.path.dirname(filepath), exist_ok=True)
+    else:
+        # Ensure directory exists
+        pdf_dir = os.path.join(settings.MEDIA_ROOT, 'bol_pdfs')
+        os.makedirs(pdf_dir, exist_ok=True)
+        # Generate filename
+        filename = f"{data.bol_number}.pdf"
+        filepath = os.path.join(pdf_dir, filename)
 
     # Create PDF
     doc = SimpleDocTemplate(
@@ -77,9 +131,27 @@ def generate_bol_pdf(bol):
         ]
     ]
 
-    # Company info block + BOL details grid
-    company_info = """<para align="center" spaceBefore="10" spaceAfter="10">
-    <b>Cincinnati Barge & Rail Terminal, LLC</b><br/>
+    # Load company logo
+    logo_path = os.path.join(settings.BASE_DIR, 'static', 'cbrt-logo-optimized.svg')
+    logo_element = None
+
+    if SVGLIB_AVAILABLE and os.path.exists(logo_path):
+        try:
+            # Convert SVG to ReportLab drawing
+            drawing = svg2rlg(logo_path)
+            # Scale logo to appropriate size (about 0.8 inch width)
+            scale_factor = (0.8 * inch) / drawing.width
+            drawing.width = 0.8 * inch
+            drawing.height = drawing.height * scale_factor
+            drawing.scale(scale_factor, scale_factor)
+            logo_element = drawing
+        except:
+            pass  # If logo fails, continue without it
+
+    # Company info block
+    company_text = """<para align="center" spaceBefore="10" spaceAfter="10">
+    <b>CINCINNATI BARGE &<br/>RAIL TERMINAL,LLC</b><br/>
+    <br/>
     1707 Riverside Drive<br/>
     Cincinnati, Ohio 45202<br/>
     www.barge2rail.com<br/>
@@ -88,81 +160,81 @@ def generate_bol_pdf(bol):
 
     # Format date
     try:
-        date_obj = datetime.strptime(bol.date, '%Y-%m-%d')
+        date_obj = datetime.strptime(data.date, '%Y-%m-%d')
         formatted_date = date_obj.strftime('%m/%d/%Y')
     except:
-        formatted_date = bol.date
+        formatted_date = data.date
 
     # Build info grid (6 rows, right half of page)
     info_grid = [
-        ['BOL Number:', f'<b>{bol.bol_number}</b>'],
-        ['Customer PO#:', bol.customer_po or ''],
-        ['Carrier:', bol.carrier_name],
-        ['Truck #:', bol.truck_number],
-        ['Trailer #:', bol.trailer_number],
+        ['BOL Number:', f'<b>{data.bol_number}</b>'],
+        ['Customer PO#:', data.customer_po or ''],
+        ['Carrier:', data.carrier_name],
+        ['Truck #:', data.truck_number],
+        ['Trailer #:', data.trailer_number],
         ['Loaded Date:', formatted_date]
     ]
 
-    # Create the company + info section
-    company_and_info_data = [
-        [
-            {'content': Paragraph(company_info, styles['Normal']), 'span': (0, 0, 0, 5)},  # Spans 6 rows
-            'BOL Number:', f'<b>{bol.bol_number}</b>'
-        ],
-        ['', '', 'Customer PO#:', bol.customer_po or ''],
-        ['', '', 'Carrier:', bol.carrier_name],
-        ['', '', 'Truck #:', bol.truck_number],
-        ['', '', 'Trailer #:', bol.trailer_number],
-        ['', '', 'Loaded Date:', formatted_date]
-    ]
+    # Create the company + info section (legacy - not used in current implementation)
+    # company_and_info_data = [
+    #     [
+    #         {'content': Paragraph(company_text, styles['Normal']), 'span': (0, 0, 0, 5)},  # Spans 6 rows
+    #         'BOL Number:', f'<b>{data.bol_number}</b>'
+    #     ],
+    #     ['', '', 'Customer PO#:', data.customer_po or ''],
+    #     ['', '', 'Carrier:', data.carrier_name],
+    #     ['', '', 'Truck #:', data.truck_number],
+    #     ['', '', 'Trailer #:', data.trailer_number],
+    #     ['', '', 'Loaded Date:', formatted_date]
+    # ]
 
     # Ship To section
-    ship_to_text = bol.buyer_name
-    if bol.ship_to:
-        ship_to_text += '\n' + bol.ship_to
+    ship_to_text = data.buyer_name
+    if data.ship_to:
+        ship_to_text += '\n' + data.ship_to
 
     # Product and weights
-    total_weight_lbs = int(bol.total_weight_lbs)
-    net_tons = float(bol.net_tons)
+    total_weight_lbs = int(data.total_weight_lbs)
+    net_tons = float(data.net_tons)
 
-    # Build the main table data
-    table_data = [
-        # Header row
-        ['SHIP FROM:', '', '', '', '', '', 'Page 1 of 1', '', '', '', '', ''],
-
-        # Company info row (spans 6 rows for company, 6 cols for info on right)
-        [company_info, '', '', '', '', '', 'BOL Number:', '', '', f'{bol.bol_number}', '', ''],
-        ['', '', '', '', '', '', 'Customer PO#:', '', '', bol.customer_po or '', '', ''],
-        ['', '', '', '', '', '', 'Carrier:', '', '', bol.carrier_name, '', ''],
-        ['', '', '', '', '', '', 'Truck #:', '', '', bol.truck_number, '', ''],
-        ['', '', '', '', '', '', 'Trailer #:', '', '', bol.trailer_number, '', ''],
-        ['', '', '', '', '', '', 'Loaded Date:', '', '', formatted_date, '', ''],
-
-        # Ship To header
-        ['SHIP TO:', '', '', '', '', '', '', '', '', '', '', ''],
-
-        # Ship To content
-        [ship_to_text, '', '', '', '', '', '', '', '', '', '', ''],
-
-        # Product header
-        ['Lot Number: CRT-050N-711A', '', '', '', bol.product_name, '', '', '', '', '', '', ''],
-
-        # Analysis and weights section (merged cells for layout)
-        ['Analysis:\nC 4.244%\nSi 0.05%\nS 0.018%\nP 0.026%\nMn 0.013%', '', '', '',
-         f'Total Weight\n{total_weight_lbs:,} LBS\n\nNet Tons\n{net_tons:.2f} N.T.', '', '', '', '', '', '', ''],
-
-        # Note
-        ['NOTE: Liability Limitation for loss or damage in this shipment may be applicable. See 49 U.S.C. § 14706(c)(1)(A) and (B). Non-hazardous',
-         '', '', '', '', '', '', '', '', '', '', ''],
-
-        # Signatures section
-        ['SHIPPER SIGNATURE\nJames Rose\n\nThis is to certify that the above named materials are properly classified, packaged, marked and labeled.',
-         '', '', '',
-         'Trailer Loaded:\n• By Shipper\n• By Driver\n\nFreight Counted:\n• By Shipper\n• By Driver',
-         '', '', '',
-         'CARRIER SIGNATURE\n\n___________________________',
-         '', '', '']
-    ]
+    # Build the main table data (legacy - not used in current implementation)
+    # table_data = [
+    #     # Header row
+    #     ['SHIP FROM:', '', '', '', '', '', 'Page 1 of 1', '', '', '', '', ''],
+    #
+    #     # Company info row (spans 6 rows for company, 6 cols for info on right)
+    #     [company_text, '', '', '', '', '', 'BOL Number:', '', '', f'{data.bol_number}', '', ''],
+    #     ['', '', '', '', '', '', 'Customer PO#:', '', '', data.customer_po or '', '', ''],
+    #     ['', '', '', '', '', '', 'Carrier:', '', '', data.carrier_name, '', ''],
+    #     ['', '', '', '', '', '', 'Truck #:', '', '', data.truck_number, '', ''],
+    #     ['', '', '', '', '', '', 'Trailer #:', '', '', data.trailer_number, '', ''],
+    #     ['', '', '', '', '', '', 'Loaded Date:', '', '', formatted_date, '', ''],
+    #
+    #     # Ship To header
+    #     ['SHIP TO:', '', '', '', '', '', '', '', '', '', '', ''],
+    #
+    #     # Ship To content
+    #     [ship_to_text, '', '', '', '', '', '', '', '', '', '', ''],
+    #
+    #     # Product header
+    #     ['Lot Number: CRT-050N-711A', '', '', '', data.product_name, '', '', '', '', '', '', ''],
+    #
+    #     # Analysis and weights section (merged cells for layout)
+    #     ['Analysis:\nC 4.244%\nSi 0.05%\nS 0.018%\nP 0.026%\nMn 0.013%', '', '', '',
+    #      f'Total Weight\n{total_weight_lbs:,} LBS\n\nNet Tons\n{net_tons:.2f} N.T.', '', '', '', '', '', '', ''],
+    #
+    #     # Note
+    #     ['NOTE: Liability Limitation for loss or damage in this shipment may be applicable. See 49 U.S.C. § 14706(c)(1)(A) and (B). Non-hazardous',
+    #      '', '', '', '', '', '', '', '', '', '', ''],
+    #
+    #     # Signatures section
+    #     ['SHIPPER SIGNATURE\nJames Rose\n\nThis is to certify that the above named materials are properly classified, packaged, marked and labeled.',
+    #      '', '', '',
+    #      'Trailer Loaded:\n• By Shipper\n• By Driver\n\nFreight Counted:\n• By Shipper\n• By Driver',
+    #      '', '', '',
+    #      'CARRIER SIGNATURE\n\n___________________________',
+    #      '', '', '']
+    # ]
 
     # Simplified approach - use a simpler table structure
     main_table_data = []
@@ -176,19 +248,33 @@ def generate_bol_pdf(bol):
     ])
 
     # Company info and BOL details side by side
+    # Create company info cell with logo and text
+    if logo_element:
+        company_cell_content = Table([
+            [logo_element],
+            [Paragraph(company_text, styles['Normal'])]
+        ], colWidths=[3.75*inch], style=TableStyle([
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+            ('TOPPADDING', (0, 0), (-1, -1), 5),
+            ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ]))
+    else:
+        company_cell_content = Paragraph(company_text, styles['Normal'])
+
     main_table_data.append([
-        Paragraph(company_info, styles['Normal']),
+        company_cell_content,
         Table([
             [Paragraph('<para align="right" fontName="Helvetica-Bold">BOL Number:</para>', styles['Normal']),
-             Paragraph(f'<para fontName="Helvetica-Bold" fontSize="13">{bol.bol_number}</para>', styles['Normal'])],
+             Paragraph(f'<para fontName="Helvetica-Bold" fontSize="13">{data.bol_number}</para>', styles['Normal'])],
             [Paragraph('<para align="right" fontName="Helvetica-Bold">Customer PO#:</para>', styles['Normal']),
-             bol.customer_po or ''],
+             data.customer_po or ''],
             [Paragraph('<para align="right" fontName="Helvetica-Bold">Carrier:</para>', styles['Normal']),
-             bol.carrier_name],
+             data.carrier_name],
             [Paragraph('<para align="right" fontName="Helvetica-Bold">Truck #:</para>', styles['Normal']),
-             bol.truck_number],
+             data.truck_number],
             [Paragraph('<para align="right" fontName="Helvetica-Bold">Trailer #:</para>', styles['Normal']),
-             bol.trailer_number],
+             data.trailer_number],
             [Paragraph('<para align="right" fontName="Helvetica-Bold">Loaded Date:</para>', styles['Normal']),
              formatted_date]
         ], colWidths=[2*inch, 1.5*inch], style=TableStyle([
@@ -212,7 +298,7 @@ def generate_bol_pdf(bol):
     # Product bar
     main_table_data.append([
         Paragraph(f'<para align="center" fontName="Helvetica-Bold" backColor="#d9d9d9">Lot Number: CRT-050N-711A</para>', bar_style),
-        Paragraph(f'<para align="center" fontName="Helvetica-Bold" backColor="#d9d9d9">{bol.product_name}</para>', bar_style)
+        Paragraph(f'<para align="center" fontName="Helvetica-Bold" backColor="#d9d9d9">{data.product_name}</para>', bar_style)
     ])
 
     # Analysis and weights
@@ -332,5 +418,8 @@ def generate_bol_pdf(bol):
     # Build PDF
     doc.build(elements)
 
-    # Return relative path for URL
-    return f'/media/bol_pdfs/{filename}'
+    # Return appropriate path
+    if output_path:
+        return filepath  # Return absolute path for custom locations
+    else:
+        return f'/media/bol_pdfs/{os.path.basename(filepath)}'  # Return relative URL for default location

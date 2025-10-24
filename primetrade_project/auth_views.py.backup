@@ -207,47 +207,28 @@ def sso_callback(request):
     try:
         # For now, decode without verification (will add JWT validation later)
         decoded = jwt.decode(access_token, options={"verify_signature": False})
-        logger.info(f"JWT decoded successfully. Claims: {list(decoded.keys())}")
     except jwt.DecodeError as e:
-        security_logger.error(f"JWT decode failed: {str(e)}")
         return HttpResponseForbidden(f"Invalid JWT token: {str(e)}")
 
-    # Extract user information from JWT
-    email = decoded.get('email')
-    user_roles = decoded.get('roles', {})
-    
-    logger.info(f"Extracted email: {email}, roles: {list(user_roles.keys()) if user_roles else 'none'}")
-    
-    # Validate email is present
-    if not email:
-        security_logger.warning(f"No email claim in JWT. Available claims: {list(decoded.keys())}")
-        return HttpResponseForbidden("No email claim in authentication token. Contact admin.")
-    
-    # Check for primetrade role
-    is_sso_admin = decoded.get("is_sso_admin", False)
-    
-    if not is_sso_admin:
-        logger.warning(f"User {email} does not have PrimeTrade role. Roles available: {list(user_roles.keys()) if user_roles else 'none'}")
+#     # Extract user information
+# #     email = decoded.get('email')
+# #     user_roles = tokens.get('user', {}).get('roles', {})
+    primetrade_role = user_roles.get('primetrade', {}).get('role')
+
+    if not primetrade_role:
         return HttpResponseForbidden("You don't have access to PrimeTrade. Contact admin.")
-    
-    logger.info(f"User {email} authenticated with role: {is_sso_admin}")
 
     # Get or create Django user
     user, created = User.objects.get_or_create(
         username=email,
         defaults={
             'email': email,
-            'first_name': decoded.get('given_name', decoded.get('display_name', '').split()[0] if decoded.get('display_name') else ''),
+            'first_name': decoded.get('display_name', '').split()[0] if decoded.get('display_name') else '',
         }
     )
-    
-    if created:
-        logger.info(f"Created new user: {email}")
-    else:
-        logger.info(f"Using existing user: {email}")
 
     # Store SSO role and tokens in session (for now)
-    request.session['sso_role'] = is_sso_admin
+    request.session['sso_role'] = primetrade_role
     request.session['sso_access_token'] = access_token
     request.session['sso_refresh_token'] = tokens.get('refresh_token')
 

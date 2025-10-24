@@ -42,6 +42,61 @@
       color: var(--text-secondary);
       margin-top: 0.25rem;
     }
+
+    /* Preview Modal Styles */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.active {
+      display: flex;
+    }
+    .modal-content {
+      background: white;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 900px;
+      max-height: 90vh;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+    .modal-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid #e0e0e0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .modal-header h3 {
+      margin: 0;
+      color: var(--primary);
+    }
+    .modal-body {
+      flex: 1;
+      overflow: auto;
+      padding: 0;
+    }
+    .modal-body iframe {
+      width: 100%;
+      height: 600px;
+      border: none;
+    }
+    .modal-footer {
+      padding: 1.5rem;
+      border-top: 1px solid #e0e0e0;
+      display: flex;
+      gap: 1rem;
+      justify-content: flex-end;
+    }
   </style>
 </head>
 <body>
@@ -121,9 +176,26 @@
           </div>
         </div>
         
-        <button type="submit" class="btn btn-accent">Create BOL</button>
+        <button type="submit" class="btn btn-accent">Preview BOL</button>
         <span id="status" class="status"></span>
       </form>
+    </div>
+  </div>
+
+  <!-- Preview Modal -->
+  <div id="previewModal" class="modal-overlay">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>BOL Preview</h3>
+        <button onclick="closePreviewModal()" class="btn btn-secondary">×</button>
+      </div>
+      <div class="modal-body">
+        <iframe id="pdfPreview"></iframe>
+      </div>
+      <div class="modal-footer">
+        <button onclick="closePreviewModal()" class="btn btn-secondary">Edit</button>
+        <button onclick="approveBOL()" class="btn btn-accent">Approve & Save</button>
+      </div>
     </div>
   </div>
 
@@ -154,7 +226,87 @@
     let products = [];
     let customers = [];
     let carriers = [];
-    
+    let pendingBOLData = null;  // Store form data between preview and approval
+
+    // Modal functions
+    function showPreviewModal(pdfBase64) {
+      const modal = qs("previewModal");
+      const iframe = qs("pdfPreview");
+
+      // Convert base64 to blob URL
+      const blob = base64ToBlob(pdfBase64, 'application/pdf');
+      const blobUrl = URL.createObjectURL(blob);
+
+      // Load PDF in iframe
+      iframe.src = blobUrl;
+
+      // Show modal
+      modal.classList.add('active');
+    }
+
+    function closePreviewModal() {
+      const modal = qs("previewModal");
+      const iframe = qs("pdfPreview");
+
+      // Clear iframe
+      iframe.src = '';
+
+      // Hide modal
+      modal.classList.remove('active');
+
+      // Clear pending data
+      pendingBOLData = null;
+    }
+
+    async function approveBOL() {
+      if (!pendingBOLData) {
+        alert('No BOL data to approve');
+        return;
+      }
+
+      const s = qs("status");
+      s.textContent = "Saving BOL...";
+
+      try {
+        const res = await postJSON("/api/bol/confirm/", pendingBOLData);
+        if (res && res.ok) {
+          closePreviewModal();
+
+          s.innerHTML = `✅ Created <b>${res.bolNo}</b> — <a target="_blank" href="${res.pdfUrl}">Open PDF</a> | <a target="_blank" href="/bol.html?id=${res.bolId}">View BOL</a>`;
+
+          // Open BOL in new tab automatically
+          window.open(`/bol.html?id=${res.bolId}`, '_blank');
+
+          // Reset form
+          qs("f").reset();
+          qs("shipToAddress").value = "";
+          qs("buyerName").value = "";
+
+          // Set date to today again
+          const d = new Date();
+          const yyyy = d.getFullYear();
+          const mm = String(d.getMonth()+1).padStart(2,'0');
+          const dd = String(d.getDate()).padStart(2,'0');
+          document.querySelector('input[name=date]').value = `${yyyy}-${mm}-${dd}`;
+        } else {
+          s.textContent = "❌ " + (res.error || "Unknown error");
+        }
+      } catch (e) {
+        console.error('BOL approval error:', e);
+        s.textContent = "❌ " + (e.message || String(e));
+      }
+    }
+
+    function base64ToBlob(base64, mimeType) {
+      const byteCharacters = atob(base64);
+      const byteNumbers = new Array(byteCharacters.length);
+      for (let i = 0; i < byteCharacters.length; i++) {
+        byteNumbers[i] = byteCharacters.charCodeAt(i);
+      }
+      const byteArray = new Uint8Array(byteNumbers);
+      return new Blob([byteArray], { type: mimeType });
+    }
+
     function updateCustomerAddress() {
       const customerId = qs("customer").value;
       const shipToField = qs("shipToAddress");
@@ -281,37 +433,32 @@
       const dd = String(d.getDate()).padStart(2,'0');
       document.querySelector('input[name=date]').value = `${yyyy}-${mm}-${dd}`;
 
-      // Form submission
+      // Form submission - preview first
       qs("f").addEventListener("submit", async (ev) => {
         ev.preventDefault();
         const s = qs("status");
-        s.textContent = "Creating BOL...";
-        
+        s.textContent = "Generating preview...";
+
         const data = Object.fromEntries(new FormData(ev.target).entries());
         const prod = products.find(p => String(p.id) === String(data.productId));
         data.productName = prod ? prod.name : "";
-        
+
+        // Store data for later approval
+        pendingBOLData = data;
+
         try {
-          const res = await postJSON("/api/bol/", data);
-          if (res && res.ok) {
-            s.innerHTML = `✅ Created <b>${res.bolNo}</b> — <a target="_blank" href="${res.pdfUrl}">Open PDF</a> | <a target="_blank" href="/bol.html?id=${res.bolId}">View BOL</a>`;
-            
-            // Open BOL in new tab automatically
-            window.open(`/bol.html?id=${res.bolId}`, '_blank');
-            
-            // Reset form
-            ev.target.reset();
-            qs("shipToAddress").value = "";
-            qs("buyerName").value = "";
-            
-            // Set date to today again
-            document.querySelector('input[name=date]').value = `${yyyy}-${mm}-${dd}`;
+          const res = await postJSON("/api/bol/preview/", data);
+          if (res && res.ok && res.pdfBase64) {
+            s.textContent = "";
+            showPreviewModal(res.pdfBase64);
           } else {
-            s.textContent = "❌ " + (res.error || "Unknown error");
+            s.textContent = "❌ " + (res.error || "Preview failed");
+            pendingBOLData = null;
           }
         } catch (e) {
-          console.error('BOL creation error:', e);
+          console.error('BOL preview error:', e);
           s.textContent = "❌ " + (e.message || String(e));
+          pendingBOLData = null;
         }
       });
     })().catch(e => {
