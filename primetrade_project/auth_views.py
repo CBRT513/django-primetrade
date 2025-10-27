@@ -139,7 +139,7 @@ def sso_login(request):
         'state': state,
     }
 
-    auth_url = f"{settings.SSO_BASE_URL}/auth/authorize/?{urlencode(params)}"
+    auth_url = f"{settings.SSO_BASE_URL}/o/authorize/?{urlencode(params)}"
     return redirect(auth_url)
 
 
@@ -196,7 +196,7 @@ def sso_callback(request):
     logger.error(f"[FLOW DEBUG 2] Authorization code received: {code[:20]}...")
 
     # Exchange code for tokens
-    token_url = f"{settings.SSO_BASE_URL}/auth/token/"
+    token_url = f"{settings.SSO_BASE_URL}/o/token/"
     token_data = {
         'code': code,
         'client_id': settings.SSO_CLIENT_ID,
@@ -335,5 +335,5 @@ def sso_logout(request):
     logout(request)
 
     # Optionally redirect to SSO logout
-    sso_logout_url = f"{settings.SSO_BASE_URL}/auth/logout/"
+    sso_logout_url = f"{settings.SSO_BASE_URL}/o/logout/"
     return redirect(sso_logout_url)
