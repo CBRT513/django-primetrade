@@ -236,16 +236,18 @@ def sso_callback(request):
         return HttpResponseForbidden(f"Token exchange failed: {str(e)}")
 
     # Decode JWT token to get user info
-    access_token = tokens.get('access_token')
+    # Note: access_token is an opaque string, id_token is the JWT with user claims
+    access_token = tokens.get('access_token')  # Keep for session storage
+    id_token = tokens.get('id_token')  # This is the JWT to decode
 
     logger.error(f"[FLOW DEBUG 5] Attempting to decode JWT:")
-    logger.error(f"[FLOW DEBUG 5.1]   - access_token present: {'YES' if access_token else 'NO'}")
-    if access_token:
-        logger.error(f"[FLOW DEBUG 5.2]   - access_token (first 50 chars): {access_token[:50]}...")
+    logger.error(f"[FLOW DEBUG 5.1]   - id_token present: {'YES' if id_token else 'NO'}")
+    if id_token:
+        logger.error(f"[FLOW DEBUG 5.2]   - id_token (first 50 chars): {id_token[:50]}...")
 
     try:
-        # For now, decode without verification (will add JWT validation later)
-        decoded = jwt.decode(access_token, options={"verify_signature": False})
+        # Decode id_token (the JWT), not access_token (opaque string)
+        decoded = jwt.decode(id_token, options={"verify_signature": False})
         logger.info(f"JWT decoded successfully. Claims: {list(decoded.keys())}")
 
         logger.error(f"[FLOW DEBUG 6] JWT decoded successfully:")
