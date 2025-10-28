@@ -276,16 +276,21 @@ def sso_callback(request):
         logger.error(f"[FLOW DEBUG 7.4] MISSING email claim - returning 403")
         return HttpResponseForbidden("No email claim in authentication token. Contact admin.")
 
-    # Check for primetrade role
-    is_sso_admin = decoded.get("is_sso_admin", False)
+    # Check for primetrade role in application_roles claim
+    application_roles = decoded.get("application_roles", {})
+    primetrade_role = application_roles.get("primetrade")
 
-    if not is_sso_admin:
-        logger.warning(f"User {email} does not have PrimeTrade role. Roles available: {list(user_roles.keys()) if user_roles else 'none'}")
+    if not primetrade_role:
+        logger.warning(f"User {email} does not have PrimeTrade role. Available apps: {list(application_roles.keys())}")
         logger.error(f"[FLOW DEBUG 7.5] User lacks PrimeTrade role - returning 403")
         return HttpResponseForbidden("You don't have access to PrimeTrade. Contact admin.")
 
-    logger.info(f"User {email} authenticated with role: {is_sso_admin}")
-    logger.error(f"[FLOW DEBUG 8] Role check PASSED - user has access")
+    # Extract role details for session storage
+    role_name = primetrade_role.get("role")
+    permissions = primetrade_role.get("permissions", [])
+
+    logger.info(f"User {email} authenticated with PrimeTrade role: {role_name}")
+    logger.error(f"[FLOW DEBUG 8] Role check PASSED - role: {role_name}, permissions: {permissions}")
 
     # Get or create Django user
     user, created = User.objects.get_or_create(
@@ -304,12 +309,15 @@ def sso_callback(request):
         logger.error(f"[FLOW DEBUG 9] Using EXISTING Django user: {email} (ID: {user.id})")
 
     # Store SSO role and tokens in session (for now)
-    request.session['sso_role'] = is_sso_admin
+    request.session['primetrade_role'] = {
+        'role': role_name,
+        'permissions': permissions
+    }
     request.session['sso_access_token'] = access_token
     request.session['sso_refresh_token'] = tokens.get('refresh_token')
 
     logger.error(f"[FLOW DEBUG 10] Session data stored:")
-    logger.error(f"[FLOW DEBUG 10.1]   - sso_role: {is_sso_admin}")
+    logger.error(f"[FLOW DEBUG 10.1]   - primetrade_role: {role_name} with permissions: {permissions}")
     logger.error(f"[FLOW DEBUG 10.2]   - sso_access_token: {'SET' if access_token else 'MISSING'}")
     logger.error(f"[FLOW DEBUG 10.3]   - sso_refresh_token: {'SET' if tokens.get('refresh_token') else 'MISSING'}")
 
