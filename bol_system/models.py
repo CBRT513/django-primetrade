@@ -161,3 +161,75 @@ class CompanyBranding(TimestampedModel):
     
     def __str__(self):
         return self.company_name
+
+
+# =============================
+# Release management (Phase 2)
+# =============================
+class Release(TimestampedModel):
+    STATUS_CHOICES = (
+        ("OPEN", "Open"),
+        ("COMPLETE", "Complete"),
+        ("CANCELLED", "Cancelled"),
+    )
+
+    release_number = models.CharField(max_length=20, unique=True, db_index=True)
+    release_date = models.DateField(null=True, blank=True)
+
+    customer_id_text = models.CharField(max_length=200)  # e.g., "ST. MARYS"
+    customer_po = models.CharField(max_length=100, blank=True)
+
+    ship_via = models.CharField(max_length=200, blank=True)
+    fob = models.CharField(max_length=200, blank=True)
+
+    ship_to_name = models.CharField(max_length=200, blank=True)
+    ship_to_street = models.CharField(max_length=200, blank=True)
+    ship_to_city = models.CharField(max_length=100, blank=True)
+    ship_to_state = models.CharField(max_length=2, blank=True)
+    ship_to_zip = models.CharField(max_length=10, blank=True)
+
+    lot = models.CharField(max_length=100, blank=True)
+    material_description = models.CharField(max_length=200, blank=True)
+
+    quantity_net_tons = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default="OPEN")
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Release {self.release_number} ({self.customer_id_text})"
+
+    @property
+    def total_loads(self):
+        return self.loads.count()
+
+    @property
+    def loads_shipped(self):
+        return self.loads.filter(status='SHIPPED').count()
+
+    @property
+    def loads_remaining(self):
+        return self.total_loads - self.loads_shipped
+
+
+class ReleaseLoad(TimestampedModel):
+    STATUS_CHOICES = (
+        ("PENDING", "Pending"),
+        ("SHIPPED", "Shipped"),
+        ("CANCELLED", "Cancelled"),
+    )
+
+    release = models.ForeignKey(Release, on_delete=models.CASCADE, related_name='loads')
+    seq = models.IntegerField()  # 1..N
+    date = models.DateField(null=True, blank=True)
+    planned_tons = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
+    status = models.CharField(max_length=12, choices=STATUS_CHOICES, default="PENDING")
+    bol = models.ForeignKey(BOL, on_delete=models.SET_NULL, null=True, blank=True)
+
+    class Meta:
+        ordering = ['seq']
+        unique_together = [['release', 'seq']]
+
+    def __str__(self):
+        return f"{self.release.release_number} load {self.seq}"

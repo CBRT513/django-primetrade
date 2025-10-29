@@ -4,8 +4,8 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.authentication import SessionAuthentication
 from django.db import models, connection
-from .models import Product, Customer, Carrier, Truck, BOL
-from .serializers import ProductSerializer, CustomerSerializer, CarrierSerializer, TruckSerializer
+from .models import Product, Customer, Carrier, Truck, BOL, Release, ReleaseLoad
+from .serializers import ProductSerializer, CustomerSerializer, CarrierSerializer, TruckSerializer, ReleaseSerializer
 from .pdf_generator import generate_bol_pdf
 from .release_parser import parse_release_pdf
 import logging
@@ -364,6 +364,132 @@ def balances(request):
             {'error': 'An unexpected error occurred'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+# =============================
+# Release management endpoints
+# =============================
+from datetime import datetime
+
+def _parse_date_any(s: str):
+    if not s:
+        return None
+    s = str(s).strip()
+    for fmt in ("%Y-%m-%d", "%m/%d/%Y", "%m/%d/%y"):
+        try:
+            return datetime.strptime(s, fmt).date()
+        except Exception:
+            continue
+    return None
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def approve_release(request):
+    try:
+        data = request.data if isinstance(request.data, dict) else {}
+        # Required
+        release_number = data.get('releaseNumber') or data.get('release_number')
+        if not release_number:
+            return Response({'error': 'releaseNumber required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Create or upsert release
+        rel, created = Release.objects.get_or_create(
+            release_number=release_number,
+            defaults={
+                'release_date': _parse_date_any(data.get('releaseDate')),
+                'customer_id_text': data.get('customerId', ''),
+                'customer_po': data.get('customerPO', ''),
+                'ship_via': data.get('shipVia', ''),
+                'fob': data.get('fob', ''),
+                'ship_to_name': (data.get('shipTo') or {}).get('name', ''),
+                'ship_to_street': (data.get('shipTo') or {}).get('street', ''),
+                'ship_to_city': (data.get('shipTo') or {}).get('city', ''),
+                'ship_to_state': (data.get('shipTo') or {}).get('state', ''),
+                'ship_to_zip': (data.get('shipTo') or {}).get('zip', ''),
+                'lot': (data.get('material') or {}).get('lot', ''),
+                'material_description': (data.get('material') or {}).get('description', ''),
+                'quantity_net_tons': data.get('quantityNetTons', None),
+                'updated_by': request.user.username,
+            }
+        )
+        if not created:
+            # Update core fields if re-approving
+            rel.release_date = _parse_date_any(data.get('releaseDate')) or rel.release_date
+            for f, k in [
+                ('customer_id_text','customerId'),
+                ('customer_po','customerPO'),
+                ('ship_via','shipVia'),
+                ('fob','fob')
+            ]:
+                v = data.get(k)
+                if v:
+                    setattr(rel, f, v)
+            ship = data.get('shipTo') or {}
+            for f in ['name','street','city','state','zip']:
+                if ship.get(f):
+                    setattr(rel, f'ship_to_{f}', ship.get(f))
+            mat = data.get('material') or {}
+            if mat.get('lot'): rel.lot = mat.get('lot')
+            if mat.get('description'): rel.material_description = mat.get('description')
+            if data.get('quantityNetTons') is not None:
+                rel.quantity_net_tons = data.get('quantityNetTons')
+            rel.updated_by = request.user.username
+            rel.save()
+
+        # Replace loads
+        rel.loads.all().delete()
+        sched = data.get('schedule') or []
+        per_load = None
+        try:
+            if data.get('quantityNetTons') and len(sched):
+                per_load = float(data['quantityNetTons'])/max(len(sched),1)
+        except Exception:
+            per_load = None
+        for i, row in enumerate(sched, start=1):
+            ReleaseLoad.objects.create(
+                release=rel,
+                seq=i,
+                date=_parse_date_any(row.get('date') if isinstance(row, dict) else None),
+                planned_tons=per_load,
+                updated_by=request.user.username,
+            )
+
+        return Response({'ok': True, 'id': rel.id, 'created': created, 'release': ReleaseSerializer(rel).data})
+    except Exception as e:
+        logger.error(f"approve_release error: {e}", exc_info=True)
+        return Response({'error': 'Failed to save release', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def open_releases(request):
+    try:
+        rels = Release.objects.filter(status='OPEN').order_by('-created_at')
+        result = []
+        for r in rels:
+            loads_total = r.loads.count()
+            shipped = r.loads.filter(status='SHIPPED').count()
+            remaining = loads_total - shipped
+            tons_total = float(r.quantity_net_tons or 0)
+            tons_shipped = float(r.loads.filter(status='SHIPPED').aggregate(sum=models.Sum('planned_tons'))['sum'] or 0)
+            tons_remaining = max(0.0, tons_total - tons_shipped)
+            next_date = r.loads.filter(status='PENDING').order_by('date').values_list('date', flat=True).first()
+            last_shipped = r.loads.filter(status='SHIPPED').order_by('-date').values_list('date', flat=True).first()
+            result.append({
+                'id': r.id,
+                'releaseNumber': r.release_number,
+                'customer': r.customer_id_text,
+                'totalLoads': loads_total,
+                'loadsShipped': shipped,
+                'loadsRemaining': remaining,
+                'totalTons': tons_total,
+                'tonsShipped': tons_shipped,
+                'tonsRemaining': tons_remaining,
+                'nextScheduledDate': next_date,
+                'lastShippedDate': last_shipped,
+            })
+        return Response(result)
+    except Exception as e:
+        logger.error(f"open_releases error: {e}", exc_info=True)
+        return Response({'error': 'Failed to load open releases', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 # BOL history
 @api_view(['GET'])

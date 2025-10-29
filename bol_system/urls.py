@@ -13,6 +13,11 @@ urlpatterns = [
     path('bol/<int:bol_id>/', views.bol_detail, name='bol_detail'),
     path('balances/', views.balances, name='balances'),
     path('history/', views.bol_history, name='history'),
+
+    # Release parsing + approvals
     path('releases/upload/', views.upload_release, name='release_upload'),
+    path('releases/approve/', views.approve_release, name='release_approve'),
+    path('releases/open/', views.open_releases, name='releases_open'),
+
     path('auth/me/', auth_views.current_user, name='current_user'),
 ]

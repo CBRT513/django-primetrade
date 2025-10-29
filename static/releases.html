@@ -119,6 +119,7 @@
 
           <div style="display:flex; gap: 0.5rem; justify-content:flex-end; margin-top: 0.75rem;">
             <button id="copyJson" class="btn btn-secondary btn-sm" type="button">Copy JSON</button>
+            <button id="approveSave" class="btn btn-accent btn-sm" type="button">Approve & Save</button>
           </div>
         </form>
       </div>
@@ -253,6 +254,48 @@ copyBtn.addEventListener('click', () => {
   }).catch(() => {
     if (window.Utils && Utils.showStatus) Utils.showStatus('Copy failed', 'error');
   });
+});
+
+// Approve & Save Release
+const approveBtn = document.getElementById('approveSave');
+approveBtn.addEventListener('click', async () => {
+  const p = window._lastParsed && (window._lastParsed.parsed || window._lastParsed) || {};
+  const ship = {
+    name: document.getElementById('shipToName')?.value || '',
+    street: document.getElementById('shipToStreet')?.value || '',
+    city: document.getElementById('shipToCity')?.value || '',
+    state: document.getElementById('shipToState')?.value || '',
+    zip: (document.getElementById('shipToZip')?.value || '').replace(/\D/g,'').slice(0,5),
+  };
+  const payload = {
+    releaseNumber: document.getElementById('releaseNumber')?.value || p.releaseNumber,
+    releaseDate: document.getElementById('releaseDate')?.value || p.releaseDate,
+    customerId: document.getElementById('customerId')?.value || p.customerId,
+    customerPO: document.getElementById('customerPO')?.value || p.customerPO,
+    shipVia: document.getElementById('shipVia')?.value || p.shipVia,
+    fob: document.getElementById('fob')?.value || p.fob,
+    shipTo: ship,
+    material: {
+      lot: document.getElementById('materialLot')?.value || (p.material?.lot || ''),
+      description: document.getElementById('materialDescription')?.value || (p.material?.description || ''),
+    },
+    quantityNetTons: Number(document.getElementById('qtyTons')?.value || p.quantityNetTons || 0),
+    schedule: Array.isArray(p.schedule) ? p.schedule : [],
+  };
+  try {
+    const csrf = (window.Utils && Utils.getCSRFToken) ? Utils.getCSRFToken() : null;
+    const resp = await fetch('/api/releases/approve/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(csrf ? {'X-CSRFToken': csrf} : {}) },
+      credentials: 'same-origin',
+      body: JSON.stringify(payload)
+    });
+    const json = await resp.json().catch(()=>null);
+    if (!resp.ok) throw new Error(json?.error || `HTTP ${resp.status}`);
+    if (window.Utils && Utils.showStatus) Utils.showStatus(`Release saved (ID ${json.id})`, 'success');
+  } catch (e) {
+    if (window.Utils && Utils.showStatus) Utils.showStatus(`Save failed: ${e.message || e}`, 'error', 8000);
+  }
 });
 
 form.addEventListener('submit', async (e) => {
