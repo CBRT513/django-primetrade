@@ -15,6 +15,11 @@ import tempfile
 
 logger = logging.getLogger(__name__)
 
+# CSRF-exempt Session auth (used by upload_release and approve_release)
+class CsrfExemptSessionAuthentication(SessionAuthentication):
+    def enforce_csrf(self, request):
+        return  # Disable CSRF check; session must still be authenticated
+
 # Health check endpoint (no auth required for monitoring)
 @api_view(['GET'])
 @permission_classes([AllowAny])
@@ -566,11 +571,6 @@ def bol_detail(request, bol_id):
             {'error': 'An unexpected error occurred'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
-
-# CSRF-exempt Session auth for file upload parse endpoint only
-class CsrfExemptSessionAuthentication(SessionAuthentication):
-    def enforce_csrf(self, request):
-        return  # Disable CSRF check; session must still be authenticated
 
 # Release upload and parse (Phase 1: parse only)
 @api_view(['POST'])
