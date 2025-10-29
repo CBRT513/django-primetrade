@@ -41,6 +41,7 @@ urlpatterns = [
     path('customers.html', login_required(lambda request: serve_static_html(request, 'customers.html')), name='customers'),
     path('carriers.html', login_required(lambda request: serve_static_html(request, 'carriers.html')), name='carriers'),
     path('releases.html', login_required(lambda request: serve_static_html(request, 'releases.html')), name='releases'),
+    path('open-releases.html', login_required(lambda request: serve_static_html(request, 'open-releases.html')), name='open_releases'),
 ]
 
 # Serve media files in development
