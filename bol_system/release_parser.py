@@ -34,13 +34,28 @@ def parse_release_text(text: str) -> Dict[str, Any]:
     t = re.sub(r"\u00a0", " ", text)
 
     # Header fields
-    release_no = _find(r"Release\s*#:\s*(\d+)", t)
-    release_date = _find(r"Release\s*Date\s+(%s)" % DATE_SLASH, t)
-    customer_id = _find(r"Customer\s*ID\s*:\s*([A-Z0-9 .,&'-]+)", t)
+    release_no = _find(r"Release\s*#\s*[:\-]?\s*(\d+)", t)
+    # Allow optional colon and flexible spacing
+    release_date = (
+        _find(r"Release\s*Date\s*[:\-]?\s*(%s)" % DATE_SLASH, t)
+        or _find(r"Date\s*[:\-]?\s*(%s)" % DATE_SLASH, t)
+    )
+    # Customer name/ID variations
+    customer_id = (
+        _find(r"Customer\s*(?:ID|Name)?\s*[:\-]?\s*([A-Za-z0-9 .,&'\-/]+)", t)
+        or _find(r"Customer\s*:\s*([A-Za-z0-9 .,&'\-/]+)", t)
+    )
 
-    ship_via = _find(r"Ship\s*Via\s+([^\n]+?)\s+FOB", t)
-    fob = _find(r"FOB\s+([^\n]+?)\s+Customer PO #", t) or _find(r"FOB\s+([^\n]+)", t)
-    customer_po = _find(r"Customer PO\s*#\s*(\S+)", t)
+    # Ship Via and FOB - allow colon and line ends
+    ship_via = (
+        _find(r"Ship\s*Via\s*[:\-]?\s*([^\n]+?)(?:\s+FOB|\n)", t)
+    )
+    fob = (
+        _find(r"FOB\s*[:\-]?\s*([^\n]+?)(?:\s+Customer\s*P\.?O\.?|\n)", t)
+        or _find(r"FOB\s*[:\-]?\s*([^\n]+)", t)
+    )
+    # Customer PO variants: PO, P.O., with/without '#'
+    customer_po = _find(r"Customer\s*P\.?O\.?\s*(?:#\s*)?[:\-]?\s*(\S+)", t)
 
     # Ship To block: take the first block after 'Ship To:'
     ship_to_block = _find(r"Ship To:\s*([\s\S]*?)\n\s*Release Date", t)
@@ -89,9 +104,9 @@ def parse_release_text(text: str) -> Dict[str, Any]:
     warehouse_name = _find(r"Warehouse\s*\n\s*([A-Z]{3})", t) or _find(r"\bWarehouse\b[\s\S]*?\b(CRT)\b", t)
     warehouse_loc = _find(r"\bCINCINNATI\b", t)
 
-    # Schedule lines
+    # Schedule lines (e.g., "Deliver 11-05-25 Load #1")
     sched: List[Dict[str, str]] = []
-    for m in re.finditer(r"\b1\s*TL\s*Deliver\s*(%s)\s*(?:LOAD|Load|Load)\s*#?\s*(\d+)" % DATE_DASH, t):
+    for m in re.finditer(r"(?:\d+\s*TL\s*)?Deliver\s*(%s)\s*(?:LOAD|Load)\s*#?\s*(\d+)" % DATE_DASH, t, re.I):
         ds, num = m.group(1), m.group(2)
         # Convert YY to YYYY (assume 20YY)
         mm, dd, yy = ds.split("-")

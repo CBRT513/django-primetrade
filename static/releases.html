@@ -132,6 +132,19 @@ function toISODate(d) {
   return '';
 }
 
+function toUSDate(d) {
+  if (!d) return '';
+  if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+    const [y,m,dd] = d.split('-');
+    return `${m}/${dd}/${y}`;
+  }
+  try {
+    const dt = new Date(d);
+    if (!isNaN(dt)) return `${String(dt.getMonth()+1).padStart(2,'0')}/${String(dt.getDate()).padStart(2,'0')}/${dt.getFullYear()}`;
+  } catch (_) {}
+  return String(d);
+}
+
 function fillReview(parsed) {
   const p = parsed || {};
   const ship = (p.shipToRaw || {});
@@ -153,9 +166,13 @@ function fillReview(parsed) {
   if (sched.length === 0) {
     schedEl.innerHTML = '<div style="color: var(--text-secondary); padding: 0.5rem 0;">No schedule found</div>';
   } else {
-    let html = '<table><thead><tr><th>Date</th><th>Loads</th></tr></thead><tbody>';
+    const perLoad = (Number(p.quantityNetTons) && sched.length) ? Number(p.quantityNetTons)/sched.length : null;
+    let html = '<table><thead><tr><th>Date</th><th>Load #</th><th>Net Tons</th></tr></thead><tbody>';
     for (const row of sched) {
-      html += `<tr><td>${(row.date || '').toString()}</td><td>${(row.load ?? '').toString()}</td></tr>`;
+      const d = toUSDate(row.date || row);
+      const l = (row.load ?? '').toString();
+      const nt = perLoad != null && isFinite(perLoad) ? perLoad.toFixed(3) : '';
+      html += `<tr><td>${d}</td><td>${l}</td><td>${nt}${nt? ' NT':''}</td></tr>`;
     }
     html += '</tbody></table>';
     schedEl.innerHTML = html;
