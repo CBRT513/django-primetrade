@@ -14,8 +14,13 @@ def _find(pattern: str, text: str, flags: int = re.IGNORECASE) -> str | None:
         return None
     # If the regex has a capturing group, return it; otherwise return the full match
     try:
-        return (m.group(1) if m.lastindex else m.group(0)).strip()
-    except IndexError:
+        # m.re.groups is the number of capturing groups in the pattern
+        if getattr(m, 're', None) and getattr(m.re, 'groups', 0) >= 1:
+            return m.group(1).strip()
+        # Fallback to full match when no capturing group present
+        return m.group(0).strip()
+    except Exception:
+        # Absolute fallback – never raise for missing group
         return m.group(0).strip()
 
 

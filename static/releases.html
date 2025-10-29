@@ -21,6 +21,7 @@
     </div>
 
     <div class="card" style="padding: 1.5rem;">
+      <div id="status" class="status" style="min-height: 1.25rem; margin-bottom: 0.5rem; color: var(--text-secondary);"></div>
       <form id="uploadForm">
         <input type="file" id="file" accept="application/pdf" required />
         <button class="btn btn-accent" type="submit">Upload & Parse</button>
@@ -29,26 +30,213 @@
     </div>
   </div>
 
+  <!-- Review Modal -->
+  <div id="reviewModal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 1000;">
+    <div style="background: var(--surface, #fff); border-radius: 12px; width: min(980px, 95vw); max-height: 90vh; overflow: auto; box-shadow: var(--shadow-xl, 0 12px 24px rgba(0,0,0,.2)); border: 1px solid var(--border, #e5e7eb);">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding: 1rem 1.25rem; border-bottom: 1px solid var(--border, #e5e7eb);">
+        <h3 style="margin: 0;">Review Parsed Release</h3>
+        <button id="closeReview" class="btn btn-danger btn-sm" type="button">Close</button>
+      </div>
+      <div style="padding: 1rem 1.25rem;">
+        <form id="reviewForm" onsubmit="return false;">
+          <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
+            <div class="form-group">
+              <label>Release #</label>
+              <input id="releaseNumber" type="text" readonly>
+            </div>
+            <div class="form-group">
+              <label>Release Date</label>
+              <input id="releaseDate" type="date">
+            </div>
+            <div class="form-group">
+              <label>Customer ID</label>
+              <input id="customerId" type="text">
+            </div>
+            <div class="form-group">
+              <label>Customer PO</label>
+              <input id="customerPO" type="text">
+            </div>
+            <div class="form-group">
+              <label>Ship Via</label>
+              <input id="shipVia" type="text">
+            </div>
+            <div class="form-group">
+              <label>FOB</label>
+              <input id="fob" type="text">
+            </div>
+            <div class="form-group">
+              <label>Carrier</label>
+              <input id="carrier" type="text">
+            </div>
+            <div class="form-group">
+              <label>Quantity (Net Tons)</label>
+              <input id="qtyTons" type="number" step="0.001">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Ship To</label>
+            <div style="display:grid; grid-template-columns: 1fr 2fr; gap: 0.75rem;">
+              <input id="shipToName" placeholder="Name" type="text">
+              <input id="shipToAddress" placeholder="Address" type="text">
+            </div>
+          </div>
+
+          <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
+            <div class="form-group">
+              <label>Lot</label>
+              <input id="materialLot" type="text">
+            </div>
+            <div class="form-group">
+              <label>Material Description</label>
+              <input id="materialDescription" type="text">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>Schedule</label>
+            <div id="scheduleList" class="table-container" style="background:transparent; border:none;">
+              <!-- rows injected -->
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label>BOL Requirements</label>
+            <textarea id="bolReqs" rows="3"></textarea>
+          </div>
+
+          <div style="display:flex; gap: 0.5rem; justify-content:flex-end; margin-top: 0.75rem;">
+            <button id="copyJson" class="btn btn-secondary btn-sm" type="button">Copy JSON</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <script src="/static/js/utils.js?v=2"></script>
   <script>
-    const out = document.getElementById('out');
-    document.getElementById('uploadForm').addEventListener('submit', async (e) => {
-      e.preventDefault();
-      const file = document.getElementById('file').files[0];
-      if (!file) return;
-      const fd = new FormData();
-      fd.append('file', file);
+const out = document.getElementById('out');
+const form = document.getElementById('uploadForm');
+const modal = document.getElementById('reviewModal');
+const closeBtn = document.getElementById('closeReview');
+const copyBtn = document.getElementById('copyJson');
 
-      const resp = await fetch('/api/releases/upload/', {
-        method: 'POST',
-        credentials: 'same-origin',
-        headers: { 'X-CSRFToken': Utils.getCSRFToken() },
-        body: fd
-      });
-      const txt = await resp.text();
-      try { out.textContent = JSON.stringify(JSON.parse(txt), null, 2); }
-      catch { out.textContent = txt; }
+function toISODate(d) {
+  if (!d) return '';
+  try {
+    // Handle already-ISO
+    if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+    const dt = new Date(d);
+    if (!isNaN(dt)) return dt.toISOString().slice(0,10);
+  } catch (_) {}
+  return '';
+}
+
+function fillReview(parsed) {
+  const p = parsed || {};
+  const ship = (p.shipToRaw || {});
+  document.getElementById('releaseNumber').value = p.releaseNumber || '';
+  document.getElementById('releaseDate').value = toISODate(p.releaseDate) || '';
+  document.getElementById('customerId').value = p.customerId || '';
+  document.getElementById('customerPO').value = p.customerPO || '';
+  document.getElementById('shipVia').value = p.shipVia || '';
+  document.getElementById('fob').value = p.fob || '';
+  document.getElementById('carrier').value = p.carrier || '';
+  document.getElementById('qtyTons').value = p.quantityNetTons ?? '';
+  document.getElementById('shipToName').value = ship.name || '';
+  document.getElementById('shipToAddress').value = ship.address || '';
+  document.getElementById('materialLot').value = (p.material && p.material.lot) || '';
+  document.getElementById('materialDescription').value = (p.material && p.material.description) || '';
+
+  const schedEl = document.getElementById('scheduleList');
+  const sched = Array.isArray(p.schedule) ? p.schedule : [];
+  if (sched.length === 0) {
+    schedEl.innerHTML = '<div style="color: var(--text-secondary); padding: 0.5rem 0;">No schedule found</div>';
+  } else {
+    let html = '<table><thead><tr><th>Date</th><th>Loads</th></tr></thead><tbody>';
+    for (const row of sched) {
+      html += `<tr><td>${(row.date || '').toString()}</td><td>${(row.load ?? '').toString()}</td></tr>`;
+    }
+    html += '</tbody></table>';
+    schedEl.innerHTML = html;
+  }
+
+  const bolReqs = Array.isArray(p.bolRequirements) ? p.bolRequirements.join('\n') : '';
+  document.getElementById('bolReqs').value = bolReqs;
+}
+
+function openReview(parsed) {
+  try { window._lastParsed = parsed; } catch (_) {}
+  fillReview(parsed && parsed.parsed ? parsed.parsed : parsed);
+  modal.style.display = 'flex';
+}
+function closeReview() { modal.style.display = 'none'; }
+closeBtn.addEventListener('click', closeReview);
+modal.addEventListener('click', (e) => { if (e.target === modal) closeReview(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeReview(); });
+copyBtn.addEventListener('click', () => {
+  const data = window._lastParsed && (window._lastParsed.parsed || window._lastParsed) || {};
+  const txt = JSON.stringify(data, null, 2);
+  navigator.clipboard.writeText(txt).then(() => {
+    if (window.Utils && Utils.showStatus) Utils.showStatus('Copied JSON to clipboard', 'success');
+  }).catch(() => {
+    if (window.Utils && Utils.showStatus) Utils.showStatus('Copy failed', 'error');
+  });
+});
+
+form.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const fileInput = document.getElementById('file');
+  const file = fileInput.files[0];
+  if (!file) {
+    if (window.Utils && Utils.showStatus) Utils.showStatus('Please choose a PDF to upload.', 'error');
+    return;
+  }
+  const submitBtn = e.submitter || form.querySelector('button[type="submit"]');
+  if (submitBtn) submitBtn.disabled = true;
+  out.textContent = 'Uploading and parsing…';
+  try {
+    const fd = new FormData();
+    fd.append('file', file);
+    const headers = {};
+    try {
+      const csrf = (window.Utils && Utils.getCSRFToken) ? Utils.getCSRFToken() : null;
+      if (csrf) headers['X-CSRFToken'] = csrf;
+    } catch (_) {}
+    const resp = await fetch('/api/releases/upload/', {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers,
+      body: fd
     });
+    if (resp.status === 401 || resp.status === 403) {
+      if (window.Utils && Utils.showStatus) Utils.showStatus('Session expired. Redirecting to login…', 'error');
+      window.location.href = '/login/?next=' + encodeURIComponent(window.location.pathname);
+      return;
+    }
+    const contentType = resp.headers.get('content-type') || '';
+    const txt = await resp.text();
+    let parsed = null;
+    if (contentType.includes('application/json')) {
+      try { parsed = JSON.parse(txt); } catch (_) {}
+    }
+    out.textContent = parsed ? JSON.stringify(parsed, null, 2) : txt;
+    if (!resp.ok) {
+      const msg = (parsed && (parsed.error || parsed.detail)) ? `${parsed.error || parsed.detail}` : `HTTP ${resp.status}`;
+      if (window.Utils && Utils.showStatus) Utils.showStatus(`Parse failed: ${msg}`, 'error', 8000);
+    } else {
+      if (window.Utils && Utils.showStatus) Utils.showStatus('Parse complete.', 'success');
+      if (parsed && parsed.ok && parsed.parsed) { openReview(parsed); }
+    }
+    try { out.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (_) {}
+  } catch (err) {
+    console.error(err);
+    if (window.Utils && Utils.showStatus) Utils.showStatus('Upload failed.', 'error');
+    out.textContent = String(err);
+  } finally {
+    if (submitBtn) submitBtn.disabled = false;
+  }
+});
   </script>
 </body>
 </html>
