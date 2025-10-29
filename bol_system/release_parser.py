@@ -170,6 +170,30 @@ def parse_release_text(text: str) -> Dict[str, Any]:
         if 'ship_to_name' in locals():
             if not ship_to.get('name') or 'Release Date' in ship_to.get('name', ''):
                 ship_to['name'] = ship_to_name
+            # Derive a clean address from the lines following the name
+            if ship_to.get('name') and (not ship_to.get('address') or re.search(r"Release\s*Date|^\s*\d{2}/\d{2}/\d{4}|Release\s*#", ship_to.get('address',''), re.I)):
+                name_idx = t.lower().find(ship_to['name'].lower())
+                if name_idx != -1:
+                    tail = t[name_idx: name_idx + 600]
+                    # Split into lines, skip first (the name)
+                    lines = [ln.strip() for ln in tail.splitlines()[1:] if ln.strip()]
+                    cleaned = []
+                    for ln in lines:
+                        if re.search(r"^(Release\s*#|Shipper:|Please\s+deliver|Charlotte,\s*NC|^\d{2}/\d{2}/\d{4})", ln, re.I):
+                            break
+                        # Trim trailing glued uppercase tokens after ZIP
+                        ln = re.sub(r"(\b\d{5}\b)[A-Z].*$", r"\1", ln)
+                        cleaned.append(ln)
+                        if len(cleaned) >= 2:
+                            break
+                    if cleaned:
+                        ship_to['address'] = ", ".join(cleaned)
+            # Customer ID: look after ZIP in the Ship-To block
+            if not customer_id and ship_to.get('name'):
+                window = t[name_idx: name_idx + 300] if name_idx != -1 else t
+                m = re.search(r"\b\d{5}\s*([A-Z][A-Z .,&'\-]{3,})\b", window)
+                if m:
+                    customer_id = m.group(1).strip()
     except Exception:
         pass
 
