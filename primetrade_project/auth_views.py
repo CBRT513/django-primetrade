@@ -308,8 +308,17 @@ def sso_callback(request):
 
     if not primetrade_role:
         logger.warning(f"User {email} does not have PrimeTrade role. Available apps: {list(application_roles.keys())}")
-        logger.error(f"[FLOW DEBUG 7.5] User lacks PrimeTrade role - returning 403")
-        return HttpResponseForbidden("You don't have access to PrimeTrade. Contact admin.")
+        logger.error(f"[FLOW DEBUG 7.5] User lacks PrimeTrade role - evaluating bypass")
+        # Temporary controlled bypass for admin/testing during rollout
+        try:
+            bypass_list = getattr(settings, 'ADMIN_BYPASS_EMAILS', [])
+        except Exception:
+            bypass_list = []
+        if email and bypass_list and email.lower() in [x.lower() for x in bypass_list]:
+            logger.error(f"[FLOW DEBUG 7.5.1] BYPASS engaged for {email} - proceeding as admin")
+            primetrade_role = {"role": "admin", "permissions": ["full_access"]}
+        else:
+            return HttpResponseForbidden("You don't have access to PrimeTrade. Contact admin.")
 
     # Extract role details for session storage
     role_name = primetrade_role.get("role")

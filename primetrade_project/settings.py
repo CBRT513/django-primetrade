@@ -16,6 +16,9 @@ SSO_CLIENT_SECRET = config('SSO_CLIENT_SECRET', default=None)
 SSO_REDIRECT_URI = config('SSO_REDIRECT_URI', default='http://localhost:8001/auth/callback/')
 SSO_SCOPES = config('SSO_SCOPES', default='openid email profile roles')
 
+# Temporary admin bypass for authorization during rollout (comma-separated emails)
+ADMIN_BYPASS_EMAILS = [e.strip() for e in config('ADMIN_BYPASS_EMAILS', default='').split(',') if e.strip()]
+
 # Validate SSO credentials are configured
 if not SSO_CLIENT_ID or not SSO_CLIENT_SECRET:
     import warnings
