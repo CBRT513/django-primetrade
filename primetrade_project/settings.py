@@ -117,7 +117,25 @@ SESSION_COOKIE_HTTPONLY = True
 SECURE_BROWSER_XSS_FILTER = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 X_FRAME_OPTIONS = 'DENY'
-CSRF_TRUSTED_ORIGINS = ['http://localhost:8000', 'http://127.0.0.1:8000']
+
+# Build CSRF_TRUSTED_ORIGINS dynamically from ALLOWED_HOSTS and SSO_BASE_URL
+from urllib.parse import urlsplit
+
+trusted_origins = set()
+for host in ALLOWED_HOSTS:
+    host = host.strip()
+    if host:
+        trusted_origins.add(f"https://{host}")
+        if DEBUG:
+            trusted_origins.add(f"http://{host}")
+# Include SSO base origin
+try:
+    sso_parts = urlsplit(SSO_BASE_URL)
+    if sso_parts.scheme and sso_parts.netloc:
+        trusted_origins.add(f"{sso_parts.scheme}://{sso_parts.netloc}")
+except Exception:
+    pass
+CSRF_TRUSTED_ORIGINS = sorted(trusted_origins)
 
 # Session Configuration for OAuth Compatibility
 SESSION_ENGINE = 'django.contrib.sessions.backends.db'  # Use database sessions
@@ -203,10 +221,4 @@ if config('DATABASE_URL', default=None):
         conn_health_checks=True,
     )
 
-# Production CSRF Origins
-if not DEBUG:
-    CSRF_TRUSTED_ORIGINS = [
-        'https://prt.barge2rail.com',
-        'https://primetrade-u2a6.onrender.com',
-        'https://sso.barge2rail.com'
-    ]
+# Production CSRF Origins are built dynamically above from ALLOWED_HOSTS and SSO_BASE_URL
