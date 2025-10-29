@@ -6,6 +6,7 @@ from django.db import models, connection
 from .models import Product, Customer, Carrier, Truck, BOL
 from .serializers import ProductSerializer, CustomerSerializer, CarrierSerializer, TruckSerializer
 from .pdf_generator import generate_bol_pdf
+from .release_parser import parse_release_pdf
 import logging
 import os
 import base64
@@ -437,3 +438,21 @@ def bol_detail(request, bol_id):
             {'error': 'An unexpected error occurred'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+# Release upload and parse (Phase 1: parse only)
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def upload_release(request):
+    """
+    Accept a release PDF, parse header/material/schedule fields, and return JSON.
+    Does NOT write to DB yet (Phase 1). Stores nothing server-side.
+    """
+    try:
+        f = request.FILES.get('file')
+        if not f:
+            return Response({'error': 'No file provided (form field "file").'}, status=status.HTTP_400_BAD_REQUEST)
+        data = parse_release_pdf(f)
+        return Response({'ok': True, 'parsed': data})
+    except Exception as e:
+        logger.error(f"Error parsing release PDF: {e}", exc_info=True)
+        return Response({'error': 'Failed to parse PDF', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)

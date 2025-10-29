@@ -14,3 +14,4 @@ cryptography>=41.0.0
 gunicorn==21.2.0
 dj-database-url==2.1.0
 psycopg2-binary==2.9.9
+pypdf==4.3.1
