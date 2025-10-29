@@ -382,6 +382,7 @@ def _parse_date_any(s: str):
     return None
 
 @api_view(['POST'])
+@authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
 def approve_release(request):
     try:
