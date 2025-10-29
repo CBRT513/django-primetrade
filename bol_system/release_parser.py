@@ -123,7 +123,7 @@ def parse_release_text(text: str) -> Dict[str, Any]:
 
     # Material row
     lot = (
-        _find(r"\bCRT\s+([A-Za-z0-9-]+)\s+NT\b", t)
+        _find(r"\b(CRT\s+[A-Za-z0-9-]+)\s+NT\b", t)
         or _find(r"\b([A-Z]{3}\s*\S+)\s+NODULAR PIG IRON", t)
         or _find(r"Lot\s*Number\s*\n([\S ]+)", t)
     )
@@ -181,8 +181,8 @@ def parse_release_text(text: str) -> Dict[str, Any]:
                     for ln in lines:
                         if re.search(r"^(Release\s*#|Shipper:|Please\s+deliver|Charlotte,\s*NC|^\d{2}/\d{2}/\d{4})", ln, re.I):
                             break
-                        # Trim trailing glued uppercase tokens after ZIP
-                        ln = re.sub(r"(\b\d{5}\b)[A-Z].*$", r"\1", ln)
+                        # Trim trailing uppercase customer token after ZIP (allow spaces)
+                        ln = re.sub(r"(\b\d{5}\b)\s*[A-Z].*$", r"\1", ln)
                         cleaned.append(ln)
                         if len(cleaned) >= 2:
                             break
@@ -191,7 +191,7 @@ def parse_release_text(text: str) -> Dict[str, Any]:
             # Customer ID: look after ZIP in the Ship-To block
             if not customer_id and ship_to.get('name'):
                 window = t[name_idx: name_idx + 300] if name_idx != -1 else t
-                m = re.search(r"\b\d{5}\s*([A-Z][A-Z .,&'\-]{3,})\b", window)
+                m = re.search(r"\b\d{5}\s*([A-Z][A-Z .,&'\-]{2,})", window)
                 if m:
                     customer_id = m.group(1).strip()
     except Exception:
