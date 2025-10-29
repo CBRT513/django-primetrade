@@ -83,9 +83,14 @@
 
           <div class="form-group">
             <label>Ship To</label>
-            <div style="display:grid; grid-template-columns: 1fr 2fr; gap: 0.75rem;">
+            <div style="display:grid; grid-template-columns: 1fr 2fr; gap: 0.75rem; margin-bottom: 0.5rem;">
               <input id="shipToName" placeholder="Name" type="text">
-              <input id="shipToAddress" placeholder="Address" type="text">
+              <input id="shipToStreet" placeholder="Street" type="text">
+            </div>
+            <div style="display:grid; grid-template-columns: 1.5fr 0.5fr 0.5fr; gap: 0.75rem;">
+              <input id="shipToCity" placeholder="City" type="text">
+              <input id="shipToState" placeholder="State" maxlength="2" type="text">
+              <input id="shipToZip" placeholder="Zip (5)" inputmode="numeric" pattern="\d{5}" type="text">
             </div>
           </div>
 
@@ -139,6 +144,34 @@ function toISODate(d) {
   return '';
 }
 
+function parseAddress(raw) {
+  let s = (raw || '').trim();
+  // Strip any glued customer token after ZIP
+  s = s.replace(/(\b\d{5}\b)\s*[A-Z].*$/i, '$1');
+  const parts = s.split(',').map(t => t.trim()).filter(Boolean);
+  let street='', city='', state='', zip='';
+  if (parts.length >= 3) {
+    [street, city] = [parts[0], parts[1]];
+    const rest = parts.slice(2).join(', ');
+    const m = rest.match(/([A-Z]{2})\s*(\d{5})/i);
+    if (m) { state = m[1].toUpperCase(); zip = m[2]; }
+    else {
+      const m2 = rest.match(/\b([A-Z]{2})\b/); if (m2) state = m2[1].toUpperCase();
+      const m3 = rest.match(/(\d{5})/); if (m3) zip = m3[1];
+    }
+  } else if (parts.length === 2) {
+    street = parts[0];
+    const m = parts[1].match(/^(.+?)\s+([A-Z]{2})\s*(\d{5})/i);
+    if (m) { city = m[1].trim(); state = m[2].toUpperCase(); zip = m[3]; }
+    else { city = parts[1]; }
+  } else {
+    street = s;
+  }
+  zip = (zip || '').replace(/\D/g, '').slice(0,5);
+  if (zip.length !== 5) zip = '';
+  return {street, city, state, zip};
+}
+
 function toUSDate(d) {
   if (!d) return '';
   if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
@@ -164,7 +197,11 @@ function fillReview(parsed) {
   document.getElementById('carrier').value = p.carrier || '';
   document.getElementById('qtyTons').value = p.quantityNetTons ?? '';
   document.getElementById('shipToName').value = ship.name || '';
-  document.getElementById('shipToAddress').value = ship.address || '';
+  const _addr = parseAddress(ship.address || '');
+  document.getElementById('shipToStreet').value = _addr.street || '';
+  document.getElementById('shipToCity').value = _addr.city || '';
+  document.getElementById('shipToState').value = _addr.state || '';
+  document.getElementById('shipToZip').value = _addr.zip || '';
   document.getElementById('materialLot').value = (p.material && p.material.lot) || '';
   document.getElementById('materialDescription').value = (p.material && p.material.description) || '';
 
@@ -200,6 +237,16 @@ modal.addEventListener('click', (e) => { if (e.target === modal) closeReview(); 
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeReview(); });
 copyBtn.addEventListener('click', () => {
   const data = window._lastParsed && (window._lastParsed.parsed || window._lastParsed) || {};
+  try {
+    const plus = { shipTo: {
+      name: document.getElementById('shipToName')?.value || '',
+      street: document.getElementById('shipToStreet')?.value || '',
+      city: document.getElementById('shipToCity')?.value || '',
+      state: document.getElementById('shipToState')?.value || '',
+      zip: document.getElementById('shipToZip')?.value || ''
+    }};
+    data._review = plus;
+  } catch (_) {}
   const txt = JSON.stringify(data, null, 2);
   navigator.clipboard.writeText(txt).then(() => {
     if (window.Utils && Utils.showStatus) Utils.showStatus('Copied JSON to clipboard', 'success');
@@ -212,6 +259,8 @@ form.addEventListener('submit', async (e) => {
   e.preventDefault();
   const fileInput = document.getElementById('file');
   const file = fileInput.files[0];
+  const zipEl = document.getElementById('shipToZip');
+  if (zipEl) { zipEl.value = (zipEl.value || '').replace(/\D/g, '').slice(0,5); }
   if (!file) {
     if (window.Utils && Utils.showStatus) Utils.showStatus('Please choose a PDF to upload.', 'error');
     return;
