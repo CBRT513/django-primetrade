@@ -264,7 +264,25 @@ def sso_callback(request):
         logger.error(f"[FLOW DEBUG 6.3] JWT decode FAILED: {str(e)}")
         return HttpResponseForbidden(f"Invalid JWT token: {str(e)}")
 
-    # Extract user information from JWT
+    # If application_roles missing, try OIDC userinfo endpoint (fallback)
+    if not decoded.get('application_roles') and access_token:
+        try:
+            ui_resp = requests.get(
+                f"{settings.SSO_BASE_URL}/o/userinfo/",
+                headers={"Authorization": f"Bearer {access_token}"},
+                timeout=5,
+            )
+            if ui_resp.ok:
+                userinfo = ui_resp.json()
+                # Merge userinfo into decoded claims
+                decoded.update(userinfo)
+                logger.error(f"[FLOW DEBUG 5.9] userinfo merged. Keys now: {list(decoded.keys())}")
+            else:
+                logger.error(f"[FLOW DEBUG 5.9] userinfo fetch failed: {ui_resp.status_code} {ui_resp.text[:200]}")
+        except Exception as e:
+            logger.error(f"[FLOW DEBUG 5.9] userinfo request error: {e}")
+
+    # Extract user information from claims
     email = decoded.get('email')
     user_roles = decoded.get('roles', {})
 
@@ -284,6 +302,9 @@ def sso_callback(request):
     # Check for primetrade role in application_roles claim
     application_roles = decoded.get("application_roles", {})
     primetrade_role = application_roles.get("primetrade")
+
+    # Log full application_roles for diagnostics
+    logger.error(f"[FLOW DEBUG 7.4] application_roles: {application_roles}")
 
     if not primetrade_role:
         logger.warning(f"User {email} does not have PrimeTrade role. Available apps: {list(application_roles.keys())}")
