@@ -14,6 +14,9 @@ AI_SCHEMA = (
     '"schedule": [{"date": "MM/DD/YYYY", "load": number}] }'
 )
 
+GROQ_DEFAULT_MODEL = os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant")
+GROQ_ENDPOINT = os.environ.get("GROQ_API_BASE", "https://api.groq.com/openai/v1/chat/completions")
+
 
 def _strip_code_fence(s: str) -> str:
     s = s.strip()
@@ -60,5 +63,50 @@ def ai_parse_release_text(
         body = resp.json()
         raw = _strip_code_fence(str(body.get("response", "")).strip())
         return json.loads(raw)
+    except Exception:
+        return None
+
+
+def remote_ai_parse_release_text(
+    text: str,
+    api_key: Optional[str] = None,
+    model: Optional[str] = None,
+    endpoint: Optional[str] = None,
+    timeout: float = 20.0,
+) -> Optional[Dict[str, Any]]:
+    """Use a managed API (Groq OpenAI-compatible) to return strict JSON."""
+    api_key = api_key or os.environ.get("GROQ_API_KEY")
+    if not api_key:
+        return None
+    model = model or GROQ_DEFAULT_MODEL
+    endpoint = endpoint or GROQ_ENDPOINT
+
+    system = (
+        "You are a precise information extractor. Return ONLY valid JSON for the schema: "
+        f"{AI_SCHEMA}. Use null/[] when unknown. No markdown, no comments."
+    )
+    user = f"Extract fields from this release order text between <<< and >>>.\n<<<\n{text}\n>>>"
+    try:
+        resp = requests.post(
+            endpoint,
+            headers={
+                "Authorization": f"Bearer {api_key}",
+                "Content-Type": "application/json",
+            },
+            json={
+                "model": model,
+                "temperature": 0,
+                "response_format": {"type": "json_object"},
+                "messages": [
+                    {"role": "system", "content": system},
+                    {"role": "user", "content": user},
+                ],
+            },
+            timeout=timeout,
+        )
+        resp.raise_for_status()
+        data = resp.json()
+        content = data["choices"][0]["message"]["content"].strip()
+        return json.loads(content)
     except Exception:
         return None

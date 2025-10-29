@@ -2,7 +2,7 @@ import re
 from typing import Any, Dict, List
 
 from pypdf import PdfReader
-from .ai_parser import ai_parse_release_text
+from .ai_parser import ai_parse_release_text, remote_ai_parse_release_text
 
 
 DATE_SLASH = r"\d{2}/\d{2}/\d{4}"
@@ -227,17 +227,16 @@ def parse_release_text(text: str) -> Dict[str, Any]:
     return result
 
 
-def parse_release_pdf(file_obj, use_ai_fallback: bool = False) -> Dict[str, Any]:
+def parse_release_pdf(file_obj, ai_mode: str | None = None) -> Dict[str, Any]:
     """Extract text from a PDF file-like and parse it.
 
-    If use_ai_fallback is True and key fields are missing, query a local Ollama
-    model (if reachable) and merge missing values.
+    ai_mode: 'local' for Ollama on localhost, 'cloud' for managed API (Groq), or None.
     """
     reader = PdfReader(file_obj)
     text = "\n".join(page.extract_text() or "" for page in reader.pages)
     parsed = parse_release_text(text)
 
-    if use_ai_fallback:
+    if ai_mode in ("local", "cloud"):
         def _is_bad_value(s: Any) -> bool:
             if s is None:
                 return True
@@ -257,7 +256,7 @@ def parse_release_pdf(file_obj, use_ai_fallback: bool = False) -> Dict[str, Any]
         ) or _addr_contaminated((parsed.get("shipToRaw") or {}).get("address", ""))
 
         if need:
-            ai = ai_parse_release_text(text)
+            ai = ai_parse_release_text(text) if ai_mode == "local" else remote_ai_parse_release_text(text)
             if isinstance(ai, dict):
                 if _is_bad_value(parsed.get("releaseDate")) and ai.get("releaseDate"):
                     parsed["releaseDate"] = ai.get("releaseDate")

@@ -462,9 +462,15 @@ def upload_release(request):
         if not f:
             return Response({'error': 'No file provided (form field "file").'}, status=status.HTTP_400_BAD_REQUEST)
 
-        use_ai = str(request.query_params.get('ai', '0')).lower() in ('1', 'true', 'yes')
-        data = parse_release_pdf(f, use_ai_fallback=use_ai)
-        return Response({'ok': True, 'parsed': data, 'ai': bool(use_ai)})
+        ai_param = str(request.query_params.get('ai', '0')).lower()
+        if ai_param in ('1', 'true', 'yes', 'local'):
+            ai_mode = 'local'
+        elif ai_param in ('cloud', 'remote', 'groq'):
+            ai_mode = 'cloud'
+        else:
+            ai_mode = None
+        data = parse_release_pdf(f, ai_mode=ai_mode)
+        return Response({'ok': True, 'parsed': data, 'ai': ai_mode})
     except Exception as e:
         logger.error(f"Error parsing release PDF: {e}", exc_info=True)
         return Response({'error': 'Failed to parse PDF', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
