@@ -1,7 +1,8 @@
 from rest_framework import generics, status
-from rest_framework.decorators import api_view, permission_classes
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
+from rest_framework.authentication import SessionAuthentication
 from django.db import models, connection
 from .models import Product, Customer, Carrier, Truck, BOL
 from .serializers import ProductSerializer, CustomerSerializer, CarrierSerializer, TruckSerializer
@@ -439,8 +440,14 @@ def bol_detail(request, bol_id):
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
 
+# CSRF-exempt Session auth for file upload parse endpoint only
+class CsrfExemptSessionAuthentication(SessionAuthentication):
+    def enforce_csrf(self, request):
+        return  # Disable CSRF check; session must still be authenticated
+
 # Release upload and parse (Phase 1: parse only)
 @api_view(['POST'])
+@authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
 def upload_release(request):
     """

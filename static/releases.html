@@ -209,9 +209,13 @@ form.addEventListener('submit', async (e) => {
       headers,
       body: fd
     });
-    if (resp.status === 401 || resp.status === 403) {
+    if (resp.status === 401) {
       if (window.Utils && Utils.showStatus) Utils.showStatus('Session expired. Redirecting to login…', 'error');
       window.location.href = '/login/?next=' + encodeURIComponent(window.location.pathname);
+      return;
+    }
+    if (resp.status === 403) {
+      if (window.Utils && Utils.showStatus) Utils.showStatus('Action blocked (CSRF). Refresh this page and try again.', 'error', 8000);
       return;
     }
     const contentType = resp.headers.get('content-type') || '';
