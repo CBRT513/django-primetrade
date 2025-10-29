@@ -16,6 +16,10 @@ AI_SCHEMA = (
 
 GROQ_DEFAULT_MODEL = os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant")
 GROQ_ENDPOINT = os.environ.get("GROQ_API_BASE", "https://api.groq.com/openai/v1/chat/completions")
+OPENROUTER_DEFAULT_MODEL = os.environ.get("OPENROUTER_MODEL", "meta-llama/llama-3.1-8b-instruct")
+OPENROUTER_ENDPOINT = os.environ.get("OPENROUTER_API_BASE", "https://openrouter.ai/api/v1/chat/completions")
+TOGETHER_DEFAULT_MODEL = os.environ.get("TOGETHER_MODEL", "meta-llama/llama-3.1-8b-instruct")
+TOGETHER_ENDPOINT = os.environ.get("TOGETHER_API_BASE", "https://api.together.xyz/v1/chat/completions")
 
 
 def _strip_code_fence(s: str) -> str:
@@ -74,12 +78,35 @@ def remote_ai_parse_release_text(
     endpoint: Optional[str] = None,
     timeout: float = 20.0,
 ) -> Optional[Dict[str, Any]]:
-    """Use a managed API (Groq OpenAI-compatible) to return strict JSON."""
-    api_key = api_key or os.environ.get("GROQ_API_KEY")
-    if not api_key:
+    """Use a managed API (Groq/OpenRouter/Together) to return strict JSON."""
+    # Provider autodetect order: GROQ > OPENROUTER > TOGETHER
+    provider = None
+    if os.environ.get("GROQ_API_KEY"):
+        provider = "groq"
+        api_key = api_key or os.environ.get("GROQ_API_KEY")
+        model = model or GROQ_DEFAULT_MODEL
+        endpoint = endpoint or GROQ_ENDPOINT
+        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    elif os.environ.get("OPENROUTER_API_KEY"):
+        provider = "openrouter"
+        api_key = api_key or os.environ.get("OPENROUTER_API_KEY")
+        model = model or OPENROUTER_DEFAULT_MODEL
+        endpoint = endpoint or OPENROUTER_ENDPOINT
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+            # Optional but recommended; safe defaults
+            "HTTP-Referer": os.environ.get("OPENROUTER_REFERER", "https://primetrade.local"),
+            "X-Title": os.environ.get("OPENROUTER_TITLE", "PrimeTrade Release Parser"),
+        }
+    elif os.environ.get("TOGETHER_API_KEY"):
+        provider = "together"
+        api_key = api_key or os.environ.get("TOGETHER_API_KEY")
+        model = model or TOGETHER_DEFAULT_MODEL
+        endpoint = endpoint or TOGETHER_ENDPOINT
+        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
+    else:
         return None
-    model = model or GROQ_DEFAULT_MODEL
-    endpoint = endpoint or GROQ_ENDPOINT
 
     system = (
         "You are a precise information extractor. Return ONLY valid JSON for the schema: "
@@ -87,23 +114,16 @@ def remote_ai_parse_release_text(
     )
     user = f"Extract fields from this release order text between <<< and >>>.\n<<<\n{text}\n>>>"
     try:
-        resp = requests.post(
-            endpoint,
-            headers={
-                "Authorization": f"Bearer {api_key}",
-                "Content-Type": "application/json",
-            },
-            json={
-                "model": model,
-                "temperature": 0,
-                "response_format": {"type": "json_object"},
-                "messages": [
-                    {"role": "system", "content": system},
-                    {"role": "user", "content": user},
-                ],
-            },
-            timeout=timeout,
-        )
+        payload = {
+            "model": model,
+            "temperature": 0,
+            "response_format": {"type": "json_object"},
+            "messages": [
+                {"role": "system", "content": system},
+                {"role": "user", "content": user},
+            ],
+        }
+        resp = requests.post(endpoint, headers=headers, json=payload, timeout=timeout)
         resp.raise_for_status()
         data = resp.json()
         content = data["choices"][0]["message"]["content"].strip()
