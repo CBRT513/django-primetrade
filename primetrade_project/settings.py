@@ -14,7 +14,7 @@ SSO_BASE_URL = config('SSO_BASE_URL', default='https://sso.barge2rail.com')
 SSO_CLIENT_ID = config('SSO_CLIENT_ID', default=None)
 SSO_CLIENT_SECRET = config('SSO_CLIENT_SECRET', default=None)
 SSO_REDIRECT_URI = config('SSO_REDIRECT_URI', default='http://localhost:8001/auth/callback/')
-SSO_SCOPES = config('SSO_SCOPES', default='openid email profile')
+SSO_SCOPES = config('SSO_SCOPES', default='openid email profile roles')
 
 # Validate SSO credentials are configured
 if not SSO_CLIENT_ID or not SSO_CLIENT_SECRET:

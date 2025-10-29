@@ -131,11 +131,16 @@ def sso_login(request):
     logger.info(f"Initiating SSO login with state: {state[:20]}...")
 
     # Build OAuth authorization URL
+    # Ensure 'roles' scope is included for application role claims
+    scopes = set((settings.SSO_SCOPES or '').split())
+    scopes.add('roles')
+    scope_str = ' '.join(sorted(scopes))
+
     params = {
         'client_id': settings.SSO_CLIENT_ID,
         'redirect_uri': settings.SSO_REDIRECT_URI,
         'response_type': 'code',
-        'scope': settings.SSO_SCOPES,
+        'scope': scope_str,
         'state': state,
     }
 
