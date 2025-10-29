@@ -57,8 +57,52 @@ def parse_release_text(text: str) -> Dict[str, Any]:
     # Customer PO variants: PO, P.O., with/without '#'
     customer_po = _find(r"Customer\s*P\.?O\.?\s*(?:#\s*)?[:\-]?\s*(\S+)", t)
 
-    # Ship To block: take the first block after 'Ship To:'
-    ship_to_block = _find(r"Ship To:\s*([\s\S]*?)\n\s*Release Date", t)
+    # Fallback: header row with values on next line
+    hdr = re.search(r"Release\s*Date\s+Ship\s*Via\s+FOB\s+Customer\s*P\.?O\.?\s*#\s*\n([^\n]+)", t, re.I)
+    if hdr:
+        row = hdr.group(1).strip()
+        if not release_date:
+            m = re.search(DATE_SLASH, row)
+            if m:
+                release_date = m.group(0)
+        # Last digit sequence is likely the PO number
+        if not customer_po:
+            po_m = re.search(r"(\d{4,})(?!.*\d)", row)
+            if po_m:
+                customer_po = po_m.group(1)
+        # Derive Ship Via and FOB from the row
+        line2 = row
+        dm = re.search(DATE_SLASH, line2)
+        if dm:
+            line2 = line2[dm.end():].strip()
+        fob_m = re.search(r"\b(Origin|Destination)\b", line2, re.I)
+        if fob_m and not fob:
+            fob = fob_m.group(1).title()
+        end_idx = len(line2)
+        po_m2 = re.search(r"(\d{4,})(?!.*\d)", line2)
+        if po_m2:
+            end_idx = po_m2.start()
+        pre = line2[:end_idx].strip()
+        if fob_m:
+            pre = re.split(r"\b(?:Origin|Destination)\b", pre, flags=re.I)[0].strip()
+        if pre and not ship_via:
+            ship_via = pre
+
+    # Customer ID fallback near label
+    if not customer_id:
+        cid_inline = re.search(r"Customer\s*ID\s*:\s*([^\n\r]+)", t, re.I)
+        if cid_inline and cid_inline.group(1).strip():
+            customer_id = cid_inline.group(1).strip()
+        else:
+            cid_block = re.search(r"Customer\s*ID\s*:[\s\S]{0,200}", t, re.I)
+            if cid_block:
+                seg = cid_block.group(0)
+                caps = re.search(r"([A-Z][A-Z .,&'\-]{2,})", seg)
+                if caps:
+                    customer_id = caps.group(1).strip()
+
+    # Ship To block: capture until the next major header
+    ship_to_block = _find(r"Ship To:\s*([\s\S]*?)(?:\n\s*(?:Release\s*#|Release\s*Date|Approx\.|Please\s+deliver|Shipper:))", t)
     ship_to = {}
     if ship_to_block:
         # First line is name; subsequent lines compose address
@@ -69,9 +113,17 @@ def parse_release_text(text: str) -> Dict[str, Any]:
             ship_to["address"] = ", ".join(lines[1:])
 
     # Material row
-    lot = _find(r"\b([A-Z]{3}\s*\S+)\s+NODULAR PIG IRON", t) or _find(r"Lot\s*Number\s*\n([\S ]+)", t)
+    lot = (
+        _find(r"\bCRT\s+([A-Za-z0-9-]+)\s+NT\b", t)
+        or _find(r"\b([A-Z]{3}\s*\S+)\s+NODULAR PIG IRON", t)
+        or _find(r"Lot\s*Number\s*\n([\S ]+)", t)
+    )
     desc = "NODULAR PIG IRON" if re.search(r"NODULAR\s+PIG\s+IRON", t, re.I) else None
-    qty = _find(r"Approx\.?\s*Quantity[\s\S]*?(\d+\.\d+)\s*NT", t)
+    qty = (
+        _find(r"Approx\.?\s*Quantity[\s\S]{0,200}?(\d+\.\d{3})", t)
+        or _find(r"(?mi)^\s*(\d+\.\d{3})\s+CRT\b", t)
+        or _find(r"(\d+\.\d{3})[\s\S]{0,40}?\bNT\b", t)
+    )
 
     # Analysis primary line
     c = _find(r"\bC\s*(\d+\.\d+)", t)
