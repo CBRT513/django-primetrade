@@ -32,9 +32,16 @@ def index_view(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 def current_user(request):
-    """Return current authenticated user information"""
+    """Return current authenticated user information.
+
+    Includes SSO role information stored in session when available.
+    """
+    primetrade_role = request.session.get('primetrade_role', {})
     return Response({
         'username': request.user.username,
         'email': request.user.email,
-        'is_staff': request.user.is_staff
+        'is_staff': request.user.is_staff,
+        'role': primetrade_role.get('role'),
+        'permissions': primetrade_role.get('permissions', []),
+        'is_authenticated': True
     })

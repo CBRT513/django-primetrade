@@ -102,7 +102,7 @@ REST_FRAMEWORK = {
 }
 
 # Authentication URLs
-LOGIN_URL = '/login/'
+LOGIN_URL = '/auth/login/'  # Direct to SSO login to prevent redirect loop
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/login/'
 

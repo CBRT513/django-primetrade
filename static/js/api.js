@@ -1,6 +1,6 @@
 /**
- * API Module
- * Handles all API communications with authentication and error handling
+ * API Module (Session-based)
+ * Uses Django sessions and CSRF tokens; no Bearer tokens.
  */
 
 const API = (function() {
@@ -8,18 +8,21 @@ const API = (function() {
   
   // Base API request function
   async function request(url, options = {}) {
-    const token = Auth.getToken();
-    
-    if (!token && options.requireAuth !== false) {
-      throw new Error('Not authenticated');
-    }
-    
     const defaultOptions = {
+      credentials: 'same-origin',
       headers: {
         'Content-Type': 'application/json',
-        ...(token && { 'Authorization': 'Bearer ' + token })
       }
     };
+
+    // Add CSRF token for non-GET requests
+    const method = (options.method || 'GET').toUpperCase();
+    if (method !== 'GET') {
+      const csrf = (window.Utils && Utils.getCSRFToken) ? Utils.getCSRFToken() : null;
+      if (csrf) {
+        defaultOptions.headers['X-CSRFToken'] = csrf;
+      }
+    }
     
     const finalOptions = {
       ...defaultOptions,
@@ -32,29 +35,20 @@ const API = (function() {
     
     const response = await fetch(url, finalOptions);
     
-    // Handle authentication errors
-    if (response.status === 401) {
-      Auth.handleAuthError();
+    // Handle authentication/permission errors
+    if (response.status === 401 || response.status === 403) {
+      if (typeof Auth !== 'undefined' && Auth.handleAuthError) Auth.handleAuthError();
       return;
     }
     
-    // Handle permission errors
-    if (response.status === 403) {
-      const error = await response.text();
-      throw new Error('Access denied: ' + (error || 'You do not have permission.'));
-    }
-    
-    // Handle other errors
     if (!response.ok) {
       const error = await response.text();
       throw new Error(error || `Request failed: ${response.status}`);
     }
     
-    // Parse JSON response
     try {
       return await response.json();
     } catch (e) {
-      // Return text if not JSON
       return response.text();
     }
   }
@@ -78,57 +72,9 @@ const API = (function() {
     return request(url, { ...options, method: 'DELETE' });
   }
   
-  // Legacy functions for compatibility
-  async function getJSON(url) {
-    return get(url);
-  }
+  // Legacy convenience wrappers
+  async function getJSON(url) { return get(url); }
+  async function postJSON(url, body) { return post(url, body); }
   
-  async function postJSON(url, body) {
-    return post(url, body);
-  }
-  
-  // API wrapper with authentication
-  async function apiRequest(url, options = {}) {
-    const token = Auth.getToken();
-    
-    if (!token) {
-      throw new Error('Not authenticated');
-    }
-    
-    const defaultOptions = {
-      headers: {
-        'Authorization': 'Bearer ' + token,
-        'Content-Type': 'application/json'
-      }
-    };
-    
-    const response = await fetch(url, { ...defaultOptions, ...options });
-    
-    if (response.status === 401) {
-      Auth.handleAuthError();
-      return;
-    }
-    
-    if (response.status === 403) {
-      throw new Error('Access denied. Admin role required.');
-    }
-    
-    if (!response.ok) {
-      const error = await response.text();
-      throw new Error(error || 'Request failed');
-    }
-    
-    return response.json();
-  }
-  
-  // Public API
-  return {
-    request,
-    get,
-    post,
-    del,
-    getJSON,
-    postJSON,
-    apiRequest
-  };
+  return { request, get, post, del, getJSON, postJSON };
 })();
