@@ -113,7 +113,10 @@ def parse_release_text(text: str) -> Dict[str, Any]:
         if lines:
             ship_to["name"] = lines[0]
         if len(lines) > 1:
-            # Clean trailing CUSTOMER ID tokens accidentally glued to the city/ZIP line
+            addr = ", ".join(lines[1:])
+            # Remove customer token appended after ZIP (e.g., '45885ST. MARYS')
+            addr = re.sub(r"(\b\d{5}\b)\s*[A-Z][A-Z .,&'\-]{2,}$", r"\1", addr)
+            ship_to["address"] = addr
             cleaned = []
             for i, ln in enumerate(lines[1:]):
                 if i == 0:
@@ -189,7 +192,9 @@ def parse_release_text(text: str) -> Dict[str, Any]:
                     if cleaned:
                         ship_to['address'] = ", ".join(cleaned)
             # Customer ID: look after ZIP in the Ship-To block
-            if not customer_id and ship_to.get('name'):
+            def _is_placeholder(val: str | None) -> bool:
+                return isinstance(val, str) and val.strip().upper() in {"SHIP TO", "CUSTOMER ID", "N/A"}
+            if (not customer_id or _is_placeholder(customer_id)) and ship_to.get('name'):
                 window = t[name_idx: name_idx + 300] if name_idx != -1 else t
                 m = re.search(r"\b\d{5}\s*([A-Z][A-Z .,&'\-]{2,})", window)
                 if m:
