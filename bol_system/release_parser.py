@@ -58,35 +58,36 @@ def parse_release_text(text: str) -> Dict[str, Any]:
     customer_po = _find(r"Customer\s*P\.?O\.?\s*(?:#\s*)?[:\-]?\s*(\S+)", t)
 
     # Fallback: header row with values on next line
-    hdr = re.search(r"Release\s*Date\s+Ship\s*Via\s+FOB\s+Customer\s*P\.?O\.?\s*#\s*\n([^\n]+)", t, re.I)
+    hdr = re.search(r"^\s*Release\s*Date\s+Ship\s*Via\s+FOB\s+Customer\s*P\.?O\.?\s*#\s*$\n([^\n]+)", t, re.I | re.M)
     if hdr:
         row = hdr.group(1).strip()
-        if not release_date:
-            m = re.search(DATE_SLASH, row)
-            if m:
-                release_date = m.group(0)
-        # Last digit sequence is likely the PO number
-        if not customer_po:
-            po_m = re.search(r"(\d{4,})(?!.*\d)", row)
-            if po_m:
-                customer_po = po_m.group(1)
-        # Derive Ship Via and FOB from the row
-        line2 = row
-        dm = re.search(DATE_SLASH, line2)
+        # 1) Date
+        dm = re.search(DATE_SLASH, row)
         if dm:
-            line2 = line2[dm.end():].strip()
-        fob_m = re.search(r"\b(Origin|Destination)\b", line2, re.I)
-        if fob_m and not fob:
-            fob = fob_m.group(1).title()
-        end_idx = len(line2)
-        po_m2 = re.search(r"(\d{4,})(?!.*\d)", line2)
-        if po_m2:
-            end_idx = po_m2.start()
-        pre = line2[:end_idx].strip()
+            release_date = dm.group(0)
+            rest = row[dm.end():].strip()
+        else:
+            rest = row
+        # 2) FOB token and Ship Via (text between date and FOB)
+        fob_m = re.search(r"\b(Origin|Destination)\b", rest, re.I)
         if fob_m:
-            pre = re.split(r"\b(?:Origin|Destination)\b", pre, flags=re.I)[0].strip()
-        if pre and not ship_via:
-            ship_via = pre
+            fob = fob_m.group(1).title()
+            pre = rest[:fob_m.start()].strip()
+            if pre:
+                ship_via = pre
+            rest_after_fob = rest[fob_m.end():].strip()
+        else:
+            rest_after_fob = rest
+        # 3) Customer PO (digits, even when glued to next word)
+        po_m = re.search(r"(\d{4,})(?=\D|$)", rest_after_fob)
+        if po_m:
+            customer_po = po_m.group(1)
+            name_after = rest_after_fob[po_m.end():].lstrip(" -:#")
+        else:
+            name_after = rest_after_fob
+        # 4) Ship-To name from the remainder (first words; stop at obvious noise)
+        ship_to_name = re.sub(r"\s{2,}", " ", name_after).strip()
+        ship_to_name = re.sub(r"\bRelease\s*#:?.*$", "", ship_to_name, flags=re.I)
 
     # Customer ID fallback near label
     if not customer_id:
@@ -94,10 +95,11 @@ def parse_release_text(text: str) -> Dict[str, Any]:
         if cid_inline and cid_inline.group(1).strip():
             customer_id = cid_inline.group(1).strip()
         else:
-            cid_block = re.search(r"Customer\s*ID\s*:[\s\S]{0,200}", t, re.I)
-            if cid_block:
-                seg = cid_block.group(0)
-                caps = re.search(r"([A-Z][A-Z .,&'\-]{2,})", seg)
+            # Look for an all-caps token appearing after a ZIP code in the Ship-To area
+            ship_block_for_id = re.search(r"Ship To:[\s\S]{0,400}", t, re.I)
+            if ship_block_for_id:
+                seg = ship_block_for_id.group(0)
+                caps = re.search(r"\b\d{5}\s*([A-Z][A-Z .,&'\-]{3,})\b", seg)
                 if caps:
                     customer_id = caps.group(1).strip()
 
@@ -110,7 +112,13 @@ def parse_release_text(text: str) -> Dict[str, Any]:
         if lines:
             ship_to["name"] = lines[0]
         if len(lines) > 1:
-            ship_to["address"] = ", ".join(lines[1:])
+            # Clean trailing CUSTOMER ID tokens accidentally glued to the city/ZIP line
+            cleaned = []
+            for i, ln in enumerate(lines[1:]):
+                if i == 0:
+                    ln = re.sub(r"(\b\d{5}\b)\s*[A-Z][A-Z .,&'\-]{3,}$", r"\1", ln)
+                cleaned.append(ln)
+            ship_to["address"] = ", ".join(cleaned)
 
     # Material row
     lot = (
@@ -155,6 +163,14 @@ def parse_release_text(text: str) -> Dict[str, Any]:
     # Warehouse/location and carrier from Ship Via (if it's a known carrier phrase)
     warehouse_name = _find(r"Warehouse\s*\n\s*([A-Z]{3})", t) or _find(r"\bWarehouse\b[\s\S]*?\b(CRT)\b", t)
     warehouse_loc = _find(r"\bCINCINNATI\b", t)
+
+    # If we derived ship_to_name earlier from header row, prefer it
+    try:
+        if 'ship_to_name' in locals():
+            if not ship_to.get('name') or 'Release Date' in ship_to.get('name', ''):
+                ship_to['name'] = ship_to_name
+    except Exception:
+        pass
 
     # Schedule lines (e.g., "Deliver 11-05-25 Load #1")
     sched: List[Dict[str, str]] = []
