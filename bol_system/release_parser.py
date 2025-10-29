@@ -10,7 +10,13 @@ DATE_DASH = r"\d{2}-\d{2}-\d{2}"
 
 def _find(pattern: str, text: str, flags: int = re.IGNORECASE) -> str | None:
     m = re.search(pattern, text, flags)
-    return m.group(1).strip() if m else None
+    if not m:
+        return None
+    # If the regex has a capturing group, return it; otherwise return the full match
+    try:
+        return (m.group(1) if m.lastindex else m.group(0)).strip()
+    except IndexError:
+        return m.group(0).strip()
 
 
 def parse_release_text(text: str) -> Dict[str, Any]:
