@@ -24,6 +24,9 @@
       <div id="status" class="status" style="min-height: 1.25rem; margin-bottom: 0.5rem; color: var(--text-secondary);"></div>
       <form id="uploadForm">
         <input type="file" id="file" accept="application/pdf" required />
+        <label style="margin-left:0.75rem; font-size: 0.9rem;">
+          <input type="checkbox" id="useAI" style="margin-right:0.35rem;"> Use AI parser (Ollama)
+        </label>
         <button class="btn btn-accent" type="submit">Upload & Parse</button>
       </form>
       <pre id="out" style="margin-top:1rem; white-space: pre-wrap; background:#111; color:#eee; padding:1rem; border-radius:8px; max-height: 400px; overflow: auto;"></pre>
@@ -220,7 +223,9 @@ form.addEventListener('submit', async (e) => {
       const csrf = (window.Utils && Utils.getCSRFToken) ? Utils.getCSRFToken() : null;
       if (csrf) headers['X-CSRFToken'] = csrf;
     } catch (_) {}
-    const resp = await fetch('/api/releases/upload/', {
+    const aiChecked = document.getElementById('useAI')?.checked;
+    const url = aiChecked ? '/api/releases/upload/?ai=1' : '/api/releases/upload/';
+    const resp = await fetch(url, {
       method: 'POST',
       credentials: 'same-origin',
       headers,

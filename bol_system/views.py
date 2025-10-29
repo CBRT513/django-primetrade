@@ -453,13 +453,18 @@ def upload_release(request):
     """
     Accept a release PDF, parse header/material/schedule fields, and return JSON.
     Does NOT write to DB yet (Phase 1). Stores nothing server-side.
+
+    Optional query param: ?ai=1 to enable local AI fallback (Ollama) when fields
+    are missing or format varies.
     """
     try:
         f = request.FILES.get('file')
         if not f:
             return Response({'error': 'No file provided (form field "file").'}, status=status.HTTP_400_BAD_REQUEST)
-        data = parse_release_pdf(f)
-        return Response({'ok': True, 'parsed': data})
+
+        use_ai = str(request.query_params.get('ai', '0')).lower() in ('1', 'true', 'yes')
+        data = parse_release_pdf(f, use_ai_fallback=use_ai)
+        return Response({'ok': True, 'parsed': data, 'ai': bool(use_ai)})
     except Exception as e:
         logger.error(f"Error parsing release PDF: {e}", exc_info=True)
         return Response({'error': 'Failed to parse PDF', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)

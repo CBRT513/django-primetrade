@@ -2,6 +2,7 @@ import re
 from typing import Any, Dict, List
 
 from pypdf import PdfReader
+from .ai_parser import ai_parse_release_text
 
 
 DATE_SLASH = r"\d{2}/\d{2}/\d{4}"
@@ -226,8 +227,48 @@ def parse_release_text(text: str) -> Dict[str, Any]:
     return result
 
 
-def parse_release_pdf(file_obj) -> Dict[str, Any]:
-    """Extract text from a PDF file-like and parse it."""
+def parse_release_pdf(file_obj, use_ai_fallback: bool = False) -> Dict[str, Any]:
+    """Extract text from a PDF file-like and parse it.
+
+    If use_ai_fallback is True and key fields are missing, query a local Ollama
+    model (if reachable) and merge missing values.
+    """
     reader = PdfReader(file_obj)
     text = "\n".join(page.extract_text() or "" for page in reader.pages)
-    return parse_release_text(text)
+    parsed = parse_release_text(text)
+
+    if use_ai_fallback:
+        need = any(
+            parsed.get(k) in (None, "", {})
+            for k in ["customerId", "customerPO", "releaseDate", "shipToRaw"]
+        )
+        if need:
+            ai = ai_parse_release_text(text)
+            if isinstance(ai, dict):
+                parsed["releaseDate"] = parsed.get("releaseDate") or ai.get("releaseDate")
+                parsed["customerId"] = parsed.get("customerId") or ai.get("customerId")
+                parsed["customerPO"] = parsed.get("customerPO") or ai.get("customerPO")
+                parsed["shipVia"] = parsed.get("shipVia") or ai.get("shipVia")
+                parsed["fob"] = parsed.get("fob") or ai.get("fob")
+                if not parsed.get("shipToRaw") and isinstance(ai.get("shipTo"), dict):
+                    parsed["shipToRaw"] = ai.get("shipTo")
+                if not parsed.get("material", {}).get("lot") and isinstance(ai.get("material"), dict):
+                    parsed.setdefault("material", {})
+                    parsed["material"].setdefault("description", ai.get("material", {}).get("description"))
+                    parsed["material"]["lot"] = ai.get("material", {}).get("lot")
+                parsed["quantityNetTons"] = parsed.get("quantityNetTons") or ai.get("quantityNetTons")
+                if not parsed.get("schedule") and isinstance(ai.get("schedule"), list):
+                    # Convert schedule dates to ISO
+                    iso_sched = []
+                    for row in ai.get("schedule"):
+                        try:
+                            d = row.get("date")
+                            if d and "/" in d:
+                                mm, dd, yyyy = d.split("/")
+                                d = f"{yyyy}-{mm.zfill(2)}-{dd.zfill(2)}"
+                            iso_sched.append({"date": d, "load": int(row.get("load"))})
+                        except Exception:
+                            pass
+                    if iso_sched:
+                        parsed["schedule"] = iso_sched
+    return parsed
