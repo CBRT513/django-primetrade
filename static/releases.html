@@ -251,7 +251,7 @@ form.addEventListener('submit', async (e) => {
       const msg = (parsed && (parsed.error || parsed.detail)) ? `${parsed.error || parsed.detail}` : `HTTP ${resp.status}`;
       if (window.Utils && Utils.showStatus) Utils.showStatus(`Parse failed: ${msg}`, 'error', 8000);
     } else {
-      if (window.Utils && Utils.showStatus) Utils.showStatus('Parse complete.', 'success');
+      if (window.Utils && Utils.showStatus) Utils.showStatus('Parse complete' + (parsed && parsed.ai ? ' (AI)' : '' ) + '.', 'success');
       if (parsed && parsed.ok && parsed.parsed) { openReview(parsed); }
     }
     try { out.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (_) {}

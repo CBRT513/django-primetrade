@@ -238,27 +238,50 @@ def parse_release_pdf(file_obj, use_ai_fallback: bool = False) -> Dict[str, Any]
     parsed = parse_release_text(text)
 
     if use_ai_fallback:
+        def _is_bad_value(s: Any) -> bool:
+            if s is None:
+                return True
+            if isinstance(s, str):
+                lab = s.strip().upper()
+                return lab in {"", "SHIP TO", "CUSTOMER ID", "N/A"}
+            return False
+
+        def _addr_contaminated(addr: str) -> bool:
+            if not isinstance(addr, str):
+                return True
+            return bool(re.search(r"Release\s*Date|Ship\s*Via|Customer\s*PO|^\s*\d{2}/\d{2}/\d{4}|Release\s*#", addr, re.I))
+
         need = any(
-            parsed.get(k) in (None, "", {})
+            _is_bad_value(parsed.get(k))
             for k in ["customerId", "customerPO", "releaseDate", "shipToRaw"]
-        )
+        ) or _addr_contaminated((parsed.get("shipToRaw") or {}).get("address", ""))
+
         if need:
             ai = ai_parse_release_text(text)
             if isinstance(ai, dict):
-                parsed["releaseDate"] = parsed.get("releaseDate") or ai.get("releaseDate")
-                parsed["customerId"] = parsed.get("customerId") or ai.get("customerId")
-                parsed["customerPO"] = parsed.get("customerPO") or ai.get("customerPO")
-                parsed["shipVia"] = parsed.get("shipVia") or ai.get("shipVia")
-                parsed["fob"] = parsed.get("fob") or ai.get("fob")
-                if not parsed.get("shipToRaw") and isinstance(ai.get("shipTo"), dict):
-                    parsed["shipToRaw"] = ai.get("shipTo")
+                if _is_bad_value(parsed.get("releaseDate")) and ai.get("releaseDate"):
+                    parsed["releaseDate"] = ai.get("releaseDate")
+                if _is_bad_value(parsed.get("customerId")) and ai.get("customerId"):
+                    parsed["customerId"] = ai.get("customerId")
+                if _is_bad_value(parsed.get("customerPO")) and ai.get("customerPO"):
+                    parsed["customerPO"] = ai.get("customerPO")
+                if _is_bad_value(parsed.get("shipVia")) and ai.get("shipVia"):
+                    parsed["shipVia"] = ai.get("shipVia")
+                if _is_bad_value(parsed.get("fob")) and ai.get("fob"):
+                    parsed["fob"] = ai.get("fob")
+                # Ship To
+                ai_ship = ai.get("shipTo") if isinstance(ai.get("shipTo"), dict) else None
+                if ai_ship and (_is_bad_value(parsed.get("shipToRaw")) or _addr_contaminated((parsed.get("shipToRaw") or {}).get("address", ""))):
+                    parsed["shipToRaw"] = ai_ship
+                # Material
                 if not parsed.get("material", {}).get("lot") and isinstance(ai.get("material"), dict):
                     parsed.setdefault("material", {})
                     parsed["material"].setdefault("description", ai.get("material", {}).get("description"))
                     parsed["material"]["lot"] = ai.get("material", {}).get("lot")
+                # Quantity
                 parsed["quantityNetTons"] = parsed.get("quantityNetTons") or ai.get("quantityNetTons")
+                # Schedule
                 if not parsed.get("schedule") and isinstance(ai.get("schedule"), list):
-                    # Convert schedule dates to ISO
                     iso_sched = []
                     for row in ai.get("schedule"):
                         try:
