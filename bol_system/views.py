@@ -4,8 +4,8 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.authentication import SessionAuthentication
 from django.db import models, connection, transaction, IntegrityError
-from .models import Product, Customer, Carrier, Truck, BOL, Release, ReleaseLoad, CustomerShipTo, Lot
-from .serializers import ProductSerializer, CustomerSerializer, CarrierSerializer, TruckSerializer, ReleaseSerializer, CustomerShipToSerializer
+from .models import Product, Customer, Carrier, Truck, BOL, Release, ReleaseLoad, CustomerShipTo, Lot, AuditLog
+from .serializers import ProductSerializer, CustomerSerializer, CarrierSerializer, TruckSerializer, ReleaseSerializer, CustomerShipToSerializer, AuditLogSerializer
 from .pdf_generator import generate_bol_pdf
 from .release_parser import parse_release_pdf
 import logging
@@ -859,6 +859,18 @@ def release_detail_api(request, release_id):
     except Exception as e:
         logger.error(f"release_detail_api error: {e}", exc_info=True)
         return Response({'error': 'Failed to update release', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+# Audit log list (simple)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def audit_logs(request):
+    try:
+        limit = int(request.GET.get('limit', '200'))
+        rows = AuditLog.objects.all().order_by('-created_at')[:max(1, min(limit, 1000))]
+        return Response(AuditLogSerializer(rows, many=True).data)
+    except Exception as e:
+        logger.error(f"audit_logs error: {e}", exc_info=True)
+        return Response({'error':'Failed to load audit logs'}, status=status.HTTP_400_BAD_REQUEST)
 
 # BOL history
 @api_view(['GET'])
