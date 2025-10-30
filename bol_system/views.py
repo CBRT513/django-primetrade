@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework.authentication import SessionAuthentication
 from django.db import models, connection, transaction, IntegrityError
 from .models import Product, Customer, Carrier, Truck, BOL, Release, ReleaseLoad, CustomerShipTo, Lot
-from .serializers import ProductSerializer, CustomerSerializer, CarrierSerializer, TruckSerializer, ReleaseSerializer
+from .serializers import ProductSerializer, CustomerSerializer, CarrierSerializer, TruckSerializer, ReleaseSerializer, CustomerShipToSerializer
 from .pdf_generator import generate_bol_pdf
 from .release_parser import parse_release_pdf
 import logging
