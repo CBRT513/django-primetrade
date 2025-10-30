@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Open Releases</title>
+  <link rel="stylesheet" href="/static/css/cbrt-brand.css">
+  <style>
+    .summary { display:flex; gap: 1rem; align-items:center; }
+    .summary .badge { background: var(--surface-elevated); border:1px solid var(--border); padding: .35rem .6rem; border-radius: 8px; }
+    table { width:100%; }
+    th, td { white-space: nowrap; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="cbrt-header" style="position: relative;">
+      <div class="company-info">
+        <img src="/static/cbrt-logo-optimized.svg" alt="CBRT" class="company-logo">
+        <div>
+          <h1 class="company-name">Open Releases</h1>
+          <p class="company-tagline">Loads remaining by release</p>
+        </div>
+      </div>
+      <div class="user-actions" style="position: absolute; top: 20px; right: 20px;">
+        <a href="/releases.html" class="btn" style="margin-right:.5rem;">Upload Release</a>
+        <a href="/auth/logout/" class="btn" style="background: #dc3545; color: white; padding: 8px 20px;">Logout</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="summary">
+        <button id="refresh" class="btn btn-secondary btn-sm">Refresh</button>
+        <span id="count" class="badge">0 open</span>
+      </div>
+      <div class="table-container" style="margin-top:.75rem;">
+        <table id="tbl">
+          <thead>
+            <tr>
+              <th>Release #</th>
+              <th>Customer</th>
+              <th>Loads</th>
+              <th>Tons</th>
+              <th>Next Load</th>
+              <th>Last Shipped</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function fmtDate(d) {
+      if (!d) return '';
+      try {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(d)) { const [y,m,dd] = d.split('-'); return `${m}/${dd}/${y}`; }
+        const dt = new Date(d); if (!isNaN(dt)) return `${String(dt.getMonth()+1).padStart(2,'0')}/${String(dt.getDate()).padStart(2,'0')}/${dt.getFullYear()}`;
+      } catch(e) {}
+      return String(d);
+    }
+    async function load() {
+      const res = await fetch('/api/releases/open/', { credentials: 'same-origin' });
+      if (!res.ok) throw new Error(await res.text());
+      const rows = await res.json();
+      document.getElementById('count').textContent = `${rows.length} open`;
+      const tbody = document.querySelector('#tbl tbody');
+      tbody.innerHTML = rows.map(r => {
+        const loads = `${r.loadsShipped} / ${r.totalLoads}`;
+        const tons = `${Number(r.tonsShipped||0).toFixed(3)} / ${Number(r.totalTons||0).toFixed(3)}`;
+        return `<tr>
+          <td>${r.releaseNumber}</td>
+          <td>${r.customer||''}</td>
+          <td>${loads}</td>
+          <td>${tons}</td>
+          <td>${fmtDate(r.nextScheduledDate)}</td>
+          <td>${fmtDate(r.lastShippedDate)}</td>
+        </tr>`;
+      }).join('');
+    }
+    document.getElementById('refresh').addEventListener('click', () => load().catch(err=>alert(err.message||String(err))));
+    load().catch(err=>alert(err.message||String(err)));
+  </script>
+</body>
+</html>
