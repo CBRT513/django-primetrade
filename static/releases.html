@@ -287,6 +287,12 @@ approveBtn.addEventListener('click', async () => {
     state: document.getElementById('shipToState')?.value || '',
     zip: (document.getElementById('shipToZip')?.value || '').replace(/\D/g,'').slice(0,5),
   };
+  const toNum = (v) => {
+    const s = (v ?? '').toString().trim();
+    if (s === '') return undefined;
+    const n = Number(s);
+    return Number.isFinite(n) ? n : undefined;
+  };
   const payload = {
     releaseNumber: document.getElementById('releaseNumber')?.value || p.releaseNumber,
     releaseDate: document.getElementById('releaseDate')?.value || p.releaseDate,
@@ -299,14 +305,14 @@ approveBtn.addEventListener('click', async () => {
       lot: document.getElementById('materialLot')?.value || (p.material?.lot || ''),
       description: document.getElementById('materialDescription')?.value || (p.material?.description || ''),
       analysis: {
-        C: Number(document.getElementById('chemC')?.value || an?.C || '') || undefined,
-        Si: Number(document.getElementById('chemSi')?.value || an?.Si || '') || undefined,
-        S: Number(document.getElementById('chemS')?.value || an?.S || '') || undefined,
-        P: Number(document.getElementById('chemP')?.value || an?.P || '') || undefined,
-        Mn: Number(document.getElementById('chemMn')?.value || an?.Mn || '') || undefined,
+        C: toNum(document.getElementById('chemC')?.value),
+        Si: toNum(document.getElementById('chemSi')?.value),
+        S: toNum(document.getElementById('chemS')?.value),
+        P: toNum(document.getElementById('chemP')?.value),
+        Mn: toNum(document.getElementById('chemMn')?.value),
       }
     },
-    quantityNetTons: Number(document.getElementById('qtyTons')?.value || p.quantityNetTons || 0),
+    quantityNetTons: toNum(document.getElementById('qtyTons')?.value) ?? (Number(p.quantityNetTons||'') || undefined),
     schedule: Array.isArray(p.schedule) ? p.schedule : [],
   };
   try {
@@ -320,6 +326,9 @@ approveBtn.addEventListener('click', async () => {
     const json = await resp.json().catch(()=>null);
     if (!resp.ok) throw new Error(json?.error || `HTTP ${resp.status}`);
     if (window.Utils && Utils.showStatus) Utils.showStatus(`Release saved (ID ${json.id})`, 'success');
+    // Close modal and navigate to Open Releases for confirmation
+    try { modal.style.display = 'none'; } catch(_){}
+    setTimeout(() => { window.location.href = '/api/releases/open/view/'; }, 600);
   } catch (e) {
     if (window.Utils && Utils.showStatus) Utils.showStatus(`Save failed: ${e.message || e}`, 'error', 8000);
   }
@@ -377,6 +386,8 @@ form.addEventListener('submit', async (e) => {
     } else {
       if (window.Utils && Utils.showStatus) Utils.showStatus('Parse complete' + (parsed && parsed.ai ? ` (AI: ${parsed.ai})` : '' ) + '.', 'success');
       if (parsed && parsed.ok && parsed.parsed) { openReview(parsed); }
+      // Focus Approve button to make next action obvious
+      try { document.getElementById('approveSave')?.focus(); } catch(_) {}
     }
     try { out.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (_) {}
   } catch (err) {
