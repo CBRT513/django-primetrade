@@ -14,6 +14,10 @@ import base64
 import tempfile
 from decimal import Decimal
 import re
+import json
+import urllib.request
+import urllib.error
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +33,7 @@ def _ip_of(request):
 def audit(request, action: str, obj=None, message: str = '', extra: dict | None = None):
     try:
         from .models import AuditLog  # local import to avoid circular during migrations
-        AuditLog.objects.create(
+        entry = AuditLog.objects.create(
             action=action,
             object_type=(obj.__class__.__name__ if obj is not None else ''),
             object_id=(str(getattr(obj, 'id', '') or getattr(obj, 'pk', '') or '')),
@@ -41,6 +45,33 @@ def audit(request, action: str, obj=None, message: str = '', extra: dict | None 
             user_agent=request.META.get('HTTP_USER_AGENT',''),
             extra=extra
         )
+        # Optional Galactica forwarder
+        try:
+            url = os.getenv('GALACTICA_URL')
+            if url:
+                payload = {
+                    'ts': datetime.utcnow().isoformat() + 'Z',
+                    'action': action,
+                    'object_type': entry.object_type,
+                    'object_id': entry.object_id,
+                    'message': message,
+                    'user_email': entry.user_email,
+                    'ip': entry.ip,
+                    'method': entry.method,
+                    'path': entry.path,
+                    'user_agent': entry.user_agent,
+                    'extra': extra,
+                }
+                req = urllib.request.Request(
+                    url,
+                    data=json.dumps(payload).encode('utf-8'),
+                    headers={'Content-Type': 'application/json', 'Authorization': f"Bearer {os.getenv('GALACTICA_API_KEY','')}"},
+                    method='POST'
+                )
+                urllib.request.urlopen(req, timeout=3)
+        except Exception as _e:
+            # Do not break main flow if external logging fails
+            logger.debug(f"Galactica logging skipped: {_e}")
     except Exception as e:
         logger.warning(f"Audit log failed: {e}")
 
