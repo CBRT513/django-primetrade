@@ -2,7 +2,7 @@ from django.contrib import admin
 from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
-from django.views.generic import RedirectView
+from django.views.generic import RedirectView, TemplateView
 from django.views.static import serve
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import ensure_csrf_cookie
@@ -41,7 +41,7 @@ urlpatterns = [
     path('customers.html', login_required(lambda request: serve_static_html(request, 'customers.html')), name='customers'),
     path('carriers.html', login_required(lambda request: serve_static_html(request, 'carriers.html')), name='carriers'),
     path('releases.html', login_required(lambda request: serve_static_html(request, 'releases.html')), name='releases'),
-    path('open-releases.html', login_required(lambda request: serve_static_html(request, 'open-releases.html')), name='open_releases'),
+    path('open-releases/', login_required(TemplateView.as_view(template_name='open_releases.html')), name='open_releases'),
 ]
 
 # Serve media files in development

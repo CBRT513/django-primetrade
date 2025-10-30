@@ -1,4 +1,6 @@
 from django.urls import path
+from django.contrib.auth.decorators import login_required
+from django.views.generic import TemplateView
 from . import views
 from . import auth_views
 
@@ -18,6 +20,7 @@ urlpatterns = [
     path('releases/upload/', views.upload_release, name='release_upload'),
     path('releases/approve/', views.approve_release, name='release_approve'),
     path('releases/open/', views.open_releases, name='releases_open'),
+    path('releases/open/view/', login_required(TemplateView.as_view(template_name='open_releases.html')), name='releases_open_view'),
 
     path('auth/me/', auth_views.current_user, name='current_user'),
 ]
