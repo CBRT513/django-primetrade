@@ -456,10 +456,12 @@
         // Cache product/customer
         if (chosen.product?.id) { productSel.value = chosen.product.id; productSel.disabled = true; }
         if (chosen.customer?.id) { qs('customer').value = chosen.customer.id; }
-        // Ship-to
+        // Ship-to and buyer
         const st = chosen.shipTo||{}; const lines = [st.name, st.street, `${st.city||''}, ${st.state||''} ${st.zip||''}`].filter(Boolean);
         qs('shipToAddress').value = lines.join('\n');
         qs('customerPO').value = chosen.customerPO || '';
+        const buyer = (chosen.customer && chosen.customer.name) || '';
+        const buyerField = qs('buyerName'); if (buyerField) buyerField.value = buyer;
         // Suggest planned tons
         const nt = document.querySelector('input[name=netTons]'); if (nt && chosen.plannedTons) nt.value = Number(chosen.plannedTons||0).toFixed(2);
       });
@@ -472,6 +474,9 @@
         s.textContent = "Generating preview...";
 
         const data = Object.fromEntries(new FormData(ev.target).entries());
+        // When product select is disabled, FormData omits it; supply from control value
+        if (!data.productId) { const ps = qs('product'); if (ps && ps.value) data.productId = ps.value; }
+        if (!data.buyerName) { const bf = qs('buyerName'); if (bf && bf.value) data.buyerName = bf.value; }
         const prod = products.find(p => String(p.id) === String(data.productId));
         data.productName = prod ? prod.name : "";
         const loadSel2 = qs('releaseLoad'); if (loadSel2 && loadSel2.value) data.loadId = loadSel2.value;
