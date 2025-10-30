@@ -332,7 +332,7 @@ input[readonly], textarea[readonly] {
 .table-container {
   background: var(--surface-elevated);
   border-radius: 8px;
-  overflow: hidden;
+  overflow: auto;
   margin-top: 1rem;
 }
 
@@ -340,6 +340,10 @@ table {
   width: 100%;
   border-collapse: collapse;
 }
+
+/* Allow wide tables to scroll horizontally on small screens */
+.table-container { overflow-x: auto; }
+.table-container table { min-width: 980px; }
 
 th {
   background: var(--primary);
@@ -367,7 +371,13 @@ tr:hover {
 /* Table actions column */
 td.actions {
   white-space: nowrap;
-  width: 200px;
+  width: 220px;
+}
+
+/* Monospace chemistry column for compact display */
+.chem {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-size: 0.8rem;
 }
 
 .actions {

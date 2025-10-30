@@ -349,7 +349,7 @@
             </td>
             <td>${product.name}</td>
             <td>${product.last_lot_code || ''}</td>
-            <td>${[product.c,product.si,product.s,product.p,product.mn].map(v=>v==null?'':Number(v).toFixed(3)).join(' / ')}</td>
+            <td class="chem">${[product.c,product.si,product.s,product.p,product.mn].map(v=>v==null?'':Number(v).toFixed(3)).join(' / ')}</td>
             <td class="tons-display">${balance.startTons.toFixed(2)}</td>
             <td>${balance.shipped.toFixed(2)}</td>
             <td>${balance.remaining.toFixed(2)}</td>
