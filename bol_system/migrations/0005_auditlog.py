@@ -3,7 +3,7 @@ from django.db import migrations, models
 
 class Migration(migrations.Migration):
 
-dependencies = [
+    dependencies = [
         ('bol_system', '0004_product_chemistry_fields'),
     ]
 
