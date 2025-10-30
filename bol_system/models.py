@@ -277,3 +277,22 @@ class ReleaseLoad(TimestampedModel):
 
     def __str__(self):
         return f"{self.release.release_number} load {self.seq}"
+
+
+class AuditLog(TimestampedModel):
+    action = models.CharField(max_length=64)
+    object_type = models.CharField(max_length=64, blank=True)
+    object_id = models.CharField(max_length=64, blank=True)
+    message = models.TextField(blank=True)
+    user_email = models.CharField(max_length=200, blank=True)
+    ip = models.CharField(max_length=45, blank=True)
+    method = models.CharField(max_length=10, blank=True)
+    path = models.CharField(max_length=300, blank=True)
+    user_agent = models.CharField(max_length=300, blank=True)
+    extra = models.JSONField(null=True, blank=True)
+
+    class Meta:
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"{self.action} {self.object_type} {self.object_id} by {self.user_email}";

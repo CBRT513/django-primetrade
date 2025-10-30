@@ -64,3 +64,8 @@ class ReleaseSerializer(serializers.ModelSerializer):
             'lot','material_description','quantity_net_tons','status','loads',
             'customer_ref','ship_to_ref','carrier_ref','lot_ref'
         ]
+
+class AuditLogSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = AuditLog
+        fields = ['id','action','object_type','object_id','message','user_email','ip','method','path','user_agent','extra','created_at']

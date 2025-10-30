@@ -16,6 +16,7 @@ urlpatterns = [
     path('bol/<int:bol_id>/', views.bol_detail, name='bol_detail'),
     path('balances/', views.balances, name='balances'),
     path('history/', views.bol_history, name='history'),
+    path('audit/', views.audit_logs, name='audit_logs'),
 
     # Release parsing + approvals
     path('releases/upload/', views.upload_release, name='release_upload'),
