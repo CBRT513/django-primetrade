@@ -18,6 +18,13 @@ class Product(TimestampedModel):
     name = models.CharField(max_length=200, unique=True)
     start_tons = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     is_active = models.BooleanField(default=True)
+    # Optional mirrors for latest lot identification and chemistry for quick double-checking
+    last_lot_code = models.CharField(max_length=100, blank=True)
+    c = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
+    si = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
+    s = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
+    p = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
+    mn = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
     
     class Meta:
         ordering = ['name']

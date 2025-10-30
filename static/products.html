@@ -228,6 +228,8 @@
             <tr>
               <th>Status</th>
               <th>Product</th>
+              <th>Last Lot</th>
+              <th>C/Si/S/P/Mn</th>
               <th>Starting Tons</th>
               <th>Shipped</th>
               <th>Remaining</th>
@@ -346,6 +348,8 @@
               </span>
             </td>
             <td>${product.name}</td>
+            <td>${product.last_lot_code || ''}</td>
+            <td>${[product.c,product.si,product.s,product.p,product.mn].map(v=>v==null?'':Number(v).toFixed(3)).join(' / ')}</td>
             <td class="tons-display">${balance.startTons.toFixed(2)}</td>
             <td>${balance.shipped.toFixed(2)}</td>
             <td>${balance.remaining.toFixed(2)}</td>

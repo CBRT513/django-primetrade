@@ -549,6 +549,23 @@ def approve_release(request):
                     )
                 rel.lot_ref = lot_obj
 
+            # Mirror latest lot chemistry onto product for quick double-checking
+            try:
+                target_product = product_obj or (lot_obj.product if lot_obj else None)
+                if target_product and lot_obj:
+                    changed = False
+                    if target_product.last_lot_code != lot_obj.code:
+                        target_product.last_lot_code = lot_obj.code; changed = True
+                    for f in ['c','si','s','p','mn']:
+                        newv = getattr(lot_obj, f, None)
+                        if newv is not None and getattr(target_product, f) != newv:
+                            setattr(target_product, f, newv); changed = True
+                    if changed:
+                        target_product.updated_by = request.user.username
+                        target_product.save()
+            except Exception:
+                pass
+
             # Persist Release with refs
             rel.save()
 
@@ -737,6 +754,23 @@ def release_detail_api(request, release_id):
                         updated_by=request.user.username,
                     )
                 rel.lot_ref = lot_obj
+
+            # Mirror latest lot chemistry onto product for quick double-checking
+            try:
+                target_product = product_obj or (lot_obj.product if lot_obj else None)
+                if target_product and lot_obj:
+                    changed = False
+                    if target_product.last_lot_code != lot_obj.code:
+                        target_product.last_lot_code = lot_obj.code; changed = True
+                    for f in ['c','si','s','p','mn']:
+                        newv = getattr(lot_obj, f, None)
+                        if newv is not None and getattr(target_product, f) != newv:
+                            setattr(target_product, f, newv); changed = True
+                    if changed:
+                        target_product.updated_by = request.user.username
+                        target_product.save()
+            except Exception:
+                pass
 
             # Persist text mirrors
             if ship.get('name') is not None: rel.ship_to_name = ship.get('name')
