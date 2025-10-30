@@ -434,6 +434,20 @@ def approve_release(request):
         lot_code = (mat.get('lot') or '').strip()
         analysis = mat.get('analysis') or {}
 
+        # Determine or create Product from material description (if provided)
+        desc = (mat.get('description') or '').strip()
+        product_obj = None
+        if desc:
+            try:
+                product_obj = Product.objects.get(name__iexact=desc)
+            except Product.DoesNotExist:
+                product_obj = Product.objects.create(
+                    name=desc,
+                    start_tons=Decimal('0'),
+                    is_active=True,
+                    updated_by=request.user.username,
+                )
+
         with transaction.atomic():
             # Create Release (text fields captured for audit)
             rel = Release.objects.create(
@@ -517,15 +531,12 @@ def approve_release(request):
                                 mismatches.append({'element': k_parsed, 'existing': exf, 'parsed': paf, 'delta': abs(exf - paf)})
                     if mismatches:
                         return Response({'error': 'Lot chemistry mismatch', 'lot': lot_code, 'tolerance': tol, 'mismatches': mismatches}, status=status.HTTP_409_CONFLICT)
+                    # If lot exists and has no product but we determined one, set it
+                    if product_obj and not lot_obj.product:
+                        lot_obj.product = product_obj
+                        lot_obj.save(update_fields=['product'])
                 except Lot.DoesNotExist:
                     # Create draft lot with analysis
-                    product_obj = None
-                    desc = (mat.get('description') or '').strip()
-                    if desc:
-                        try:
-                            product_obj = Product.objects.get(name__iexact=desc)
-                        except Product.DoesNotExist:
-                            product_obj = None
                     lot_obj = Lot.objects.create(
                         code=lot_code,
                         product=product_obj,
