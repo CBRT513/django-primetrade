@@ -17,6 +17,33 @@ import re
 
 logger = logging.getLogger(__name__)
 
+def _ip_of(request):
+    try:
+        xff = request.META.get('HTTP_X_FORWARDED_FOR')
+        if xff:
+            return xff.split(',')[0].strip()
+        return request.META.get('REMOTE_ADDR','')
+    except Exception:
+        return ''
+
+def audit(request, action: str, obj=None, message: str = '', extra: dict | None = None):
+    try:
+        from .models import AuditLog  # local import to avoid circular during migrations
+        AuditLog.objects.create(
+            action=action,
+            object_type=(obj.__class__.__name__ if obj is not None else ''),
+            object_id=(str(getattr(obj, 'id', '') or getattr(obj, 'pk', '') or '')),
+            message=message,
+            user_email=(getattr(request.user, 'email', '') or getattr(request.user, 'username', '')),
+            ip=_ip_of(request),
+            method=getattr(request, 'method', ''),
+            path=getattr(request, 'path', ''),
+            user_agent=request.META.get('HTTP_USER_AGENT',''),
+            extra=extra
+        )
+    except Exception as e:
+        logger.warning(f"Audit log failed: {e}")
+
 # CSRF-exempt Session auth (used by upload_release and approve_release)
 class CsrfExemptSessionAuthentication(SessionAuthentication):
     def enforce_csrf(self, request):
@@ -96,6 +123,7 @@ def customer_shiptos(request, customer_id: int):
                 st.is_active = is_active
                 st.updated_by = request.user.username
                 st.save()
+                audit(request, 'CUSTOMER_SHIPTO_UPDATED', st, f"Ship-To updated for customer {customer.customer}")
                 return Response({'ok': True, 'id': st.id})
             else:
                 st, created = CustomerShipTo.objects.get_or_create(
@@ -110,6 +138,7 @@ def customer_shiptos(request, customer_id: int):
                     st.name = name
                     st.updated_by = request.user.username
                     st.save(update_fields=['name','updated_by'])
+                audit(request, 'CUSTOMER_SHIPTO_CREATED' if created else 'CUSTOMER_SHIPTO_UPSERT', st, f"Ship-To saved for customer {customer.customer}")
                 return Response({'ok': True, 'id': st.id, 'created': created})
         except CustomerShipTo.DoesNotExist:
             return Response({'error': 'Ship-To not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -142,6 +171,7 @@ def carrier_list(request):
                     carrier.email = data.get('email', '')
                     carrier.is_active = data.get('is_active', True)
                     carrier.save()
+                    audit(request, 'CARRIER_UPDATED', carrier, f"Carrier updated: {carrier.carrier_name}")
 
                     # Handle trucks if provided
                     if 'trucks' in data:
@@ -174,8 +204,9 @@ def carrier_list(request):
                     phone=data.get('phone', ''),
                     email=data.get('email', ''),
                     is_active=data.get('is_active', True)
-                )
+)
                 logger.info(f"Carrier {carrier.id} created by {request.user.username}")
+                audit(request, 'CARRIER_CREATED', carrier, f"Carrier created: {carrier.carrier_name}")
                 return Response({'ok': True, 'id': carrier.id})
 
         # GET request - list carriers
@@ -376,6 +407,7 @@ def confirm_bol(request):
         )
 
         logger.info(f"BOL {bol.bol_number} created by {request.user.username} with {net_tons} tons")
+        audit(request, 'BOL_CREATED', bol, f"BOL created {bol.bol_number}", {'netTons': net_tons})
 
         # Generate PDF
         try:
@@ -466,6 +498,7 @@ def approve_release(request):
         # Reject duplicates
         if Release.objects.filter(release_number=release_number).exists():
             existing = Release.objects.filter(release_number=release_number).first()
+            audit(request, 'RELEASE_APPROVE_DUPLICATE', existing, f"Duplicate attempt: {release_number}", {'releaseNumber': release_number})
             return Response(
                 {
                     'error': 'Duplicate release_number',
@@ -640,6 +673,7 @@ def approve_release(request):
 
             # Persist Release with refs
             rel.save()
+            audit(request, 'RELEASE_APPROVE_CREATED', rel, f"Approved release {rel.release_number}", {'loads': rel.total_loads})
 
             # Create loads
             sched = data.get('schedule') or []
@@ -855,6 +889,7 @@ def release_detail_api(request, release_id):
             rel.updated_by = request.user.username
             rel.save()
 
+        audit(request, 'RELEASE_UPDATED', rel, f"Updated release {rel.release_number}")
         return Response(ReleaseSerializer(rel).data)
     except Exception as e:
         logger.error(f"release_detail_api error: {e}", exc_info=True)
