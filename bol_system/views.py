@@ -465,7 +465,15 @@ def approve_release(request):
 
         # Reject duplicates
         if Release.objects.filter(release_number=release_number).exists():
-            return Response({'error': 'Duplicate release_number', 'releaseNumber': release_number}, status=status.HTTP_409_CONFLICT)
+            existing = Release.objects.filter(release_number=release_number).first()
+            return Response(
+                {
+                    'error': 'Duplicate release_number',
+                    'releaseNumber': release_number,
+                    'id': existing.id if existing else None,
+                },
+                status=status.HTTP_409_CONFLICT
+            )
 
         # Chemistry tolerance (configurable)
         try:

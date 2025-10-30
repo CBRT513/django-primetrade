@@ -45,6 +45,7 @@
         <button id="closeReview" class="btn btn-danger btn-sm" type="button">Close</button>
       </div>
       <div style="padding: 1rem 1.25rem;">
+        <div id="modalStatus" class="status" style="margin-bottom:.5rem;"></div>
         <form id="reviewForm" onsubmit="return false;">
           <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
             <div class="form-group">
@@ -324,12 +325,32 @@ approveBtn.addEventListener('click', async () => {
       body: JSON.stringify(payload)
     });
     const json = await resp.json().catch(()=>null);
-    if (!resp.ok) throw new Error(json?.error || `HTTP ${resp.status}`);
+    if (!resp.ok) {
+      const ms = document.getElementById('modalStatus');
+      // Duplicate release UX
+      if (resp.status === 409 && (json?.error || '').toLowerCase().includes('duplicate')) {
+        const link = json?.id ? ` — <a href="/api/releases/${json.id}/view/" style="text-decoration:underline; color: #721c24;">View existing</a>` : '';
+        ms.innerHTML = `Release ${payload.releaseNumber} already exists${link}.`;
+        ms.className = 'status error';
+        const rn = document.getElementById('releaseNumber');
+        rn.style.borderColor = 'var(--error)';
+        rn.style.boxShadow = '0 0 0 3px rgba(184, 68, 42, 0.15)';
+        rn.focus();
+      } else {
+        ms.textContent = (json?.error || json?.detail || `HTTP ${resp.status}`);
+        ms.className = 'status error';
+      }
+      if (window.Utils && Utils.showStatus) Utils.showStatus(ms.textContent || 'Save failed', 'error', 8000);
+      return;
+    }
     if (window.Utils && Utils.showStatus) Utils.showStatus(`Release saved (ID ${json.id})`, 'success');
     // Close modal and navigate to Open Releases for confirmation
     try { modal.style.display = 'none'; } catch(_){}
     setTimeout(() => { window.location.href = '/api/releases/open/view/'; }, 600);
   } catch (e) {
+    const ms = document.getElementById('modalStatus');
+    ms.textContent = e?.message || String(e) || 'Save failed';
+    ms.className = 'status error';
     if (window.Utils && Utils.showStatus) Utils.showStatus(`Save failed: ${e.message || e}`, 'error', 8000);
   }
 });
