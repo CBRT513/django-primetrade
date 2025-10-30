@@ -452,7 +452,13 @@
       loadSel.addEventListener('change', () => {
         const id = loadSel.value;
         const chosen = (window._loadsCache || []).find(x => String(x.loadId) === String(id));
-        if (!chosen) { qs('customer').value = ''; qs('shipToAddress').value=''; qs('customerPO').value=''; productSel.disabled=false; return; }
+        if (!chosen) {
+          qs('customer').value = '';
+          qs('shipToAddress').value='';
+          qs('customerPO').value='';
+          productSel.disabled=false;
+          return;
+        }
         // Cache product/customer
         if (chosen.product?.id) { productSel.value = chosen.product.id; productSel.disabled = true; }
         if (chosen.customer?.id) { qs('customer').value = chosen.customer.id; }
@@ -462,7 +468,9 @@
         qs('customerPO').value = chosen.customerPO || '';
         const buyer = (chosen.customer && chosen.customer.name) || '';
         const buyerField = qs('buyerName'); if (buyerField) buyerField.value = buyer;
-        // Suggest planned tons
+        // Default carrier to planned one (editable)
+        const carrierSel = qs('carrier'); if (carrierSel && chosen.carrier && chosen.carrier.id) carrierSel.value = chosen.carrier.id;
+        // Suggest planned tons (editable)
         const nt = document.querySelector('input[name=netTons]'); if (nt && chosen.plannedTons) nt.value = Number(chosen.plannedTons||0).toFixed(2);
       });
       window._loadsCache = await getJSON('/api/releases/pending-loads/');
@@ -474,9 +482,11 @@
         s.textContent = "Generating preview...";
 
         const data = Object.fromEntries(new FormData(ev.target).entries());
-        // When product select is disabled, FormData omits it; supply from control value
+        // Ensure locked fields are present even if controls are disabled/readonly
         if (!data.productId) { const ps = qs('product'); if (ps && ps.value) data.productId = ps.value; }
         if (!data.buyerName) { const bf = qs('buyerName'); if (bf && bf.value) data.buyerName = bf.value; }
+        if (!data.shipTo) { const sa = qs('shipToAddress'); if (sa && sa.value) data.shipTo = sa.value; }
+        if (!data.date) { const de = document.querySelector('input[name=date]'); if (de && de.value) data.date = de.value; }
         const prod = products.find(p => String(p.id) === String(data.productId));
         data.productName = prod ? prod.name : "";
         const loadSel2 = qs('releaseLoad'); if (loadSel2 && loadSel2.value) data.loadId = loadSel2.value;
