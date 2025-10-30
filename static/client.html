@@ -16,7 +16,13 @@
 </head>
 <body>
   <div class="wrap">
-    <h2>Shipment History</h2>
+    <div style="display:flex; justify-content: space-between; align-items:center; margin-bottom:10px;">
+      <h2 style="margin:0;">Shipment History</h2>
+      <div style="display:flex; gap:.5rem;">
+        <a href="/" class="btn">Home</a>
+        <a href="/api/releases/open/view/" class="btn">Open Releases</a>
+      </div>
+    </div>
     <div id="productSelector" style="margin:10px 0;display:none;"></div>
     <div id="summary" class="cards" style="display:none;"></div>
     <table id="tbl">
