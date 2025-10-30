@@ -614,6 +614,146 @@ def open_releases(request):
         logger.error(f"open_releases error: {e}", exc_info=True)
         return Response({'error': 'Failed to load open releases', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+# Release detail (GET/PATCH)
+@api_view(['GET','PATCH'])
+@authentication_classes([CsrfExemptSessionAuthentication])
+@permission_classes([IsAuthenticated])
+def release_detail_api(request, release_id):
+    try:
+        rel = Release.objects.get(id=release_id)
+    except Release.DoesNotExist:
+        return Response({'error': 'Release not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    if request.method == 'GET':
+        return Response(ReleaseSerializer(rel).data)
+
+    # PATCH update
+    try:
+        data = request.data if isinstance(request.data, dict) else {}
+        tol = float(os.getenv('LOT_CHEM_TOLERANCE', '0.01'))
+
+        # Read fields (camelCase or snake_case)
+        release_date = _parse_date_any(data.get('releaseDate') or data.get('release_date'))
+        customer_id_text = (data.get('customerId') or data.get('customer_id_text') or rel.customer_id_text or '').strip()
+        customer_po = data.get('customerPO') or data.get('customer_po')
+        ship_via = data.get('shipVia') or data.get('ship_via')
+        fob = data.get('fob') or data.get('FOB')
+        qty = data.get('quantityNetTons') or data.get('quantity_net_tons')
+        status_val = data.get('status')
+        carrier_name = (data.get('carrier') or data.get('carrierName') or data.get('shipVia') or '').strip()
+
+        ship = data.get('shipTo') or {}
+        street = ship.get('street') or rel.ship_to_street or ''
+        city = ship.get('city') or rel.ship_to_city or ''
+        state = ship.get('state') or rel.ship_to_state or ''
+        zip_code = ship.get('zip') or rel.ship_to_zip or ''
+        if (not street or not city or not state or not zip_code) and ship.get('address'):
+            m = re.search(r"^(.*?),\s*([^,]+),\s*([A-Z]{2})\s*(\d{5}(?:-\d{4})?)$", ship.get('address').strip())
+            if m:
+                street = street or m.group(1).strip()
+                city = city or m.group(2).strip()
+                state = state or m.group(3).strip()
+                zip_code = zip_code or m.group(4).strip()
+
+        mat = data.get('material') or {}
+        lot_code = (mat.get('lot') or rel.lot or '').strip()
+        desc = (mat.get('description') or rel.material_description or '').strip()
+        analysis = mat.get('analysis') or {}
+
+        with transaction.atomic():
+            # Update simple fields
+            if release_date: rel.release_date = release_date
+            if customer_id_text: rel.customer_id_text = customer_id_text
+            if customer_po is not None: rel.customer_po = customer_po
+            if ship_via is not None: rel.ship_via = ship_via
+            if fob is not None: rel.fob = fob
+            if qty is not None: rel.quantity_net_tons = qty
+            if status_val: rel.status = status_val
+
+            # Upsert relateds
+            customer_obj = None
+            if customer_id_text:
+                customer_obj, _ = Customer.objects.get_or_create(
+                    customer=customer_id_text,
+                    defaults={'address': street or '', 'city': city or '', 'state': (state or '')[:2], 'zip': zip_code or '', 'is_active': True}
+                )
+                rel.customer_ref = customer_obj
+
+            if customer_obj and street and city and state and zip_code:
+                ship_to_obj, _ = CustomerShipTo.objects.get_or_create(
+                    customer=customer_obj, street=street, city=city, state=state[:2], zip=zip_code,
+                    defaults={'name': ship.get('name') or rel.ship_to_name or ''}
+                )
+                if ship.get('name') and ship_to_obj.name != ship.get('name'):
+                    ship_to_obj.name = ship.get('name')
+                    ship_to_obj.save(update_fields=['name'])
+                rel.ship_to_ref = ship_to_obj
+
+            if carrier_name:
+                carrier_obj, _ = Carrier.objects.get_or_create(carrier_name=carrier_name, defaults={'is_active': True})
+                rel.carrier_ref = carrier_obj
+
+            # Product auto-create from description
+            product_obj = None
+            if desc:
+                try:
+                    product_obj = Product.objects.get(name__iexact=desc)
+                except Product.DoesNotExist:
+                    product_obj = Product.objects.create(name=desc, start_tons=Decimal('0'), is_active=True, updated_by=request.user.username)
+
+            # Lot upsert/validate
+            lot_obj = None
+            if lot_code:
+                try:
+                    lot_obj = Lot.objects.get(code=lot_code)
+                    # Validate or enrich chemistry
+                    def _val(x):
+                        try: return float(x) if x is not None else None
+                        except: return None
+                    mismatches = []
+                    for k_model, k_parsed in [('c','C'),('si','Si'),('s','S'),('p','P'),('mn','Mn')]:
+                        exf = _val(getattr(lot_obj, k_model, None))
+                        paf = _val(analysis.get(k_parsed))
+                        if exf is not None and paf is not None and abs(exf - paf) > tol:
+                            mismatches.append({'element': k_parsed, 'existing': exf, 'parsed': paf, 'delta': abs(exf - paf)})
+                        if exf is None and paf is not None:
+                            setattr(lot_obj, k_model, Decimal(str(paf)))
+                    # Attach product if missing
+                    if product_obj and not lot_obj.product:
+                        lot_obj.product = product_obj
+                    if mismatches:
+                        return Response({'error': 'Lot chemistry mismatch', 'lot': lot_code, 'tolerance': tol, 'mismatches': mismatches}, status=status.HTTP_409_CONFLICT)
+                    lot_obj.updated_by = request.user.username
+                    lot_obj.save()
+                except Lot.DoesNotExist:
+                    lot_obj = Lot.objects.create(
+                        code=lot_code,
+                        product=product_obj,
+                        c=Decimal(str(analysis.get('C'))) if analysis.get('C') is not None else None,
+                        si=Decimal(str(analysis.get('Si'))) if analysis.get('Si') is not None else None,
+                        s=Decimal(str(analysis.get('S'))) if analysis.get('S') is not None else None,
+                        p=Decimal(str(analysis.get('P'))) if analysis.get('P') is not None else None,
+                        mn=Decimal(str(analysis.get('Mn'))) if analysis.get('Mn') is not None else None,
+                        updated_by=request.user.username,
+                    )
+                rel.lot_ref = lot_obj
+
+            # Persist text mirrors
+            if ship.get('name') is not None: rel.ship_to_name = ship.get('name')
+            rel.ship_to_street = street
+            rel.ship_to_city = city
+            rel.ship_to_state = state[:2] if state else ''
+            rel.ship_to_zip = zip_code
+            if lot_code is not None: rel.lot = lot_code
+            if desc is not None: rel.material_description = desc
+            rel.updated_by = request.user.username
+            rel.save()
+
+        return Response(ReleaseSerializer(rel).data)
+    except Exception as e:
+        logger.error(f"release_detail_api error: {e}", exc_info=True)
+        return Response({'error': 'Failed to update release', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 # BOL history
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])

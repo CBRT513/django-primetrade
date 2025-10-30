@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Release Detail</title>
+  <link rel="stylesheet" href="/static/css/cbrt-brand.css">
+  <style>
+    .grid { display:grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.75rem; }
+    .card { padding: 1.25rem; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="cbrt-header" style="position: relative;">
+      <div class="company-info">
+        <img src="/static/cbrt-logo-optimized.svg" alt="CBRT" class="company-logo">
+        <div>
+          <h1 class="company-name">Release</h1>
+          <p class="company-tagline">View/Edit Release</p>
+        </div>
+      </div>
+      <div class="user-actions" style="position: absolute; top: 20px; right: 20px;">
+        <a href="/api/releases/open/view/" class="btn" style="margin-right:.5rem;">Back to Open Releases</a>
+        <a href="/auth/logout/" class="btn" style="background: #dc3545; color: white; padding: 8px 20px;">Logout</a>
+      </div>
+    </div>
+
+    <div id="status" class="status" style="min-height: 1.25rem; margin: 0.75rem 0 0;"></div>
+
+    <div class="card">
+      <form id="editForm">
+        <div class="grid">
+          <div class="form-group">
+            <label>Release #</label>
+            <input id="releaseNumber" type="text" readonly>
+          </div>
+          <div class="form-group">
+            <label>Release Date</label>
+            <input id="releaseDate" type="date">
+          </div>
+          <div class="form-group">
+            <label>Status</label>
+            <select id="statusSelect">
+              <option value="OPEN">Open</option>
+              <option value="COMPLETE">Complete</option>
+              <option value="CANCELLED">Cancelled</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Customer ID</label>
+            <input id="customerId" type="text">
+          </div>
+          <div class="form-group">
+            <label>Customer PO</label>
+            <input id="customerPO" type="text">
+          </div>
+          <div class="form-group">
+            <label>Carrier</label>
+            <input id="carrier" type="text">
+          </div>
+          <div class="form-group">
+            <label>Quantity (Net Tons)</label>
+            <input id="qtyTons" type="number" step="0.001">
+          </div>
+        </div>
+
+        <div class="form-group" style="margin-top: .75rem;">
+          <label>Ship To</label>
+          <div style="display:grid; grid-template-columns: 1fr 2fr; gap: 0.75rem; margin-bottom: 0.5rem;">
+            <input id="shipToName" placeholder="Name" type="text">
+            <input id="shipToStreet" placeholder="Street" type="text">
+          </div>
+          <div style="display:grid; grid-template-columns: 1.5fr 0.5fr 0.5fr; gap: 0.75rem;">
+            <input id="shipToCity" placeholder="City" type="text">
+            <input id="shipToState" placeholder="State" maxlength="2" type="text">
+            <input id="shipToZip" placeholder="Zip (5)" inputmode="numeric" pattern="\d{5}" type="text">
+          </div>
+        </div>
+
+        <div class="grid" style="margin-top:.75rem;">
+          <div class="form-group">
+            <label>Lot</label>
+            <input id="materialLot" type="text">
+          </div>
+          <div class="form-group">
+            <label>Material Description</label>
+            <input id="materialDescription" type="text">
+          </div>
+        </div>
+
+        <div class="grid" style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
+          <div class="form-group"><label>C</label><input id="chemC" type="number" step="0.001"></div>
+          <div class="form-group"><label>Si</label><input id="chemSi" type="number" step="0.001"></div>
+          <div class="form-group"><label>S</label><input id="chemS" type="number" step="0.001"></div>
+          <div class="form-group"><label>P</label><input id="chemP" type="number" step="0.001"></div>
+          <div class="form-group"><label>Mn</label><input id="chemMn" type="number" step="0.001"></div>
+        </div>
+
+        <div style="display:flex; gap:.5rem; justify-content:flex-end; margin-top:1rem;">
+          <a class="btn" href="/api/releases/open/view/">Cancel</a>
+          <button type="submit" class="btn btn-accent">Save Changes</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    function show(msg, type='success', ms=3000){
+      const s=document.getElementById('status'); s.textContent=msg; s.className='status '+type; if(ms>0) setTimeout(()=>{s.className='status';s.textContent='';},ms);
+    }
+    function toISO(d){ if(!d) return ''; if(/^\d{4}-\d{2}-\d{2}$/.test(d)) return d; try{ const dt=new Date(d); if(!isNaN(dt)) return dt.toISOString().slice(0,10);}catch(e){} return ''; }
+    function toNum(v){ const s=(v??'').toString().trim(); if(s==='') return undefined; const n=Number(s); return Number.isFinite(n)?n:undefined; }
+    function rid(){ const m=window.location.pathname.match(/\/api\/releases\/(\d+)\//); return m? Number(m[1]) : null; }
+
+    async function load(){
+      const id = rid(); if(!id){ show('Invalid URL','error',6000); return; }
+      const r = await fetch(`/api/releases/${id}/`, { credentials:'same-origin' });
+      if(!r.ok){ show('Failed to load release','error',6000); return; }
+      const rel = await r.json();
+      document.getElementById('releaseNumber').value = rel.release_number || '';
+      document.getElementById('releaseDate').value = toISO(rel.release_date) || '';
+      document.getElementById('statusSelect').value = rel.status || 'OPEN';
+      document.getElementById('customerId').value = rel.customer_id_text || '';
+      document.getElementById('customerPO').value = rel.customer_po || '';
+      document.getElementById('carrier').value = rel.ship_via || '';
+      document.getElementById('qtyTons').value = rel.quantity_net_tons ?? '';
+      document.getElementById('shipToName').value = rel.ship_to_name || '';
+      document.getElementById('shipToStreet').value = rel.ship_to_street || '';
+      document.getElementById('shipToCity').value = rel.ship_to_city || '';
+      document.getElementById('shipToState').value = rel.ship_to_state || '';
+      document.getElementById('shipToZip').value = rel.ship_to_zip || '';
+      document.getElementById('materialLot').value = rel.lot || '';
+      document.getElementById('materialDescription').value = rel.material_description || '';
+      // Chemistry from lot_ref if present
+      const lot = rel.lot_ref || {};
+      document.getElementById('chemC').value = lot.c ?? '';
+      document.getElementById('chemSi').value = lot.si ?? '';
+      document.getElementById('chemS').value = lot.s ?? '';
+      document.getElementById('chemP').value = lot.p ?? '';
+      document.getElementById('chemMn').value = lot.mn ?? '';
+    }
+
+    document.getElementById('editForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = rid(); if(!id) return;
+      const payload = {
+        releaseDate: document.getElementById('releaseDate').value || undefined,
+        status: document.getElementById('statusSelect').value || undefined,
+        customerId: document.getElementById('customerId').value || undefined,
+        customerPO: document.getElementById('customerPO').value || undefined,
+        shipVia: document.getElementById('carrier').value || undefined,
+        shipTo: {
+          name: document.getElementById('shipToName').value || '',
+          street: document.getElementById('shipToStreet').value || '',
+          city: document.getElementById('shipToCity').value || '',
+          state: document.getElementById('shipToState').value || '',
+          zip: (document.getElementById('shipToZip').value || '').replace(/\D/g,'').slice(0,5),
+        },
+        material: {
+          lot: document.getElementById('materialLot').value || '',
+          description: document.getElementById('materialDescription').value || '',
+          analysis: {
+            C: toNum(document.getElementById('chemC').value),
+            Si: toNum(document.getElementById('chemSi').value),
+            S: toNum(document.getElementById('chemS').value),
+            P: toNum(document.getElementById('chemP').value),
+            Mn: toNum(document.getElementById('chemMn').value),
+          }
+        },
+        quantityNetTons: toNum(document.getElementById('qtyTons').value),
+      };
+      const csrf = (window.Utils && Utils.getCSRFToken) ? Utils.getCSRFToken() : null;
+      const r = await fetch(`/api/releases/${id}/`, {
+        method: 'PATCH',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', ...(csrf ? {'X-CSRFToken': csrf} : {}) },
+        body: JSON.stringify(payload)
+      });
+      const j = await r.json().catch(()=>null);
+      if (!r.ok){ show((j&&j.error)||`HTTP ${r.status}`,'error',8000); return; }
+      show('Release updated','success');
+      setTimeout(()=>{ window.location.href='/api/releases/open/view/'; }, 800);
+    });
+
+    load().catch(()=>show('Failed to load release','error',6000));
+  </script>
+</body>
+</html>

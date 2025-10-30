@@ -21,6 +21,8 @@ urlpatterns = [
     path('releases/approve/', views.approve_release, name='release_approve'),
     path('releases/open/', views.open_releases, name='releases_open'),
     path('releases/open/view/', login_required(TemplateView.as_view(template_name='open_releases.html')), name='releases_open_view'),
+    path('releases/<int:release_id>/', views.release_detail_api, name='release_detail_api'),
+    path('releases/<int:release_id>/view/', login_required(TemplateView.as_view(template_name='release_detail.html')), name='release_detail_view'),
 
     path('auth/me/', auth_views.current_user, name='current_user'),
 ]

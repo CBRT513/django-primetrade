@@ -68,8 +68,8 @@
       tbody.innerHTML = rows.map(r => {
         const loads = `${r.loadsShipped} / ${r.totalLoads}`;
         const tons = `${Number(r.tonsShipped||0).toFixed(3)} / ${Number(r.totalTons||0).toFixed(3)}`;
-        return `<tr>
-          <td>${r.releaseNumber}</td>
+return `<tr>
+          <td><a href="/api/releases/${r.id}/view/">${r.releaseNumber}</a></td>
           <td>${r.customer||''}</td>
           <td>${loads}</td>
           <td>${tons}</td>
