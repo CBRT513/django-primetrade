@@ -118,7 +118,11 @@
       <form id="f">
         <div class="grid">
           <div class="form-group">
-            <label>Date *</label>
+            <label>Release Load *</label>
+            <select id="releaseLoad"></select>
+          </div>
+          <div class="form-group">
+            <label>Date *
             <input type="date" name="date" required />
           </div>
           <div class="form-group">
@@ -129,19 +133,19 @@
         
         <div class="form-group">
           <label>Customer *</label>
-          <select name="customerId" id="customer" onchange="updateCustomerAddress()" required>
+          <select name="customerId" id="customer" onchange="updateCustomerAddress()" required disabled>
             <option value="">Select a customer...</option>
           </select>
         </div>
         
         <div class="form-group">
           <label>Customer PO #</label>
-          <input name="customerPO" placeholder="Optional" />
+          <input name="customerPO" id="customerPO" placeholder="Optional" readonly />
         </div>
         
         <div class="form-group">
           <label>Ship-To Address *</label>
-          <textarea name="shipTo" rows="3" id="shipToAddress" required></textarea>
+          <textarea name="shipTo" rows="3" id="shipToAddress" required readonly></textarea>
         </div>
         <input type="hidden" name="buyerName" id="buyerName" />
         
@@ -402,8 +406,19 @@
       products = productsData;
       customers = customersData;
       carriers = carriersData;
-      
-      // Populate products dropdown (Django uses snake_case: is_active)
+
+      // Load pending release loads for selection
+      const loads = await getJSON('/api/releases/pending-loads/');
+      const loadSel = qs('releaseLoad');
+      if (loads.length === 0) {
+        loadSel.add(new Option('No pending loads', ''));
+        loadSel.disabled = true;
+      } else {
+        loadSel.add(new Option('Select release load…',''));
+        loads.forEach(ld => loadSel.add(new Option(`${ld.label} — ${ld.customer.name||''} — ${ld.scheduledDate||''} — ${Number(ld.plannedTons||0).toFixed(3)} NT`, ld.loadId)));
+      }
+
+      // Populate products dropdown (lock later on load select)
       const productSel = qs("product");
       products
         .filter(p => p.is_active !== false)
@@ -433,6 +448,23 @@
       const dd = String(d.getDate()).padStart(2,'0');
       document.querySelector('input[name=date]').value = `${yyyy}-${mm}-${dd}`;
 
+      // On release load select, auto-fill locked fields
+      loadSel.addEventListener('change', () => {
+        const id = loadSel.value;
+        const chosen = (window._loadsCache || []).find(x => String(x.loadId) === String(id));
+        if (!chosen) { qs('customer').value = ''; qs('shipToAddress').value=''; qs('customerPO').value=''; productSel.disabled=false; return; }
+        // Cache product/customer
+        if (chosen.product?.id) { productSel.value = chosen.product.id; productSel.disabled = true; }
+        if (chosen.customer?.id) { qs('customer').value = chosen.customer.id; }
+        // Ship-to
+        const st = chosen.shipTo||{}; const lines = [st.name, st.street, `${st.city||''}, ${st.state||''} ${st.zip||''}`].filter(Boolean);
+        qs('shipToAddress').value = lines.join('\n');
+        qs('customerPO').value = chosen.customerPO || '';
+        // Suggest planned tons
+        const nt = document.querySelector('input[name=netTons]'); if (nt && chosen.plannedTons) nt.value = Number(chosen.plannedTons||0).toFixed(2);
+      });
+      window._loadsCache = await getJSON('/api/releases/pending-loads/');
+
       // Form submission - preview first
       qs("f").addEventListener("submit", async (ev) => {
         ev.preventDefault();
@@ -442,6 +474,7 @@
         const data = Object.fromEntries(new FormData(ev.target).entries());
         const prod = products.find(p => String(p.id) === String(data.productId));
         data.productName = prod ? prod.name : "";
+        const loadSel2 = qs('releaseLoad'); if (loadSel2 && loadSel2.value) data.loadId = loadSel2.value;
 
         // Store data for later approval
         pendingBOLData = data;

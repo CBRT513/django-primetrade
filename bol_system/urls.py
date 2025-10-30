@@ -12,6 +12,7 @@ urlpatterns = [
     path('carriers/', views.carrier_list, name='carriers'),
     path('bol/preview/', views.preview_bol, name='preview_bol'),
     path('bol/confirm/', views.confirm_bol, name='confirm_bol'),
+    path('releases/pending-loads/', views.pending_release_loads, name='pending_release_loads'),
     path('bol/', views.confirm_bol, name='create_bol'),  # Backward compatibility
     path('bol/<int:bol_id>/', views.bol_detail, name='bol_detail'),
     path('balances/', views.balances, name='balances'),

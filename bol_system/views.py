@@ -341,8 +341,22 @@ def confirm_bol(request):
     try:
         data = request.data
 
-        # Validation
-        required_fields = ['date', 'productId', 'buyerName', 'shipTo', 'netTons']
+        # If binding to a pending load, enforce required fields differently
+        load_id = data.get('loadId') or data.get('load_id')
+        if load_id:
+            # Basic required for bound flow
+            for field in ['date', 'netTons']:
+                if not data.get(field):
+                    return Response({'error': f'Missing field: {field}'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            # Legacy free-form flow
+            required_fields = ['date', 'productId', 'buyerName', 'shipTo', 'netTons']
+            for field in required_fields:
+                if not data.get(field):
+                    return Response({'error': f'Missing field: {field}'},
+                                  status=status.HTTP_400_BAD_REQUEST)
+
+        # Validate net_tons is positive number
         for field in required_fields:
             if not data.get(field):
                 return Response({'error': f'Missing field: {field}'},
@@ -362,23 +376,56 @@ def confirm_bol(request):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        # Get related objects
-        try:
-            product = Product.objects.get(id=data['productId'])
-        except Product.DoesNotExist:
-            return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
-
-        try:
-            carrier = Carrier.objects.get(id=data.get('carrierId', ''))
-        except Carrier.DoesNotExist:
-            return Response({'error': 'Carrier not found'}, status=status.HTTP_404_NOT_FOUND)
-
+        # Resolve from load if provided
+        release_load = None
+        release_obj = None
+        product = None
         customer = None
-        if data.get('customerId'):
+        carrier = None
+
+        if load_id:
             try:
-                customer = Customer.objects.get(id=data.get('customerId'))
-            except Customer.DoesNotExist:
-                return Response({'error': 'Customer not found'}, status=status.HTTP_404_NOT_FOUND)
+                release_load = ReleaseLoad.objects.select_related('release', 'release__customer_ref', 'release__carrier_ref', 'release__lot_ref', 'release__lot_ref__product').get(id=load_id)
+            except ReleaseLoad.DoesNotExist:
+                return Response({'error': 'Load not found'}, status=status.HTTP_404_NOT_FOUND)
+            if release_load.status != 'PENDING':
+                return Response({'error': 'This load has already shipped'}, status=status.HTTP_409_CONFLICT)
+            release_obj = release_load.release
+            # Product from lot_ref.product or require productId
+            product = getattr(getattr(release_obj, 'lot_ref', None), 'product', None)
+            if not product and data.get('productId'):
+                try:
+                    product = Product.objects.get(id=data['productId'])
+                except Product.DoesNotExist:
+                    return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
+            if not product:
+                return Response({'error': 'Product not set for this release/lot'}, status=status.HTTP_400_BAD_REQUEST)
+            customer = getattr(release_obj, 'customer_ref', None)
+            # Carrier: prefer payload carrierId override, else release.carrier_ref must exist
+            if data.get('carrierId'):
+                try:
+                    carrier = Carrier.objects.get(id=data.get('carrierId'))
+                except Carrier.DoesNotExist:
+                    return Response({'error': 'Carrier not found'}, status=status.HTTP_404_NOT_FOUND)
+            else:
+                carrier = getattr(release_obj, 'carrier_ref', None)
+                if not carrier:
+                    return Response({'error': 'Carrier is required'}, status=status.HTTP_400_BAD_REQUEST)
+        else:
+            # Legacy resolution
+            try:
+                product = Product.objects.get(id=data['productId'])
+            except Product.DoesNotExist:
+                return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
+            try:
+                carrier = Carrier.objects.get(id=data.get('carrierId', ''))
+            except Carrier.DoesNotExist:
+                return Response({'error': 'Carrier not found'}, status=status.HTTP_404_NOT_FOUND)
+            if data.get('customerId'):
+                try:
+                    customer = Customer.objects.get(id=data.get('customerId'))
+                except Customer.DoesNotExist:
+                    return Response({'error': 'Customer not found'}, status=status.HTTP_404_NOT_FOUND)
 
         truck = None
         if data.get('truckId'):
@@ -387,13 +434,26 @@ def confirm_bol(request):
             except Truck.DoesNotExist:
                 return Response({'error': 'Truck not found'}, status=status.HTTP_404_NOT_FOUND)
 
+        # Build locked fields if using load
+        if release_load:
+            buyer_name = getattr(customer, 'customer', None) or release_obj.customer_id_text
+            ship_to_text = (release_obj.ship_to_street or '')
+            city_line = ", ".join([p for p in [release_obj.ship_to_city, release_obj.ship_to_state] if p])
+            zip_part = f" {release_obj.ship_to_zip}" if release_obj.ship_to_zip else ''
+            ship_to_text = f"{release_obj.ship_to_name}\n{release_obj.ship_to_street}\n{city_line}{zip_part}".strip()
+            customer_po = release_obj.customer_po or ''
+        else:
+            buyer_name = data['buyerName']
+            ship_to_text = data['shipTo']
+            customer_po = data.get('customerPO', '')
+
         # Create BOL
         bol = BOL.objects.create(
             product=product,
             product_name=product.name,
             date=data['date'],
-            buyer_name=data['buyerName'],
-            ship_to=data['shipTo'],
+            buyer_name=buyer_name,
+            ship_to=ship_to_text,
             carrier=carrier,
             carrier_name=carrier.carrier_name,
             truck=truck,
@@ -402,9 +462,22 @@ def confirm_bol(request):
             net_tons=net_tons,
             notes=data.get('notes', ''),
             customer=customer,
-            customer_po=data.get('customerPO', ''),
+            customer_po=customer_po,
             created_by_email=f'{request.user.username}@primetrade.com'
         )
+
+        # If load provided, mark shipped and attach
+        if release_load:
+            release_load.status = 'SHIPPED'
+            release_load.bol = bol
+            release_load.save(update_fields=['status','bol','updated_at','updated_by'])
+            # If all loads shipped, close release
+            try:
+                if release_load.release.loads.filter(status='PENDING').count() == 0:
+                    release_load.release.status = 'COMPLETE'
+                    release_load.release.save(update_fields=['status','updated_at'])
+            except Exception:
+                pass
 
         logger.info(f"BOL {bol.bol_number} created by {request.user.username} with {net_tons} tons")
         audit(request, 'BOL_CREATED', bol, f"BOL created {bol.bol_number}", {'netTons': net_tons})
@@ -736,6 +809,61 @@ def open_releases(request):
     except Exception as e:
         logger.error(f"open_releases error: {e}", exc_info=True)
         return Response({'error': 'Failed to load open releases', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+# Pending loads for BOL creation (only unshipped loads)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def pending_release_loads(request):
+    try:
+        loads = ReleaseLoad.objects.filter(status='PENDING').select_related(
+            'release', 'release__customer_ref', 'release__ship_to_ref', 'release__carrier_ref', 'release__lot_ref', 'release__lot_ref__product'
+        ).order_by('date','seq')
+        result = []
+        for ld in loads:
+            r = ld.release
+            prod = getattr(getattr(r, 'lot_ref', None), 'product', None)
+            result.append({
+                'loadId': ld.id,
+                'releaseId': r.id,
+                'releaseNumber': r.release_number,
+                'label': f"{r.release_number} - Load {ld.seq}",
+                'seq': ld.seq,
+                'scheduledDate': ld.date,
+                'plannedTons': float(ld.planned_tons or 0),
+                'customer': {
+                    'id': getattr(r.customer_ref, 'id', None),
+                    'name': getattr(r.customer_ref, 'customer', r.customer_id_text)
+                },
+                'shipTo': {
+                    'name': r.ship_to_name,
+                    'street': r.ship_to_street,
+                    'city': r.ship_to_city,
+                    'state': r.ship_to_state,
+                    'zip': r.ship_to_zip,
+                },
+                'customerPO': r.customer_po,
+                'carrier': {
+                    'id': getattr(r.carrier_ref, 'id', None),
+                    'name': getattr(getattr(r, 'carrier_ref', None), 'carrier_name', r.ship_via)
+                },
+                'lot': {
+                    'id': getattr(r.lot_ref, 'id', None),
+                    'code': r.lot,
+                    'c': getattr(getattr(r, 'lot_ref', None), 'c', None),
+                    'si': getattr(getattr(r, 'lot_ref', None), 'si', None),
+                    's': getattr(getattr(r, 'lot_ref', None), 's', None),
+                    'p': getattr(getattr(r, 'lot_ref', None), 'p', None),
+                    'mn': getattr(getattr(r, 'lot_ref', None), 'mn', None)
+                },
+                'product': {
+                    'id': getattr(prod, 'id', None),
+                    'name': getattr(prod, 'name', r.material_description)
+                }
+            })
+        return Response(result)
+    except Exception as e:
+        logger.error(f"pending_release_loads error: {e}", exc_info=True)
+        return Response({'error': 'Failed to load pending loads', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 # Release detail (GET/PATCH)
 @api_view(['GET','PATCH'])
