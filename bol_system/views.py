@@ -3,8 +3,8 @@ from rest_framework.decorators import api_view, permission_classes, authenticati
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.authentication import SessionAuthentication
-from django.db import models, connection
-from .models import Product, Customer, Carrier, Truck, BOL, Release, ReleaseLoad
+from django.db import models, connection, transaction
+from .models import Product, Customer, Carrier, Truck, BOL, Release, ReleaseLoad, CustomerShipTo, Lot
 from .serializers import ProductSerializer, CustomerSerializer, CarrierSerializer, TruckSerializer, ReleaseSerializer
 from .pdf_generator import generate_bol_pdf
 from .release_parser import parse_release_pdf
@@ -12,6 +12,8 @@ import logging
 import os
 import base64
 import tempfile
+from decimal import Decimal
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -397,69 +399,173 @@ def approve_release(request):
         if not release_number:
             return Response({'error': 'releaseNumber required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Create or upsert release
-        rel, created = Release.objects.get_or_create(
-            release_number=release_number,
-            defaults={
-                'release_date': _parse_date_any(data.get('releaseDate')),
-                'customer_id_text': data.get('customerId', ''),
-                'customer_po': data.get('customerPO', ''),
-                'ship_via': data.get('shipVia', ''),
-                'fob': data.get('fob', ''),
-                'ship_to_name': (data.get('shipTo') or {}).get('name', ''),
-                'ship_to_street': (data.get('shipTo') or {}).get('street', ''),
-                'ship_to_city': (data.get('shipTo') or {}).get('city', ''),
-                'ship_to_state': (data.get('shipTo') or {}).get('state', ''),
-                'ship_to_zip': (data.get('shipTo') or {}).get('zip', ''),
-                'lot': (data.get('material') or {}).get('lot', ''),
-                'material_description': (data.get('material') or {}).get('description', ''),
-                'quantity_net_tons': data.get('quantityNetTons', None),
-                'updated_by': request.user.username,
-            }
-        )
-        if not created:
-            # Update core fields if re-approving
-            rel.release_date = _parse_date_any(data.get('releaseDate')) or rel.release_date
-            for f, k in [
-                ('customer_id_text','customerId'),
-                ('customer_po','customerPO'),
-                ('ship_via','shipVia'),
-                ('fob','fob')
-            ]:
-                v = data.get(k)
-                if v:
-                    setattr(rel, f, v)
-            ship = data.get('shipTo') or {}
-            for f in ['name','street','city','state','zip']:
-                if ship.get(f):
-                    setattr(rel, f'ship_to_{f}', ship.get(f))
-            mat = data.get('material') or {}
-            if mat.get('lot'): rel.lot = mat.get('lot')
-            if mat.get('description'): rel.material_description = mat.get('description')
-            if data.get('quantityNetTons') is not None:
-                rel.quantity_net_tons = data.get('quantityNetTons')
-            rel.updated_by = request.user.username
-            rel.save()
+        # Reject duplicates
+        if Release.objects.filter(release_number=release_number).exists():
+            return Response({'error': 'Duplicate release_number', 'releaseNumber': release_number}, status=status.HTTP_409_CONFLICT)
 
-        # Replace loads
-        rel.loads.all().delete()
-        sched = data.get('schedule') or []
-        per_load = None
+        # Chemistry tolerance (configurable)
         try:
-            if data.get('quantityNetTons') and len(sched):
-                per_load = float(data['quantityNetTons'])/max(len(sched),1)
+            tol = float(os.getenv('LOT_CHEM_TOLERANCE', '0.01'))
         except Exception:
-            per_load = None
-        for i, row in enumerate(sched, start=1):
-            ReleaseLoad.objects.create(
-                release=rel,
-                seq=i,
-                date=_parse_date_any(row.get('date') if isinstance(row, dict) else None),
-                planned_tons=per_load,
+            tol = 0.01
+
+        # Normalize inputs
+        release_date = _parse_date_any(data.get('releaseDate'))
+        customer_id_text = (data.get('customerId') or '').strip()
+        ship = data.get('shipTo') or data.get('shipToRaw') or {}
+        # Ship-To parsing fallback if only provide combined address
+        street = ship.get('street') or ''
+        city = ship.get('city') or ''
+        state = ship.get('state') or ''
+        zip_code = ship.get('zip') or ''
+        if (not street or not city or not state or not zip_code) and ship.get('address'):
+            addr = ship.get('address')
+            # Try to parse "<street>, <city>, <ST> <ZIP>"
+            m = re.search(r"^(.*?),\s*([^,]+),\s*([A-Z]{2})\s*(\d{5}(?:-\d{4})?)$", addr.strip())
+            if m:
+                street = street or m.group(1).strip()
+                city = city or m.group(2).strip()
+                state = state or m.group(3).strip()
+                zip_code = zip_code or m.group(4).strip()
+
+        carrier_name = (data.get('carrier') or data.get('shipVia') or data.get('carrierName') or '').strip()
+
+        mat = data.get('material') or {}
+        lot_code = (mat.get('lot') or '').strip()
+        analysis = mat.get('analysis') or {}
+
+        with transaction.atomic():
+            # Create Release (text fields captured for audit)
+            rel = Release.objects.create(
+                release_number=release_number,
+                release_date=release_date,
+                customer_id_text=customer_id_text,
+                customer_po=data.get('customerPO', ''),
+                ship_via=data.get('shipVia', ''),
+                fob=data.get('fob', ''),
+                ship_to_name=ship.get('name', ''),
+                ship_to_street=street,
+                ship_to_city=city,
+                ship_to_state=state,
+                ship_to_zip=zip_code,
+                lot=lot_code,
+                material_description=(mat.get('description') or ''),
+                quantity_net_tons=data.get('quantityNetTons', None),
                 updated_by=request.user.username,
             )
 
-        return Response({'ok': True, 'id': rel.id, 'created': created, 'release': ReleaseSerializer(rel).data})
+            # Upsert Customer
+            customer_obj = None
+            if customer_id_text:
+                customer_obj, _ = Customer.objects.get_or_create(
+                    customer=customer_id_text,
+                    defaults={
+                        'address': street or '',
+                        'city': city or '',
+                        'state': (state or '')[:2],
+                        'zip': zip_code or '',
+                        'is_active': True,
+                    }
+                )
+                rel.customer_ref = customer_obj
+
+            # Upsert Ship-To
+            ship_to_obj = None
+            if customer_obj and street and city and state and zip_code:
+                ship_to_obj, _ = CustomerShipTo.objects.get_or_create(
+                    customer=customer_obj,
+                    street=street,
+                    city=city,
+                    state=state[:2],
+                    zip=zip_code,
+                    defaults={'name': ship.get('name', ''), 'is_active': True}
+                )
+                # If name updated, keep latest friendly name
+                if ship.get('name') and ship_to_obj.name != ship.get('name'):
+                    ship_to_obj.name = ship.get('name')
+                    ship_to_obj.save(update_fields=['name'])
+                rel.ship_to_ref = ship_to_obj
+
+            # Upsert Carrier
+            carrier_obj = None
+            if carrier_name:
+                carrier_obj, _ = Carrier.objects.get_or_create(
+                    carrier_name=carrier_name,
+                    defaults={'is_active': True}
+                )
+                rel.carrier_ref = carrier_obj
+
+            # Upsert/validate Lot
+            lot_obj = None
+            if lot_code:
+                try:
+                    lot_obj = Lot.objects.get(code=lot_code)
+                    # Validate chemistry within tolerance
+                    mismatches = []
+                    def _val(x):
+                        try:
+                            return float(x) if x is not None else None
+                        except Exception:
+                            return None
+                    for k_model, k_parsed in [('c','C'),('si','Si'),('s','S'),('p','P'),('mn','Mn')]:
+                        existing = getattr(lot_obj, k_model, None)
+                        parsed = analysis.get(k_parsed)
+                        exf = _val(existing)
+                        paf = _val(parsed)
+                        if exf is not None and paf is not None:
+                            if abs(exf - paf) > tol:
+                                mismatches.append({'element': k_parsed, 'existing': exf, 'parsed': paf, 'delta': abs(exf - paf)})
+                    if mismatches:
+                        return Response({'error': 'Lot chemistry mismatch', 'lot': lot_code, 'tolerance': tol, 'mismatches': mismatches}, status=status.HTTP_409_CONFLICT)
+                except Lot.DoesNotExist:
+                    # Create draft lot with analysis
+                    product_obj = None
+                    desc = (mat.get('description') or '').strip()
+                    if desc:
+                        try:
+                            product_obj = Product.objects.get(name__iexact=desc)
+                        except Product.DoesNotExist:
+                            product_obj = None
+                    lot_obj = Lot.objects.create(
+                        code=lot_code,
+                        product=product_obj,
+                        c=Decimal(str(analysis.get('C'))) if analysis.get('C') is not None else None,
+                        si=Decimal(str(analysis.get('Si'))) if analysis.get('Si') is not None else None,
+                        s=Decimal(str(analysis.get('S'))) if analysis.get('S') is not None else None,
+                        p=Decimal(str(analysis.get('P'))) if analysis.get('P') is not None else None,
+                        mn=Decimal(str(analysis.get('Mn'))) if analysis.get('Mn') is not None else None,
+                        updated_by=request.user.username,
+                    )
+                rel.lot_ref = lot_obj
+
+            # Persist Release with refs
+            rel.save()
+
+            # Create loads
+            sched = data.get('schedule') or []
+            per_load = None
+            try:
+                if data.get('quantityNetTons') and len(sched):
+                    per_load = float(data['quantityNetTons'])/max(len(sched),1)
+            except Exception:
+                per_load = None
+            for i, row in enumerate(sched, start=1):
+                ReleaseLoad.objects.create(
+                    release=rel,
+                    seq=i,
+                    date=_parse_date_any(row.get('date') if isinstance(row, dict) else None),
+                    planned_tons=per_load,
+                    updated_by=request.user.username,
+                )
+
+        normalized_ids = {
+            'customerId': rel.customer_ref.id if rel.customer_ref else None,
+            'shipToId': rel.ship_to_ref.id if rel.ship_to_ref else None,
+            'carrierId': rel.carrier_ref.id if rel.carrier_ref else None,
+            'lotId': rel.lot_ref.id if rel.lot_ref else None,
+        }
+
+        return Response({'ok': True, 'id': rel.id, 'created': True, 'normalized': normalized_ids, 'release': ReleaseSerializer(rel).data})
     except Exception as e:
         logger.error(f"approve_release error: {e}", exc_info=True)
         return Response({'error': 'Failed to save release', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)

@@ -53,6 +53,22 @@ class Customer(TimestampedModel):
     def full_address(self):
         return f"{self.address}\n{self.city}, {self.state} {self.zip}"
 
+class CustomerShipTo(TimestampedModel):
+    customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='ship_tos')
+    name = models.CharField(max_length=200, blank=True)
+    street = models.CharField(max_length=200)
+    city = models.CharField(max_length=100)
+    state = models.CharField(max_length=2)
+    zip = models.CharField(max_length=10)
+    is_active = models.BooleanField(default=True)
+
+    class Meta:
+        ordering = ['customer','name']
+        unique_together = [['customer','street','city','state','zip']]
+
+    def __str__(self):
+        return f"{self.customer.customer} -> {self.street}, {self.city}" 
+
 class Carrier(TimestampedModel):
     carrier_name = models.CharField(max_length=200, unique=True)
     contact_name = models.CharField(max_length=200, blank=True)
@@ -164,8 +180,23 @@ class CompanyBranding(TimestampedModel):
 
 
 # =============================
-# Release management (Phase 2)
+# Lot and Release management (Phase 2)
 # =============================
+class Lot(TimestampedModel):
+    code = models.CharField(max_length=100, unique=True, db_index=True)
+    product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True)
+    c = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
+    si = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
+    s = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
+    p = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
+    mn = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
+
+    class Meta:
+        ordering = ['code']
+
+    def __str__(self):
+        return self.code
+
 class Release(TimestampedModel):
     STATUS_CHOICES = (
         ("OPEN", "Open"),
@@ -190,6 +221,12 @@ class Release(TimestampedModel):
 
     lot = models.CharField(max_length=100, blank=True)
     material_description = models.CharField(max_length=200, blank=True)
+
+    # Normalized references
+    customer_ref = models.ForeignKey(Customer, on_delete=models.SET_NULL, null=True, blank=True)
+    ship_to_ref = models.ForeignKey('CustomerShipTo', on_delete=models.SET_NULL, null=True, blank=True)
+    carrier_ref = models.ForeignKey(Carrier, on_delete=models.SET_NULL, null=True, blank=True)
+    lot_ref = models.ForeignKey('Lot', on_delete=models.SET_NULL, null=True, blank=True)
 
     quantity_net_tons = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     status = models.CharField(max_length=12, choices=STATUS_CHOICES, default="OPEN")

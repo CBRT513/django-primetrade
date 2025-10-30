@@ -37,13 +37,28 @@ class ReleaseLoadSerializer(serializers.ModelSerializer):
     def get_bol_number(self, obj):
         return obj.bol.bol_number if obj.bol else None
 
+class CustomerShipToSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = CustomerShipTo
+        fields = ['id','name','street','city','state','zip']
+
+class LotSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Lot
+        fields = ['id','code','c','si','s','p','mn']
+
 class ReleaseSerializer(serializers.ModelSerializer):
     loads = ReleaseLoadSerializer(many=True, read_only=True)
+    customer_ref = CustomerSerializer(read_only=True)
+    ship_to_ref = CustomerShipToSerializer(read_only=True)
+    carrier_ref = CarrierSerializer(read_only=True)
+    lot_ref = LotSerializer(read_only=True)
 
     class Meta:
         model = Release
         fields = [
             'id','release_number','release_date','customer_id_text','customer_po',
             'ship_via','fob','ship_to_name','ship_to_street','ship_to_city','ship_to_state','ship_to_zip',
-            'lot','material_description','quantity_net_tons','status','loads'
+            'lot','material_description','quantity_net_tons','status','loads',
+            'customer_ref','ship_to_ref','carrier_ref','lot_ref'
         ]
