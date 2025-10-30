@@ -12,6 +12,11 @@
       overflow: hidden;
       margin-top: 1rem;
     }
+    /* Simple tabs */
+    .tabs { display:flex; gap:.5rem; margin: 0 0 1rem 0; }
+    .tab { background: var(--surface); border:1px solid var(--border); color: var(--text-primary); padding:.5rem 1rem; border-radius:8px; cursor:pointer; }
+    .tab.active { background: var(--primary); color:#fff; }
+    .tab-panel { /* panels are wrapped cards */ }
   </style>
 </head>
 <body>
@@ -28,51 +33,63 @@
       </div>
     </div>
 
-    <div class="dashboard-grid">
-      <div class="card">
-        <h3>Admin</h3>
-        <div class="admin-grid">
-          <a class="btn" href="/products.html">Manage Products</a>
-          <a class="btn" href="/customers.html">Manage Customers</a>
-          <a class="btn" href="/carriers.html">Manage Carriers</a>
-          <a class="btn btn-accent" href="/releases.html">Upload Release PDF</a>
-          <a class="btn" href="/api/releases/open/view/">Open Releases</a>
+    <div class="tabs" role="tablist">
+      <button class="tab" role="tab" aria-selected="false" data-tab="admin">Admin</button>
+      <button class="tab active" role="tab" aria-selected="true" data-tab="office">Office</button>
+      <button class="tab" role="tab" aria-selected="false" data-tab="client">Client</button>
+    </div>
+
+    <div id="tab-panels">
+      <div class="tab-panel" data-panel="admin" hidden>
+        <div class="card">
+          <h3>Admin</h3>
+          <div class="admin-grid">
+            <a class="btn" href="/products.html">Manage Products</a>
+            <a class="btn" href="/customers.html">Manage Customers</a>
+            <a class="btn" href="/carriers.html">Manage Carriers</a>
+            <a class="btn btn-accent" href="/releases.html">Upload Release PDF</a>
+            <a class="btn" href="/api/releases/open/view/">Open Releases</a>
+          </div>
         </div>
       </div>
 
-      <div class="card">
-        <h3>Office</h3>
-        <div class="office-controls">
-          <div class="form-group">
-            <label>Product</label>
-            <select id="product"></select>
+      <div class="tab-panel" data-panel="office">
+        <div class="card">
+          <h3>Office</h3>
+          <div class="office-controls">
+            <div class="form-group">
+              <label>Product</label>
+              <select id="product"></select>
+            </div>
+            <a class="btn btn-accent" id="office" href="/office.html">Create BOL</a>
           </div>
-          <a class="btn btn-accent" id="office" href="/office.html">Create BOL</a>
-        </div>
-        <div class="office-management">
-          <a class="btn" href="/customers.html">Manage Customers</a>
-          <a class="btn" href="/carriers.html">Manage Carriers</a>
-          <a class="btn btn-accent" href="/releases.html">Upload Release PDF</a>
-          <a class="btn" href="/api/releases/open/view/">Open Releases</a>
+          <div class="office-management">
+            <a class="btn" href="/customers.html">Manage Customers</a>
+            <a class="btn" href="/carriers.html">Manage Carriers</a>
+            <a class="btn btn-accent" href="/releases.html">Upload Release PDF</a>
+            <a class="btn" href="/api/releases/open/view/">Open Releases</a>
+          </div>
         </div>
       </div>
 
-      <div class="card">
-        <h3>Client View</h3>
-        <div class="client-controls">
-          <div class="form-group">
-            <label>Product</label>
-            <select id="clientProduct"></select>
+      <div class="tab-panel" data-panel="client" hidden>
+        <div class="card">
+          <h3>Client View</h3>
+          <div class="client-controls">
+            <div class="form-group">
+              <label>Product</label>
+              <select id="clientProduct"></select>
+            </div>
+            <a class="btn btn-accent" id="client" href="/client.html">Open Client History</a>
           </div>
-          <a class="btn btn-accent" id="client" href="/client.html">Open Client History</a>
-        </div>
-        <div class="table-container">
-          <table id="quick">
-            <thead>
-              <tr><th>Product</th><th>Starting</th><th>Shipped</th><th>Remaining</th></tr>
-            </thead>
-            <tbody></tbody>
-          </table>
+          <div class="table-container">
+            <table id="quick">
+              <thead>
+                <tr><th>Product</th><th>Starting</th><th>Shipped</th><th>Remaining</th></tr>
+              </thead>
+              <tbody></tbody>
+            </table>
+          </div>
         </div>
       </div>
     </div>
@@ -145,6 +162,16 @@
         window.location.href = `/client.html?productId=${encodeURIComponent(pid)}`;
       });
     })().catch(err => alert(err.message || String(err)));
+
+    // Tabs handler
+    const tabs = document.querySelectorAll('.tab');
+    const panels = document.querySelectorAll('.tab-panel');
+    function showTab(name){
+      tabs.forEach(t=>{ t.classList.toggle('active', t.dataset.tab===name); t.setAttribute('aria-selected', t.dataset.tab===name ? 'true':'false'); });
+      panels.forEach(p=> p.hidden = (p.dataset.panel !== name));
+    }
+    tabs.forEach(btn=> btn.addEventListener('click', () => showTab(btn.dataset.tab)));
+    showTab('office');
   </script>
 </body>
 </html>
