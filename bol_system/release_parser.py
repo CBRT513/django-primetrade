@@ -216,20 +216,56 @@ def parse_release_text(text: str) -> Dict[str, Any]:
     if ship_via:
         carrier = ship_via.strip()
 
-    # Notes snippets to echo to BOL requirements
+    # Warehouse requirements bullets (prefer exact section parsing)
     bol_requirements: List[str] = []
-    for phrase in [
-        r"free of radioactive contamination",
-        r"Analysis\s*&\s*PO must be on BOL",
-        r"SEND TO THE FOUNDRY",
-        r"Do\s*NOT\s*exceed\s*max(imum)?\s*legal",
-        r"Trucks?\s+must\s+be\s+TARPED",
-        r"Material\s*#\s*\S+",
-        r"P\.O\.\s*#\s*\S+",
-    ]:
-        m = re.search(phrase, t, re.I)
-        if m:
-            bol_requirements.append(m.group(0))
+    try:
+        sec = re.search(r"Warehouse\s+requirements\s*:\s*([\s\S]*?)(?:\n\s*(Trucking\s+requirements|Please\s+deliver|$))", t, re.I)
+        if sec:
+            block = sec.group(1)
+            lines = [ln.rstrip() for ln in block.splitlines()]
+            current = None
+            for ln in lines:
+                if not ln.strip():
+                    continue
+                if ln.strip().startswith('-'):
+                    if current:
+                        bol_requirements.append(current.strip(' -'))
+                    current = ln.strip()[1:].strip()
+                else:
+                    # continuation of previous bullet (wrapped line)
+                    if current:
+                        current += ' ' + ln.strip()
+            if current:
+                bol_requirements.append(current.strip(' -'))
+        # Normalize common variants
+        normed = []
+        for s in bol_requirements:
+            s = re.sub(r"\s+", " ", s).strip()
+            # Fix split sentence for certification line
+            m = re.search(r"Put this statement on BOL:.*free of radioactive contamination", s, re.I)
+            if m:
+                s = m.group(0)
+            normed.append(s)
+        bol_requirements = normed
+    except Exception:
+        pass
+
+    # Fallback: look for phrases if section parsing failed
+    if not bol_requirements:
+        for phrase in [
+            r"Put this statement on BOL:.*free of radioactive contamination",
+            r"free of radioactive contamination",
+            r"Analysis\s*&\s*PO must be on BOL",
+            r"SEND TO THE FOUNDRY",
+            r"Do\s*NOT\s*exceed\s*max(imum)?\s*legal",
+            r"Trucks?\s+must\s+be\s+TARPED",
+            r"Material\s*#\s*\S+",
+            r"P\.O\.\s*#\s*\S+",
+            r"SHIPPER:\s*Primetrade,?\s*LLC",
+        ]:
+            m = re.search(phrase, t, re.I | re.S)
+            if m:
+                bol_requirements.append(re.sub(r"\s+", " ", m.group(0)).strip())
 
     result: Dict[str, Any] = {
         "releaseNumber": release_no,

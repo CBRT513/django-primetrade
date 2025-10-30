@@ -64,14 +64,6 @@
               <input id="customerPO" type="text">
             </div>
             <div class="form-group">
-              <label>Ship Via</label>
-              <input id="shipVia" type="text">
-            </div>
-            <div class="form-group">
-              <label>FOB</label>
-              <input id="fob" type="text">
-            </div>
-            <div class="form-group">
               <label>Carrier</label>
               <input id="carrier" type="text">
             </div>
@@ -102,6 +94,29 @@
             <div class="form-group">
               <label>Material Description</label>
               <input id="materialDescription" type="text">
+            </div>
+          </div>
+
+          <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
+            <div class="form-group">
+              <label>C</label>
+              <input id="chemC" type="number" step="0.001">
+            </div>
+            <div class="form-group">
+              <label>Si</label>
+              <input id="chemSi" type="number" step="0.001">
+            </div>
+            <div class="form-group">
+              <label>S</label>
+              <input id="chemS" type="number" step="0.001">
+            </div>
+            <div class="form-group">
+              <label>P</label>
+              <input id="chemP" type="number" step="0.001">
+            </div>
+            <div class="form-group">
+              <label>Mn</label>
+              <input id="chemMn" type="number" step="0.001">
             </div>
           </div>
 
@@ -193,9 +208,7 @@ function fillReview(parsed) {
   document.getElementById('releaseDate').value = toISODate(p.releaseDate) || '';
   document.getElementById('customerId').value = p.customerId || '';
   document.getElementById('customerPO').value = p.customerPO || '';
-  document.getElementById('shipVia').value = p.shipVia || '';
-  document.getElementById('fob').value = p.fob || '';
-  document.getElementById('carrier').value = p.carrier || '';
+  document.getElementById('carrier').value = p.carrier || p.shipVia || '';
   document.getElementById('qtyTons').value = p.quantityNetTons ?? '';
   document.getElementById('shipToName').value = ship.name || '';
   const _addr = parseAddress(ship.address || '');
@@ -205,6 +218,12 @@ function fillReview(parsed) {
   document.getElementById('shipToZip').value = _addr.zip || '';
   document.getElementById('materialLot').value = (p.material && p.material.lot) || '';
   document.getElementById('materialDescription').value = (p.material && p.material.description) || '';
+  const an = (p.material && p.material.analysis) || {};
+  document.getElementById('chemC').value = an.C ?? '';
+  document.getElementById('chemSi').value = an.Si ?? '';
+  document.getElementById('chemS').value = an.S ?? '';
+  document.getElementById('chemP').value = an.P ?? '';
+  document.getElementById('chemMn').value = an.Mn ?? '';
 
   const schedEl = document.getElementById('scheduleList');
   const sched = Array.isArray(p.schedule) ? p.schedule : [];
@@ -223,7 +242,8 @@ function fillReview(parsed) {
     schedEl.innerHTML = html;
   }
 
-  const bolReqs = Array.isArray(p.bolRequirements) ? p.bolRequirements.join('\n') : '';
+  const bolReqsArr = Array.isArray(p.bolRequirements) ? p.bolRequirements : [];
+  const bolReqs = bolReqsArr.length ? ('- ' + bolReqsArr.join('\n- ')) : '';
   document.getElementById('bolReqs').value = bolReqs;
 }
 
@@ -272,12 +292,19 @@ approveBtn.addEventListener('click', async () => {
     releaseDate: document.getElementById('releaseDate')?.value || p.releaseDate,
     customerId: document.getElementById('customerId')?.value || p.customerId,
     customerPO: document.getElementById('customerPO')?.value || p.customerPO,
-    shipVia: document.getElementById('shipVia')?.value || p.shipVia,
-    fob: document.getElementById('fob')?.value || p.fob,
+    // Use Carrier field as shipVia
+    shipVia: document.getElementById('carrier')?.value || p.carrier || p.shipVia,
     shipTo: ship,
     material: {
       lot: document.getElementById('materialLot')?.value || (p.material?.lot || ''),
       description: document.getElementById('materialDescription')?.value || (p.material?.description || ''),
+      analysis: {
+        C: Number(document.getElementById('chemC')?.value || an?.C || '') || undefined,
+        Si: Number(document.getElementById('chemSi')?.value || an?.Si || '') || undefined,
+        S: Number(document.getElementById('chemS')?.value || an?.S || '') || undefined,
+        P: Number(document.getElementById('chemP')?.value || an?.P || '') || undefined,
+        Mn: Number(document.getElementById('chemMn')?.value || an?.Mn || '') || undefined,
+      }
     },
     quantityNetTons: Number(document.getElementById('qtyTons')?.value || p.quantityNetTons || 0),
     schedule: Array.isArray(p.schedule) ? p.schedule : [],
