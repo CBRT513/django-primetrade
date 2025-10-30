@@ -183,7 +183,7 @@
             <tr>
               <th>Status</th>
               <th>Customer</th>
-              <th>Ship-To Address</th>
+              <th>Headquarters Address</th>
               <th>Actions</th>
             </tr>
           </thead>
@@ -193,6 +193,51 @@
             </tr>
           </tbody>
         </table>
+      </div>
+    </div>
+  </div>
+
+  <!-- Ship-To Modal -->
+  <div id="shipToModal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 1000;">
+    <div style="background: var(--surface, #fff); border-radius: 12px; width: min(900px, 95vw); max-height: 90vh; overflow: auto; box-shadow: var(--shadow-xl, 0 12px 24px rgba(0,0,0,.2)); border: 1px solid var(--border, #e5e7eb);">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding: 1rem 1.25rem; border-bottom: 1px solid var(--border, #e5e7eb);">
+        <h3 id="shipToTitle" style="margin: 0;">Manage Ship-To Addresses</h3>
+        <button id="closeShipTo" class="btn btn-danger btn-sm" type="button">Close</button>
+      </div>
+      <div style="padding: 1rem 1.25rem;">
+        <div class="table-container" style="background:transparent;border:none;">
+          <table>
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Street</th>
+                <th>City</th>
+                <th>State</th>
+                <th>Zip</th>
+                <th>Status</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="shipToList"></tbody>
+          </table>
+        </div>
+
+        <div class="card" style="margin-top: .75rem;">
+          <form id="shipToForm">
+            <input type="hidden" id="shipToId" />
+            <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));">
+              <div class="form-group"><label>Name</label><input id="stName" type="text"></div>
+              <div class="form-group"><label>Street</label><input id="stStreet" type="text" required></div>
+              <div class="form-group"><label>City</label><input id="stCity" type="text" required></div>
+              <div class="form-group"><label>State</label><input id="stState" type="text" maxlength="2" required></div>
+              <div class="form-group"><label>Zip</label><input id="stZip" type="text" pattern="\d{5}" required></div>
+            </div>
+            <div style="display:flex; gap:.5rem; justify-content:flex-end;">
+              <button type="button" class="btn" id="shipToCancel">Cancel</button>
+              <button type="submit" class="btn btn-accent">Save Ship-To</button>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   </div>
@@ -261,6 +306,9 @@
       }
     }
 
+    let shipToCustomerId = null;
+    let shipTos = [];
+
     function renderCustomers() {
       const tbody = document.getElementById('customerList');
 
@@ -284,6 +332,7 @@
             <td class="address-display">${fullAddress}</td>
             <td class="actions">
               <button class="btn btn-sm" onclick="editCustomer(${customer.id})">Edit</button>
+              <button class="btn btn-secondary btn-sm" onclick="openShipTo(${customer.id}, '${customer.customer.replace(/'/g,"&#39;")}')">Ship-Tos</button>
               <button class="btn btn-accent btn-sm" onclick="toggleStatus(${customer.id}, ${isActive})">
                 ${isActive ? 'Deactivate' : 'Activate'}
               </button>
@@ -367,6 +416,93 @@
       } catch (error) {
         showStatus('Error saving customer: ' + error.message, 'error');
       }
+    });
+
+    // Ship-To modal logic
+    const shipToModal = document.getElementById('shipToModal');
+    const shipToClose = document.getElementById('closeShipTo');
+    const shipToCancel = document.getElementById('shipToCancel');
+    shipToClose.addEventListener('click', () => shipToModal.style.display='none');
+    shipToCancel.addEventListener('click', () => { shipToModal.style.display='none'; resetShipToForm(); });
+
+    function resetShipToForm(){
+      document.getElementById('shipToForm').reset();
+      document.getElementById('shipToId').value = '';
+    }
+
+    async function openShipTo(cid, cname){
+      shipToCustomerId = cid;
+      document.getElementById('shipToTitle').textContent = `Manage Ship-To Addresses — ${cname}`;
+      await loadShipTos();
+      shipToModal.style.display = 'flex';
+    }
+
+    async function loadShipTos(){
+      const r = await fetch(`/api/customers/${shipToCustomerId}/shiptos/`, { credentials: 'same-origin' });
+      if (!r.ok) { alert(await r.text()); return; }
+      shipTos = await r.json();
+      renderShipTos();
+    }
+
+    function renderShipTos(){
+      const tbody = document.getElementById('shipToList');
+      if (!shipTos || shipTos.length === 0){
+        tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No ship-to addresses yet. Add one below.</td></tr>';
+        return;
+      }
+      tbody.innerHTML = shipTos.map(st => {
+        const badge = st.is_active !== false ? '<span class="badge active">Active</span>' : '<span class="badge inactive">Inactive</span>';
+        return `<tr>
+          <td>${st.name||''}</td>
+          <td>${st.street}</td>
+          <td>${st.city}</td>
+          <td>${st.state}</td>
+          <td>${st.zip}</td>
+          <td>${badge}</td>
+          <td class="actions">
+            <button class="btn btn-sm" onclick="editShipTo(${st.id})">Edit</button>
+            <button class="btn btn-accent btn-sm" onclick="toggleShipTo(${st.id}, ${st.is_active!==false})">${st.is_active!==false?'Deactivate':'Activate'}</button>
+          </td>
+        </tr>`;
+      }).join('');
+    }
+
+    window.editShipTo = function(id){
+      const st = shipTos.find(x=>x.id===id); if(!st) return;
+      document.getElementById('shipToId').value = id;
+      document.getElementById('stName').value = st.name||'';
+      document.getElementById('stStreet').value = st.street||'';
+      document.getElementById('stCity').value = st.city||'';
+      document.getElementById('stState').value = st.state||'';
+      document.getElementById('stZip').value = st.zip||'';
+    }
+
+    window.toggleShipTo = async function(id, current){
+      const csrf = (window.Utils && Utils.getCSRFToken) ? Utils.getCSRFToken() : null;
+      const st = shipTos.find(x=>x.id===id); if(!st) return;
+      const payload = { id, name: st.name||'', street: st.street, city: st.city, state: st.state, zip: st.zip, is_active: !current };
+      const r = await fetch(`/api/customers/${shipToCustomerId}/shiptos/`, { method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json', ...(csrf?{'X-CSRFToken':csrf}:{})}, body: JSON.stringify(payload) });
+      if (!r.ok){ alert(await r.text()); return; }
+      await loadShipTos();
+    }
+
+    document.getElementById('shipToForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const csrf = (window.Utils && Utils.getCSRFToken) ? Utils.getCSRFToken() : null;
+      const payload = {
+        id: document.getElementById('shipToId').value || undefined,
+        name: document.getElementById('stName').value || '',
+        street: document.getElementById('stStreet').value || '',
+        city: document.getElementById('stCity').value || '',
+        state: (document.getElementById('stState').value || '').toUpperCase(),
+        zip: (document.getElementById('stZip').value || '').replace(/\D/g,'').slice(0,5),
+        is_active: true
+      };
+      const r = await fetch(`/api/customers/${shipToCustomerId}/shiptos/`, { method:'POST', credentials:'same-origin', headers:{'Content-Type':'application/json', ...(csrf?{'X-CSRFToken':csrf}:{})}, body: JSON.stringify(payload) });
+      const j = await r.json().catch(()=>null);
+      if (!r.ok){ alert((j&&j.error)||`HTTP ${r.status}`); return; }
+      resetShipToForm();
+      await loadShipTos();
     });
   </script>
 </body>

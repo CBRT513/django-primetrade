@@ -3,7 +3,7 @@ from rest_framework.decorators import api_view, permission_classes, authenticati
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.authentication import SessionAuthentication
-from django.db import models, connection, transaction
+from django.db import models, connection, transaction, IntegrityError
 from .models import Product, Customer, Carrier, Truck, BOL, Release, ReleaseLoad, CustomerShipTo, Lot
 from .serializers import ProductSerializer, CustomerSerializer, CarrierSerializer, TruckSerializer, ReleaseSerializer
 from .pdf_generator import generate_bol_pdf
@@ -57,6 +57,70 @@ class CustomerListView(generics.ListCreateAPIView):
 
     def get_queryset(self):
         return Customer.objects.filter(is_active=True).order_by('customer')
+
+# Ship-To endpoints (per-customer)
+@api_view(['GET','POST'])
+@permission_classes([IsAuthenticated])
+def customer_shiptos(request, customer_id: int):
+    try:
+        try:
+            customer = Customer.objects.get(id=customer_id)
+        except Customer.DoesNotExist:
+            return Response({'error': 'Customer not found'}, status=status.HTTP_404_NOT_FOUND)
+
+        if request.method == 'GET':
+            rows = customer.ship_tos.order_by('name','street','city').all()
+            return Response(CustomerShipToSerializer(rows, many=True).data)
+
+        # POST upsert
+        data = request.data if isinstance(request.data, dict) else {}
+        shipto_id = data.get('id')
+        name = (data.get('name') or '').strip()
+        street = (data.get('street') or '').strip()
+        city = (data.get('city') or '').strip()
+        state = (data.get('state') or '').strip()[:2]
+        zip_code = (data.get('zip') or '').strip()
+        is_active = data.get('is_active', True)
+
+        if not all([street, city, state, zip_code]):
+            return Response({'error': 'street, city, state, zip are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            if shipto_id:
+                st = CustomerShipTo.objects.get(id=shipto_id, customer=customer)
+                st.name = name
+                st.street = street
+                st.city = city
+                st.state = state
+                st.zip = zip_code
+                st.is_active = is_active
+                st.updated_by = request.user.username
+                st.save()
+                return Response({'ok': True, 'id': st.id})
+            else:
+                st, created = CustomerShipTo.objects.get_or_create(
+                    customer=customer,
+                    street=street,
+                    city=city,
+                    state=state,
+                    zip=zip_code,
+                    defaults={'name': name, 'is_active': is_active, 'updated_by': request.user.username}
+                )
+                if not created and name and st.name != name:
+                    st.name = name
+                    st.updated_by = request.user.username
+                    st.save(update_fields=['name','updated_by'])
+                return Response({'ok': True, 'id': st.id, 'created': created})
+        except CustomerShipTo.DoesNotExist:
+            return Response({'error': 'Ship-To not found'}, status=status.HTTP_404_NOT_FOUND)
+        except IntegrityError as e:
+            return Response({'error': 'Duplicate Ship-To for this customer', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
+        except Exception as e:
+            logger.error(f"customer_shiptos error: {e}", exc_info=True)
+            return Response({'error': 'Failed to save ship-to', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+    except Exception as e:
+        logger.error(f"customer_shiptos outer error: {e}", exc_info=True)
+        return Response({'error': 'Unexpected error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # Carrier endpoints with trucks
 @api_view(['GET', 'POST'])
