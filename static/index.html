@@ -116,6 +116,9 @@
       }
 
       // Load custom branding if available
+      // NOTE: /api/branding endpoint removed - using static defaults
+      // Uncomment if endpoint is re-implemented
+      /*
       try {
         const branding = await getJSON("/api/branding");
         if (branding) {
@@ -138,6 +141,7 @@
       } catch (e) {
         console.log("Could not load custom branding, using defaults:", e);
       }
+      */
       
       const products = await getJSON("/api/products");
       const pSel = qs("product"), cSel = qs("clientProduct");

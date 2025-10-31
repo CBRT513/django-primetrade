@@ -219,7 +219,7 @@ def sso_callback(request):
     logger.error(f"[FLOW DEBUG 3.6]   - code (first 20 chars): {code[:20]}...")
 
     try:
-        response = requests.post(token_url, data=token_data)
+        response = requests.post(token_url, data=token_data, timeout=10)
 
         logger.error(f"[FLOW DEBUG 4] Token exchange response received:")
         logger.error(f"[FLOW DEBUG 4.1]   - Status code: {response.status_code}")
