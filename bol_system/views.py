@@ -388,12 +388,6 @@ def confirm_bol(request):
                                   status=status.HTTP_400_BAD_REQUEST)
 
         # Validate net_tons is positive number
-        for field in required_fields:
-            if not data.get(field):
-                return Response({'error': f'Missing field: {field}'},
-                              status=status.HTTP_400_BAD_REQUEST)
-
-        # Validate net_tons is positive number
         try:
             net_tons = float(data['netTons'])
             if net_tons <= 0:
