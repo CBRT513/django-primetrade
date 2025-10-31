@@ -108,6 +108,59 @@ class ProductListView(generics.ListCreateAPIView):
     def get_queryset(self):
         return Product.objects.filter(is_active=True).order_by('name')
 
+    # Support upsert via POST so the existing frontend can use one endpoint
+    def post(self, request, *args, **kwargs):
+        try:
+            data = request.data if isinstance(request.data, dict) else {}
+            pid = data.get('id')
+            name = (data.get('name') or '').strip()
+            start = data.get('start_tons', None)
+            is_active = data.get('is_active', True)
+
+            if pid:
+                # Update existing product
+                try:
+                    prod = Product.objects.get(id=pid)
+                except Product.DoesNotExist:
+                    return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
+                if name:
+                    prod.name = name
+                if start is not None:
+                    try:
+                        prod.start_tons = Decimal(str(start))
+                    except Exception:
+                        return Response({'error': 'start_tons must be a number'}, status=status.HTTP_400_BAD_REQUEST)
+                prod.is_active = bool(is_active)
+                prod.updated_by = request.user.username
+                try:
+                    prod.save()
+                except IntegrityError as e:
+                    return Response({'error': 'Product already exists', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
+                audit(request, 'PRODUCT_UPDATED', prod, f"Product updated: {prod.name}")
+                return Response({'ok': True, 'id': prod.id})
+            else:
+                # Create new product
+                if not name:
+                    return Response({'error': 'name is required'}, status=status.HTTP_400_BAD_REQUEST)
+                try:
+                    start_val = Decimal(str(start if start is not None else '0'))
+                except Exception:
+                    return Response({'error': 'start_tons must be a number'}, status=status.HTTP_400_BAD_REQUEST)
+                try:
+                    prod = Product.objects.create(
+                        name=name,
+                        start_tons=start_val,
+                        is_active=bool(is_active),
+                        updated_by=request.user.username,
+                    )
+                except IntegrityError as e:
+                    return Response({'error': 'Product already exists', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
+                audit(request, 'PRODUCT_CREATED', prod, f"Product created: {prod.name}")
+                return Response({'ok': True, 'id': prod.id})
+        except Exception as e:
+            logger.error(f"product upsert error: {e}", exc_info=True)
+            return Response({'error': 'Failed to save product', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 # Customer endpoints
 class CustomerListView(generics.ListCreateAPIView):
     serializer_class = CustomerSerializer
