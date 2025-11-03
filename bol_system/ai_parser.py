@@ -11,7 +11,8 @@ AI_SCHEMA = (
     '"shipTo": {"name": str|null, "address": str|null}, '
     '"material": {"lot": str|null, "description": str|null}, '
     '"quantityNetTons": number|null, '
-    '"schedule": [{"date": "MM/DD/YYYY", "load": number}] }'
+    '"schedule": [{"date": "MM/DD/YYYY", "load": number}], '
+    '"specialInstructions": str|null }'
 )
 
 GROQ_DEFAULT_MODEL = os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant")
@@ -47,6 +48,7 @@ def ai_parse_release_text(
         "Extract fields from the following RELEASE ORDER text. "
         "Return ONLY valid JSON matching this schema (no prose, no markdown):\n"
         f"{AI_SCHEMA}\n"
+        "For specialInstructions: extract the full text from 'Warehouse:', 'Warehouse requirements:', or similar sections.\n"
         "Fill unknown fields with null or empty list.\n"
         "Text between <<< and >>> follows.\n<<<\n"
         f"{text}\n>>>\n"
@@ -109,8 +111,10 @@ def remote_ai_parse_release_text(
         return None
 
     system = (
-        "You are a precise information extractor. Return ONLY valid JSON for the schema: "
-        f"{AI_SCHEMA}. Use null/[] when unknown. No markdown, no comments."
+        "You are a precise information extractor for release orders. Return ONLY valid JSON for the schema: "
+        f"{AI_SCHEMA}. "
+        "For specialInstructions: extract the full text from 'Warehouse:', 'Warehouse requirements:', or similar sections. "
+        "Use null/[] when unknown. No markdown, no comments."
     )
     user = f"Extract fields from this release order text between <<< and >>>.\n<<<\n{text}\n>>>"
     try:

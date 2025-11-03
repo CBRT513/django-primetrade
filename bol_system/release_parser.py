@@ -416,4 +416,7 @@ def parse_release_pdf(file_obj, ai_mode: str | None = None) -> Dict[str, Any]:
                             pass
                     if iso_sched:
                         parsed["schedule"] = iso_sched
+                # Special Instructions (warehouse requirements)
+                if not parsed.get("specialInstructions") and ai.get("specialInstructions"):
+                    parsed["specialInstructions"] = ai.get("specialInstructions")
     return parsed

@@ -27,10 +27,10 @@
       <form id="uploadForm">
         <input type="file" id="file" accept="application/pdf" required />
         <label style="margin-left:0.75rem; font-size: 0.9rem;">
-          <input type="checkbox" id="useAI" style="margin-right:0.35rem;"> Use AI parser
+          <input type="checkbox" id="useAI" checked style="margin-right:0.35rem;"> Use AI parser
         </label>
         <select id="aiMode" style="margin-left:0.5rem; padding: 6px 8px;">
-          <option value="cloud" selected>cloud (Groq)</option>
+          <option value="cloud" selected>cloud (OpenRouter/Groq)</option>
           <option value="local">local (Ollama)</option>
         </select>
         <button class="btn btn-accent" type="submit">Upload & Parse</button>
