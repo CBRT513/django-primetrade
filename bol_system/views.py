@@ -656,6 +656,7 @@ def _parse_date_any(s: str):
 def approve_release(request):
     try:
         data = request.data if isinstance(request.data, dict) else {}
+        logger.info(f"approve_release called with schedule: {len(data.get('schedule', []))} items, material.analysis: {bool(data.get('material', {}).get('analysis'))}")
         # Required
         release_number = data.get('releaseNumber') or data.get('release_number')
         if not release_number:
@@ -851,6 +852,7 @@ def approve_release(request):
 
             # Create loads
             sched = data.get('schedule') or []
+            logger.info(f"Creating {len(sched)} loads for release {rel.release_number}")
             per_load = None
             try:
                 if data.get('quantityNetTons') and len(sched):
@@ -858,13 +860,14 @@ def approve_release(request):
             except Exception:
                 per_load = None
             for i, row in enumerate(sched, start=1):
-                ReleaseLoad.objects.create(
+                load = ReleaseLoad.objects.create(
                     release=rel,
                     seq=i,
                     date=_parse_date_any(row.get('date') if isinstance(row, dict) else None),
                     planned_tons=per_load,
                     updated_by=request.user.username,
                 )
+                logger.info(f"Created load {i} for release {rel.release_number}: {load.id}")
 
         normalized_ids = {
             'customerId': rel.customer_ref.id if rel.customer_ref else None,
