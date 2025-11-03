@@ -1,6 +1,6 @@
 # django-primetrade — Project Status Report
 
-Updated: 2025-10-31
+Updated: 2025-11-03
 
 ## Executive summary
 - Current: Live Django app with SSO. Stable flows for Release intake/approval, normalization/upserts (Customer, Ship-To, Carrier, Lot+chemistry), load‑driven BOL creation with PDF, open releases reporting, product chemistry mirroring, carrier/truck management, audit logging (with optional external forward), health and balances/history endpoints. Recent BOLs were created successfully via the new load‑driven flow.
@@ -47,7 +47,7 @@ Updated: 2025-10-31
 - Customer
   - customer (unique), address, city, state(2), zip, is_active; ordering customer.
 - CustomerShipTo
-  - FK customer, name, street, city, state(2), zip, is_active; unique_together (customer, street, city, state, zip); ordering customer,name.
+  - FK customer, name, street, street2 (optional), city, state(2), zip, is_active; unique_together (customer, street, city, state, zip); ordering customer,name.
 - Carrier
   - carrier_name (unique), contact, phone, email, is_active; ordering carrier_name.
 - Truck
@@ -62,7 +62,7 @@ Updated: 2025-10-31
 - Lot
   - code (unique, indexed), FK product (nullable), c/si/s/p/mn; ordering code.
 - Release
-  - release_number (unique, indexed), release_date, customer_id_text, customer_po, ship_via, fob, ship_to_[name/street/city/state/zip], lot (text), material_description, quantity_net_tons (Decimal 10,2), status {OPEN, COMPLETE, CANCELLED}; ordering -created_at.
+  - release_number (unique, indexed), release_date, customer_id_text, customer_po, ship_via, fob, ship_to_[name/street/street2/city/state/zip], lot (text), material_description, quantity_net_tons (Decimal 10,2), status {OPEN, COMPLETE, CANCELLED}; ordering -created_at.
   - FKs: customer_ref, ship_to_ref, carrier_ref, lot_ref (all nullable).
   - Properties: loads counts (total/shipped/remaining).
 - ReleaseLoad
@@ -95,6 +95,9 @@ bol_system/
     0004_product_chemistry_fields.py
     0005_auditlog.py
     0006_performance_indexes.py
+    0007_remove_bol_bol_product_idx_remove_bol_bol_date_idx_and_more.py
+    0008_releaseload_actual_tons.py
+    0009_add_street2_fields.py
     __init__.py
     __pycache__/
       0001_initial.cpython-313.pyc
