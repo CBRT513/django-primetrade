@@ -417,18 +417,21 @@ def parse_release_pdf(file_obj, ai_mode: str | None = None) -> Dict[str, Any]:
                     if iso_sched:
                         parsed["schedule"] = iso_sched
                 # Special Instructions (warehouse requirements)
-                if not parsed.get("specialInstructions") and ai.get("specialInstructions"):
-                    # Clean up AI-extracted special instructions - keep only bullet points
+                # Always prefer AI extraction when available, with post-processing cleanup
+                if ai.get("specialInstructions"):
+                    # Clean up AI-extracted special instructions - keep only bullet points and continuations
                     raw = ai.get("specialInstructions", "")
                     lines = raw.split('\n')
                     clean_lines = []
                     for line in lines:
                         stripped = line.strip()
+                        if not stripped:
+                            continue
                         # Stop at common section headers or metadata
                         if re.match(r'^(Analysis|PO\s*#|For\s+questions|A\)|B\)|C\)|Ship\s+From:|RELEASE\s+ORDER|Customer\s+ID:|Ship\s+To:|Release\s+Date|SPECIAL\s+INSTRUCTIONS:|Trucking)', stripped, re.I):
                             break
-                        # Only keep lines starting with dash/bullet
-                        if stripped.startswith('-'):
+                        # Keep lines starting with dash OR non-dash lines that look like continuations (not stop patterns)
+                        if stripped.startswith('-') or (clean_lines and not stripped[0].isupper()):
                             clean_lines.append(stripped)
                     if clean_lines:
                         parsed["specialInstructions"] = '\n'.join(clean_lines)
