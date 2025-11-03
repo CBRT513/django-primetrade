@@ -341,12 +341,10 @@ def generate_bol_pdf(bol_data, output_path=None):
 
     weight_text = f"""<para align="center">
     <b><font size="18">Total Weight</font></b><br/>
-    <font size="24"><b>{total_weight_lbs:,}</b></font><br/>
-    <font size="12">LBS</font><br/>
+    <font size="24"><b>{total_weight_lbs:,}</b></font> <font size="12">LBS</font><br/>
     <br/>
     <b><font size="18">Net Tons</font></b><br/>
-    <font size="24"><b>{net_tons:.2f}</b></font><br/>
-    <font size="12">N.T.</font>
+    <font size="24"><b>{net_tons:.2f}</b></font> <font size="12">N.T.</font>
     </para>"""
 
     main_table_data.append([
@@ -356,7 +354,7 @@ def generate_bol_pdf(bol_data, output_path=None):
 
     # Note
     main_table_data.append([
-        Paragraph('<para align="center" fontSize="8" backColor="#efefef">NOTE: Liability Limitation for loss or damage in this shipment may be applicable. See 49 U.S.C. § 14706(c)(1)(A) and (B). Non-hazardous</para>',
+        Paragraph('<para align="center" fontSize="8" backColor="#efefef">NOTE: Weights referenced are estimates. See scale ticket for actual weight. Liability Limitation for loss or damage in this shipment may be applicable. See 49 U.S.C. § 14706(c)(1)(A) and (B). Non-hazardous</para>',
                   styles['Normal']), ''
     ])
 
