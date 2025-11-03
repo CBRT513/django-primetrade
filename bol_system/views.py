@@ -555,7 +555,9 @@ def confirm_bol(request):
             notes=data.get('notes', ''),
             customer=customer,
             customer_po=customer_po,
-            created_by_email=f'{request.user.username}@primetrade.com'
+            created_by_email=f'{request.user.username}@primetrade.com',
+            lot_ref=release_obj.lot_ref if release_load else None,
+            release_number=release_obj.release_number if release_load else ''
         )
 
         # If load provided, mark shipped and attach

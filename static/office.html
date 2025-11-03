@@ -521,7 +521,7 @@
         if (chosen.product?.id) { productSel.value = chosen.product.id; productSel.disabled = true; }
         if (chosen.customer?.id) { qs('customer').value = chosen.customer.id; }
         // Ship-to and buyer
-        const st = chosen.shipTo||{}; const lines = [st.name, st.street, `${st.city||''}, ${st.state||''} ${st.zip||''}`].filter(Boolean);
+        const st = chosen.shipTo||{}; const lines = [st.name, st.street, st.street2, `${st.city||''}, ${st.state||''} ${st.zip||''}`].filter(Boolean);
         qs('shipToAddress').value = lines.join('\n');
         qs('customerPO').value = chosen.customerPO || '';
         const buyer = (chosen.customer && chosen.customer.name) || '';

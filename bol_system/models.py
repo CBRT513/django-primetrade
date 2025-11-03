@@ -137,6 +137,8 @@ class BOL(TimestampedModel):
     notes = models.TextField(blank=True)
     pdf_url = models.URLField(blank=True)
     created_by_email = models.CharField(max_length=200, default='system@primetrade.com')
+    lot_ref = models.ForeignKey('Lot', on_delete=models.SET_NULL, null=True, blank=True, help_text='Reference to lot for chemistry data')
+    release_number = models.CharField(max_length=20, blank=True, help_text='Release number for reference')
     
     class Meta:
         ordering = ['-created_at']

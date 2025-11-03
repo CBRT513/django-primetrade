@@ -65,6 +65,10 @@ def generate_bol_pdf(bol_data, output_path=None):
                     return float(net_tons) * 2204.62 if net_tons else 0
                 elif key == 'date':
                     return self._data.get('date', '')
+                elif key == 'release_number':
+                    return self._data.get('releaseNumber') or self._data.get('release_number', '')
+                elif key == 'lot_ref':
+                    return self._data.get('lot_ref') or self._data.get('lotRef', None)
                 return self._data.get(key, '')
         data = DictWrapper(bol_data)
 
@@ -262,6 +266,11 @@ def generate_bol_pdf(bol_data, output_path=None):
     else:
         company_cell_content = Paragraph(company_text, styles['Normal'])
 
+    # Get release number if available
+    release_num = ''
+    if hasattr(data, 'release_number') and data.release_number:
+        release_num = data.release_number
+
     main_table_data.append([
         company_cell_content,
         Table([
@@ -269,6 +278,8 @@ def generate_bol_pdf(bol_data, output_path=None):
              Paragraph(f'<para fontName="Helvetica-Bold" fontSize="13">{data.bol_number}</para>', styles['Normal'])],
             [Paragraph('<para align="right" fontName="Helvetica-Bold">Customer PO#:</para>', styles['Normal']),
              data.customer_po or ''],
+            [Paragraph('<para align="right" fontName="Helvetica-Bold">Release #:</para>', styles['Normal']),
+             release_num or ''],
             [Paragraph('<para align="right" fontName="Helvetica-Bold">Carrier:</para>', styles['Normal']),
              data.carrier_name],
             [Paragraph('<para align="right" fontName="Helvetica-Bold">Truck #:</para>', styles['Normal']),
@@ -295,20 +306,37 @@ def generate_bol_pdf(bol_data, output_path=None):
         Paragraph(f'<para align="center" fontSize="14"><b>{ship_to_text}</b></para>', styles['Normal']), ''
     ])
 
-    # Product bar
+    # Product bar with dynamic lot number
+    lot_number = ''
+    if hasattr(data, 'lot_ref') and data.lot_ref:
+        lot_number = data.lot_ref.code
+
+    lot_display = f'Lot Number: {lot_number}' if lot_number else 'Lot Number: N/A'
+
     main_table_data.append([
-        Paragraph(f'<para align="center" fontName="Helvetica-Bold" backColor="#d9d9d9">Lot Number: CRT-050N-711A</para>', bar_style),
+        Paragraph(f'<para align="center" fontName="Helvetica-Bold" backColor="#d9d9d9">{lot_display}</para>', bar_style),
         Paragraph(f'<para align="center" fontName="Helvetica-Bold" backColor="#d9d9d9">{data.product_name}</para>', bar_style)
     ])
 
-    # Analysis and weights
-    analysis_text = """<para align="center" fontSize="14">
-    <b>Analysis:</b><br/>
-    <b>C 4.244%</b><br/>
-    <b>Si 0.05%</b><br/>
-    <b>S 0.018%</b><br/>
-    <b>P 0.026%</b><br/>
-    <b>Mn 0.013%</b>
+    # Analysis and weights - pull chemistry from lot_ref
+    analysis_lines = ['<b>Analysis:</b><br/>']
+    if hasattr(data, 'lot_ref') and data.lot_ref:
+        lot = data.lot_ref
+        if lot.c is not None:
+            analysis_lines.append(f'<b>C {float(lot.c):.3f}%</b><br/>')
+        if lot.si is not None:
+            analysis_lines.append(f'<b>Si {float(lot.si):.3f}%</b><br/>')
+        if lot.s is not None:
+            analysis_lines.append(f'<b>S {float(lot.s):.3f}%</b><br/>')
+        if lot.p is not None:
+            analysis_lines.append(f'<b>P {float(lot.p):.3f}%</b><br/>')
+        if lot.mn is not None:
+            analysis_lines.append(f'<b>Mn {float(lot.mn):.3f}%</b>')
+    else:
+        analysis_lines.append('<b>N/A</b>')
+
+    analysis_text = f"""<para align="center" fontSize="14">
+    {''.join(analysis_lines)}
     </para>"""
 
     weight_text = f"""<para align="center">

@@ -13,7 +13,7 @@ Updated: 2025-11-03
   - Duplicate release_number rejected with 409; response returns normalized IDs.
   - Release detail page + GET/PATCH API mirrors approve logic with validation and upserts.
 - Scheduling and BOLs
-  - ReleaseLoad rows represent planned loads; Office UI is load‑driven: pick a PENDING load, fields auto‑fill/lock, edit net tons and carrier/truck; confirm creates BOL, marks load SHIPPED, and auto‑completes Release when no pending loads remain. PDF generated and linked.
+  - ReleaseLoad rows represent planned loads; Office UI is load‑driven: pick a PENDING load, fields auto‑fill/lock (including street2 in ship-to address), edit net tons and carrier/truck; confirm creates BOL with lot_ref and release_number, marks load SHIPPED, and auto‑completes Release when no pending loads remain. PDF generated with dynamic chemistry (from lot), lot number, release number, and customer PO.
   - History and balances endpoints provide shipped/remaining by product.
 - Master data and UI
   - Products page shows last lot and chemistry mirrored from Lot; balances displayed.
@@ -55,8 +55,9 @@ Updated: 2025-11-03
 - BOLCounter
   - year (unique), sequence; get_next_bol_number() issues “PRT-YYYY-####”.
 - BOL
-  - bol_number (unique, indexed), FK product, product_name (mirror), FK customer (nullable), buyer_name, ship_to (text), customer_po, FK carrier, carrier_name (mirror), FK truck (nullable), truck_number, trailer_number, date (string), net_tons (Decimal 10,2), notes, pdf_url, created_by_email; ordering -created_at.
+  - bol_number (unique, indexed), FK product, product_name (mirror), FK customer (nullable), buyer_name, ship_to (text), customer_po, FK carrier, carrier_name (mirror), FK truck (nullable), truck_number, trailer_number, date (string), net_tons (Decimal 10,2), notes, pdf_url, created_by_email, FK lot_ref (nullable, for chemistry), release_number (text); ordering -created_at.
   - save() auto‑assigns bol_number/product_name/carrier_name, logs.
+  - PDF generation pulls chemistry from lot_ref, displays release_number, customer_po, and includes street2 in ship-to address.
 - CompanyBranding
   - Singleton config (company_name, address lines, phone, website, email, logo fields); enforced single row.
 - Lot
@@ -98,6 +99,7 @@ bol_system/
     0007_remove_bol_bol_product_idx_remove_bol_bol_date_idx_and_more.py
     0008_releaseload_actual_tons.py
     0009_add_street2_fields.py
+    0010_add_lot_and_release_to_bol.py
     __init__.py
     __pycache__/
       0001_initial.cpython-313.pyc
