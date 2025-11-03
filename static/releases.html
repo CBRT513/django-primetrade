@@ -217,25 +217,14 @@ function fillReview(parsed) {
   document.getElementById('carrier').value = p.carrier || p.shipVia || '';
   document.getElementById('qtyTons').value = p.quantityNetTons ?? '';
 
-  // Prefer _review.shipTo if available (already parsed correctly)
-  const reviewShipTo = (p._review && p._review.shipTo) || null;
-  if (reviewShipTo) {
-    document.getElementById('shipToName').value = reviewShipTo.name || '';
-    document.getElementById('shipToStreet').value = reviewShipTo.street || '';
-    document.getElementById('shipToStreet2').value = reviewShipTo.street2 || '';
-    document.getElementById('shipToCity').value = reviewShipTo.city || '';
-    document.getElementById('shipToState').value = reviewShipTo.state || '';
-    document.getElementById('shipToZip').value = reviewShipTo.zip || '';
-  } else {
-    // Fallback to parseAddress if no _review data
-    document.getElementById('shipToName').value = ship.name || '';
-    const _addr = parseAddress(ship.address || '');
-    document.getElementById('shipToStreet').value = _addr.street || '';
-    document.getElementById('shipToStreet2').value = '';
-    document.getElementById('shipToCity').value = _addr.city || '';
-    document.getElementById('shipToState').value = _addr.state || '';
-    document.getElementById('shipToZip').value = _addr.zip || '';
-  }
+  // Use backend parser's already-parsed components from shipToRaw
+  // Backend now returns: street, street2, city, state, zip
+  document.getElementById('shipToName').value = ship.name || '';
+  document.getElementById('shipToStreet').value = ship.street || '';
+  document.getElementById('shipToStreet2').value = ship.street2 || '';
+  document.getElementById('shipToCity').value = ship.city || '';
+  document.getElementById('shipToState').value = ship.state || '';
+  document.getElementById('shipToZip').value = ship.zip || '';
   document.getElementById('materialLot').value = (p.material && p.material.lot) || '';
   document.getElementById('materialDescription').value = (p.material && p.material.description) || '';
   const an = (p.material && p.material.analysis) || {};
