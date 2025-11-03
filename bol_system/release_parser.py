@@ -2,7 +2,11 @@ import re
 from typing import Any, Dict, List
 
 from pypdf import PdfReader
-from .ai_parser import ai_parse_release_text, remote_ai_parse_release_text
+from .ai_parser import (
+    ai_parse_release_text,
+    remote_ai_parse_release_text,
+    gemini_filter_critical_instructions,
+)
 
 
 DATE_SLASH = r"\d{2}/\d{2}/\d{4}"
@@ -416,8 +420,12 @@ def parse_release_pdf(file_obj, ai_mode: str | None = None) -> Dict[str, Any]:
                             pass
                     if iso_sched:
                         parsed["schedule"] = iso_sched
-                # Critical Delivery Instructions
-                # AI extracts only critical driver directives, ignoring routine requirements
-                if ai.get("criticalDeliveryInstructions"):
-                    parsed["specialInstructions"] = ai.get("criticalDeliveryInstructions").strip()
+                # Critical Delivery Instructions - Two-stage extraction
+                # Stage 1: AI extracted all warehouse requirements
+                # Stage 2: Filter to only critical delivery directives
+                warehouse_text = ai.get("allWarehouseRequirements")
+                if warehouse_text:
+                    critical = gemini_filter_critical_instructions(warehouse_text.strip())
+                    if critical:
+                        parsed["specialInstructions"] = critical
     return parsed
