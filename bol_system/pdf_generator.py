@@ -302,15 +302,6 @@ def generate_bol_pdf(bol_data, output_path=None):
     notes_text += '• Material is non-hazardous.<br/>'
     notes_text += '• This is to certify that the above named materials are properly classified, packaged, marked and labeled, and are in proper condition for transportation according to the applicable regulations of the DOT.'
 
-    # Add special instructions if present
-    if hasattr(data, 'special_instructions') and data.special_instructions:
-        # Clean up special instructions text
-        special = data.special_instructions.strip()
-        if special:
-            # Replace newlines with <br/> for proper rendering
-            special = special.replace('\n', '<br/>')
-            notes_text += f'<br/><br/><b>SPECIAL INSTRUCTIONS:</b><br/>{special}'
-
     notes_table = Table([[Paragraph(notes_text, ParagraphStyle('Notes', parent=normal_style, fontSize=8, leading=10))]], colWidths=[9.4*inch])
     notes_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#F5F5F5')),
@@ -323,6 +314,38 @@ def generate_bol_pdf(bol_data, output_path=None):
 
     elements.append(notes_table)
     elements.append(Spacer(1, 0.08*inch))
+
+    # ========== CRITICAL DELIVERY INSTRUCTIONS ==========
+    # Display prominently if present
+    if hasattr(data, 'special_instructions') and data.special_instructions:
+        special = data.special_instructions.strip()
+        if special:
+            # Replace newlines with <br/> for proper rendering
+            special = special.replace('\n', '<br/>')
+
+            # Create prominent alert-style box for critical instructions
+            critical_style = ParagraphStyle(
+                'Critical',
+                parent=normal_style,
+                fontSize=12,
+                leading=16,
+                textColor=colors.HexColor('#8B0000'),  # Dark red
+                alignment=1  # Center
+            )
+
+            critical_text = f'<b>⚠ CRITICAL DELIVERY INSTRUCTION ⚠</b><br/><br/>{special}'
+            critical_table = Table([[Paragraph(critical_text, critical_style)]], colWidths=[9.4*inch])
+            critical_table.setStyle(TableStyle([
+                ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#FFF4E6')),  # Light orange/yellow
+                ('BOX', (0, 0), (-1, -1), 3, colors.HexColor('#FF6B00')),  # Thick orange border
+                ('TOPPADDING', (0, 0), (-1, -1), 12),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 12),
+                ('LEFTPADDING', (0, 0), (-1, -1), 12),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 12),
+            ]))
+
+            elements.append(critical_table)
+            elements.append(Spacer(1, 0.08*inch))
 
     # ========== SIGNATURE SECTION ==========
     sig_data = [[

@@ -12,7 +12,7 @@ AI_SCHEMA = (
     '"material": {"lot": str|null, "description": str|null}, '
     '"quantityNetTons": number|null, '
     '"schedule": [{"date": "MM/DD/YYYY", "load": number}], '
-    '"specialInstructions": str|null }'
+    '"criticalDeliveryInstructions": str|null }'
 )
 
 GEMINI_DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
@@ -50,9 +50,10 @@ def gemini_parse_release_text(
         "Return ONLY valid JSON matching this schema (no prose, no markdown):\n"
         f"{AI_SCHEMA}\n\n"
         "Instructions:\n"
-        "- For specialInstructions: extract ONLY the bulleted requirements (-) from 'Warehouse requirements:' or 'Warehouse:' sections.\n"
-        "- Include only the dash/bullet items. Stop before section headings like 'Trucking requirements:', 'SPECIAL INSTRUCTIONS:', or contact information.\n"
-        "- Do NOT include document headers, addresses, release numbers, or other metadata in specialInstructions.\n"
+        "- For criticalDeliveryInstructions: extract ONLY critical delivery directives from the 'Warehouse requirements:' or 'Warehouse:' section that the driver MUST follow.\n"
+        "- Examples of CRITICAL instructions: specific plant/location requirements (e.g., 'DELIVER TO PLANT ONE'), call-ahead requirements, special handling notes, specific delivery instructions.\n"
+        "- DO NOT include: routine trucking requirements like equipment type, weight limits, material cleanliness, tarping, or general delivery hours.\n"
+        "- If there are no critical delivery instructions, set to null.\n"
         "- Fill unknown fields with null or empty list.\n\n"
         "Text between <<< and >>> follows.\n<<<\n"
         f"{text}\n>>>"
