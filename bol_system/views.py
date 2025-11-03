@@ -4,6 +4,7 @@ from rest_framework.permissions import IsAuthenticated, AllowAny
 from rest_framework.response import Response
 from rest_framework.authentication import SessionAuthentication
 from django.db import models, connection, transaction, IntegrityError
+from django.db.models.functions import Coalesce
 from .models import Product, Customer, Carrier, Truck, BOL, Release, ReleaseLoad, CustomerShipTo, Lot, AuditLog
 from .serializers import ProductSerializer, CustomerSerializer, CarrierSerializer, TruckSerializer, ReleaseSerializer, CustomerShipToSerializer, AuditLogSerializer
 from .pdf_generator import generate_bol_pdf
@@ -548,7 +549,8 @@ def confirm_bol(request):
         if release_load:
             release_load.status = 'SHIPPED'
             release_load.bol = bol
-            release_load.save(update_fields=['status','bol','updated_at','updated_by'])
+            release_load.actual_tons = net_tons
+            release_load.save(update_fields=['status','bol','actual_tons','updated_at','updated_by'])
             # If all loads shipped, close release
             try:
                 if release_load.release.loads.filter(status='PENDING').count() == 0:
@@ -866,7 +868,10 @@ def open_releases(request):
             shipped = r.loads.filter(status='SHIPPED').count()
             remaining = loads_total - shipped
             tons_total = float(r.quantity_net_tons or 0)
-            tons_shipped = float(r.loads.filter(status='SHIPPED').aggregate(sum=models.Sum('planned_tons'))['sum'] or 0)
+            # Use actual_tons for SHIPPED loads, fallback to planned_tons for backward compatibility
+            tons_shipped = float(r.loads.filter(status='SHIPPED').aggregate(
+                sum=models.Sum(Coalesce('actual_tons', 'planned_tons'))
+            )['sum'] or 0)
             tons_remaining = max(0.0, tons_total - tons_shipped)
             next_date = r.loads.filter(status='PENDING').order_by('date').values_list('date', flat=True).first()
             last_shipped = r.loads.filter(status='SHIPPED').order_by('-date').values_list('date', flat=True).first()

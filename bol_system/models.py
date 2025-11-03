@@ -150,9 +150,25 @@ class BOL(TimestampedModel):
         logger.info(f"BOL {self.bol_number} saved with {self.net_tons} tons")
         super().save(*args, **kwargs)
     
+    def delete(self, *args, **kwargs):
+        """Override delete to revert linked ReleaseLoad to PENDING status."""
+        # Get related release loads before deletion
+        release_loads = ReleaseLoad.objects.filter(bol=self)
+
+        # Revert each load to PENDING and clear actual_tons
+        for load in release_loads:
+            load.status = 'PENDING'
+            load.bol = None
+            load.actual_tons = None
+            load.save(update_fields=['status', 'bol', 'actual_tons', 'updated_at'])
+            logger.info(f"Reverted ReleaseLoad {load.id} to PENDING (BOL {self.bol_number} deleted)")
+
+        # Call parent delete
+        super().delete(*args, **kwargs)
+
     def __str__(self):
         return self.bol_number
-    
+
     @property
     def total_weight_lbs(self):
         if self.net_tons is None:
@@ -268,6 +284,13 @@ class ReleaseLoad(TimestampedModel):
     seq = models.IntegerField()  # 1..N
     date = models.DateField(null=True, blank=True)
     planned_tons = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
+    actual_tons = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        null=True,
+        blank=True,
+        help_text="Actual tonnage from BOL (replaces planned_tons when shipped)"
+    )
     status = models.CharField(max_length=12, choices=STATUS_CHOICES, default="PENDING")
     bol = models.ForeignKey(BOL, on_delete=models.SET_NULL, null=True, blank=True)
 
