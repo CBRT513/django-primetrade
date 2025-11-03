@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.urls import path, include
+from django.urls import path, include, re_path
 from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import RedirectView, TemplateView
@@ -42,9 +42,12 @@ urlpatterns = [
     path('carriers.html', login_required(lambda request: serve_static_html(request, 'carriers.html')), name='carriers'),
     path('releases.html', login_required(lambda request: serve_static_html(request, 'releases.html')), name='releases'),
     path('open-releases/', login_required(TemplateView.as_view(template_name='open_releases.html')), name='open_releases'),
+
+    # Serve media files (PDFs) in both development and production
+    # Authentication is handled by the view that generates the PDF link
+    re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
 ]
 
-# Serve media files in development
+# Serve static files in development
 if settings.DEBUG:
-    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.BASE_DIR / 'static')
