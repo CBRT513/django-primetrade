@@ -557,7 +557,7 @@ def confirm_bol(request):
             customer_po=customer_po,
             created_by_email=f'{request.user.username}@primetrade.com',
             lot_ref=release_obj.lot_ref if release_load else None,
-            release_number=release_obj.release_number if release_load else ''
+            release_number=f'{release_obj.release_number}-{release_load.seq}' if release_load else ''
         )
 
         # If load provided, mark shipped and attach
