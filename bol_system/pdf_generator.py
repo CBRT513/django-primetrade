@@ -24,8 +24,42 @@ def generate_bol_pdf(bol_data, output_path=None):
     Returns:
         The file path
     """
-    # Use model object directly
-    data = bol_data
+    # Handle both model objects and dictionaries
+    if hasattr(bol_data, '__dict__') and not isinstance(bol_data, dict):
+        # It's a model object
+        data = bol_data
+    else:
+        # It's a dictionary, create attribute-style accessor
+        class DictWrapper:
+            def __init__(self, d):
+                self._data = d
+            def __getattr__(self, key):
+                if key == 'bol_number':
+                    return self._data.get('bolNumber') or self._data.get('bol_number', 'PREVIEW')
+                elif key == 'customer_po':
+                    return self._data.get('customerPO') or self._data.get('customer_po', '')
+                elif key == 'carrier_name':
+                    return self._data.get('carrierName') or self._data.get('carrier_name', '')
+                elif key == 'truck_number':
+                    return self._data.get('truckNumber') or self._data.get('truck_number', '')
+                elif key == 'trailer_number':
+                    return self._data.get('trailerNumber') or self._data.get('trailer_number', '')
+                elif key == 'buyer_name':
+                    return self._data.get('buyerName') or self._data.get('buyer_name', '')
+                elif key == 'ship_to':
+                    return self._data.get('shipTo') or self._data.get('ship_to', '')
+                elif key == 'product_name':
+                    return self._data.get('productName') or self._data.get('product_name', '')
+                elif key == 'net_tons':
+                    return self._data.get('netTons') or self._data.get('net_tons', 0)
+                elif key == 'date':
+                    return self._data.get('date', '')
+                elif key == 'release_number':
+                    return self._data.get('releaseNumber') or self._data.get('release_number', '')
+                elif key == 'lot_ref':
+                    return self._data.get('lot_ref') or self._data.get('lotRef', None)
+                return self._data.get(key, '')
+        data = DictWrapper(bol_data)
 
     # Determine output path
     if output_path:
