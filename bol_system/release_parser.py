@@ -113,14 +113,10 @@ def parse_release_text(text: str) -> Dict[str, Any]:
         if lines:
             ship_to["name"] = lines[0]
         if len(lines) > 1:
-            addr = ", ".join(lines[1:])
             # Remove customer token appended after ZIP (e.g., '45885ST. MARYS')
-            addr = re.sub(r"(\b\d{5}\b)\s*[A-Z][A-Z .,&'\-]{2,}$", r"\1", addr)
-            ship_to["address"] = addr
             cleaned = []
-            for i, ln in enumerate(lines[1:]):
-                if i == 0:
-                    ln = re.sub(r"(\b\d{5}\b)\s*[A-Z][A-Z .,&'\-]{3,}$", r"\1", ln)
+            for ln in lines[1:]:
+                ln = re.sub(r"(\b\d{5})(?:\s*[A-Z][A-Z .,&'\-]{1,})?$", r"\1", ln)
                 cleaned.append(ln)
             ship_to["address"] = ", ".join(cleaned)
 
@@ -185,9 +181,10 @@ def parse_release_text(text: str) -> Dict[str, Any]:
                         if re.search(r"^(Release\s*#|Shipper:|Please\s+deliver|Charlotte,\s*NC|^\d{2}/\d{2}/\d{4})", ln, re.I):
                             break
                         # Trim trailing uppercase customer token after ZIP (allow spaces)
-                        ln = re.sub(r"(\b\d{5}\b)\s*[A-Z].*$", r"\1", ln)
-                        cleaned.append(ln)
-                        if len(cleaned) >= 2:
+                        ln_cleaned = re.sub(r"(\b\d{5})(?:\s*[A-Z][A-Z .,&'\-]{1,})?$", r"\1", ln)
+                        cleaned.append(ln_cleaned)
+                        # Stop after we've captured City, State ZIP (complete address)
+                        if re.search(r"[A-Za-z]+,\s*[A-Z]{2}\s+\d{5}", ln_cleaned):
                             break
                     if cleaned:
                         ship_to['address'] = ", ".join(cleaned)
@@ -271,6 +268,47 @@ def parse_release_text(text: str) -> Dict[str, Any]:
             m = re.search(phrase, t, re.I | re.S)
             if m:
                 bol_requirements.append(re.sub(r"\s+", " ", m.group(0)).strip())
+
+    # Parse ship-to address into components for easier frontend handling
+    def _parse_shipto_address(addr: str | None) -> Dict[str, str]:
+        """Split combined address into street, street2, city, state, zip"""
+        if not addr:
+            return {}
+
+        # Split by comma
+        parts = [p.strip() for p in addr.split(',')]
+        parsed = {}
+
+        # Last part should be "City, ST ZIP" or just "ST ZIP"
+        if parts:
+            last = parts[-1].strip()
+            # Try to extract State ZIP from last part
+            m = re.match(r'^([A-Za-z ]+)?\s*([A-Z]{2})\s+(\d{5})$', last)
+            if m:
+                city_from_last, state, zip_code = m.groups()
+                parsed['state'] = state
+                parsed['zip'] = zip_code
+                if city_from_last:
+                    parsed['city'] = city_from_last.strip()
+                parts = parts[:-1]  # Remove last part
+
+        # If we didn't get city from last part, try second-to-last
+        if 'city' not in parsed and parts:
+            parsed['city'] = parts[-1].strip()
+            parts = parts[:-1]
+
+        # Remaining parts are street address lines
+        if parts:
+            parsed['street'] = parts[0].strip()
+        if len(parts) > 1:
+            parsed['street2'] = ', '.join(parts[1:]).strip()
+
+        return parsed
+
+    # Enhance ship_to with parsed components
+    if ship_to and ship_to.get('address'):
+        parsed_addr = _parse_shipto_address(ship_to['address'])
+        ship_to.update(parsed_addr)
 
     result: Dict[str, Any] = {
         "releaseNumber": release_no,
