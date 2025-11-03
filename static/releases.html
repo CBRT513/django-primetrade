@@ -138,6 +138,11 @@
             <textarea id="bolReqs" rows="3"></textarea>
           </div>
 
+          <div class="form-group">
+            <label>Special Instructions (Warehouse Requirements)</label>
+            <textarea id="specialInstructions" rows="4" placeholder="Warehouse requirements, delivery instructions, etc."></textarea>
+          </div>
+
           <div style="display:flex; gap: 0.5rem; justify-content:flex-end; margin-top: 0.75rem;">
             <button id="copyJson" class="btn btn-secondary btn-sm" type="button">Copy JSON</button>
             <button id="approveSave" class="btn btn-accent btn-sm" type="button">Approve & Save</button>
@@ -254,6 +259,8 @@ function fillReview(parsed) {
   const bolReqsArr = Array.isArray(p.bolRequirements) ? p.bolRequirements : [];
   const bolReqs = bolReqsArr.length ? ('- ' + bolReqsArr.join('\n- ')) : '';
   document.getElementById('bolReqs').value = bolReqs;
+
+  document.getElementById('specialInstructions').value = p.specialInstructions || '';
 }
 
 function openReview(parsed) {
@@ -325,6 +332,7 @@ approveBtn.addEventListener('click', async () => {
     },
     quantityNetTons: toNum(document.getElementById('qtyTons')?.value) ?? (Number(p.quantityNetTons||'') || undefined),
     schedule: Array.isArray(p.schedule) ? p.schedule : [],
+    specialInstructions: document.getElementById('specialInstructions')?.value || '',
   };
   try {
     const csrf = (window.Utils && Utils.getCSRFToken) ? Utils.getCSRFToken() : null;
