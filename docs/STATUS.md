@@ -3,8 +3,8 @@
 Updated: 2025-11-03
 
 ## Executive summary
-- Current: Live Django app with SSO. Stable flows for Release intake/approval, normalization/upserts (Customer, Ship-To, Carrier, Lot+chemistry), load‑driven BOL creation with PDF, open releases reporting, product chemistry mirroring, carrier/truck management, audit logging (with optional external forward), health and balances/history endpoints. Recent BOLs were created successfully via the new load‑driven flow.
-- Hot issues: Product edit via POST /api/products/ returns Bad Request/“already exists” when updating start_tons; upsert‑on‑POST patch is implemented locally and needs deployment. Deploy logs show “models have changes not reflected in a migration” warning—verify migrations are fully applied. UI still requests /api/branding (endpoint was removed)—clean up that call.
+- Current: Live Django app with SSO. Stable flows for Release intake/approval, normalization/upserts (Customer, Ship-To, Carrier, Lot+chemistry), load‑driven BOL creation with professional landscape PDF (both CBRT + PrimeTrade logos, single page, B&W optimized), open releases reporting, product chemistry mirroring, carrier/truck management, audit logging (with optional external forward), health and balances/history endpoints. Recent BOLs created successfully with new PDF design.
+- Hot issues: Product edit via POST /api/products/ returns Bad Request/"already exists" when updating start_tons; upsert‑on‑POST patch is implemented locally and needs deployment. Deploy logs show "models have changes not reflected in a migration" warning—verify migrations are fully applied. UI still requests /api/branding (endpoint was removed)—clean up that call.
 - Immediate next steps: deploy product upsert fix; confirm migration 0006 indexes applied on Neon; remove stale /api/branding request; optionally enable Galactica forwarding via env vars.
 
 ## Where we are (functional scope)
@@ -13,7 +13,8 @@ Updated: 2025-11-03
   - Duplicate release_number rejected with 409; response returns normalized IDs.
   - Release detail page + GET/PATCH API mirrors approve logic with validation and upserts.
 - Scheduling and BOLs
-  - ReleaseLoad rows represent planned loads; Office UI is load‑driven: pick a PENDING load, fields auto‑fill/lock (including street2 in ship-to address), edit net tons and carrier/truck; confirm creates BOL with lot_ref and release_number, marks load SHIPPED, and auto‑completes Release when no pending loads remain. PDF generated with dynamic chemistry (from lot), lot number, release number, and customer PO.
+  - ReleaseLoad rows represent planned loads; Office UI is load‑driven: pick a PENDING load, fields auto‑fill/lock (including street2 in ship-to address), edit net tons and carrier/truck; confirm creates BOL with lot_ref and release_number, marks load SHIPPED, and auto‑completes Release when no pending loads remain.
+  - PDF generation: professional landscape (11"x8.5") single-page design with CBRT + PrimeTrade logos, B&W laser printer optimized. Includes dynamic chemistry (from lot), lot number, release number, customer PO, full ship-to address with street2. Preview and saved PDFs both use same generator. After creation, PDF opens automatically in new tab.
   - History and balances endpoints provide shipped/remaining by product.
 - Master data and UI
   - Products page shows last lot and chemistry mirrored from Lot; balances displayed.
@@ -137,6 +138,8 @@ static/
   bol.html
   carriers.html
   cbrt-logo-optimized.svg
+  cbrt-logo.jpg
+  primetrade-logo.jpg
   client.html
   css/
     cbrt-brand.css
