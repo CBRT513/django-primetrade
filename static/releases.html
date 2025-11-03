@@ -130,11 +130,6 @@
           </div>
 
           <div class="form-group">
-            <label>BOL Requirements</label>
-            <textarea id="bolReqs" rows="3"></textarea>
-          </div>
-
-          <div class="form-group">
             <label>Special Instructions (Warehouse Requirements)</label>
             <textarea id="specialInstructions" rows="4" placeholder="Warehouse requirements, delivery instructions, etc."></textarea>
           </div>
@@ -251,10 +246,6 @@ function fillReview(parsed) {
     html += '</tbody></table>';
     schedEl.innerHTML = html;
   }
-
-  const bolReqsArr = Array.isArray(p.bolRequirements) ? p.bolRequirements : [];
-  const bolReqs = bolReqsArr.length ? ('- ' + bolReqsArr.join('\n- ')) : '';
-  document.getElementById('bolReqs').value = bolReqs;
 
   document.getElementById('specialInstructions').value = p.specialInstructions || '';
 }
