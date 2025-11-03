@@ -276,10 +276,10 @@
         if (res && res.ok) {
           closePreviewModal();
 
-          s.innerHTML = `✅ Created <b>${res.bolNo}</b> — <a target="_blank" href="${res.pdfUrl}">Open PDF</a> | <a target="_blank" href="/bol.html?id=${res.bolId}">View BOL</a>`;
+          s.innerHTML = `✅ Created <b>${res.bolNo}</b> — <a target="_blank" href="${res.pdfUrl}">Open PDF</a>`;
 
-          // Open BOL in new tab automatically
-          window.open(`/bol.html?id=${res.bolId}`, '_blank');
+          // Open PDF in new tab automatically
+          window.open(res.pdfUrl, '_blank');
 
           // Reset form
           qs("f").reset();
@@ -545,6 +545,7 @@
         if (!data.buyerName) { const bf = qs('buyerName'); if (bf && bf.value) data.buyerName = bf.value; }
         if (!data.shipTo) { const sa = qs('shipToAddress'); if (sa && sa.value) data.shipTo = sa.value; }
         if (!data.date) { const de = document.querySelector('input[name=date]'); if (de && de.value) data.date = de.value; }
+        if (!data.customerPO) { const po = qs('customerPO'); if (po && po.value) data.customerPO = po.value; }
         const prod = products.find(p => String(p.id) === String(data.productId));
         data.productName = prod ? prod.name : "";
         const loadSel2 = qs('releaseLoad'); if (loadSel2 && loadSel2.value) data.loadId = loadSel2.value;
