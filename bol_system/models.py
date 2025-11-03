@@ -64,6 +64,7 @@ class CustomerShipTo(TimestampedModel):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='ship_tos')
     name = models.CharField(max_length=200, blank=True)
     street = models.CharField(max_length=200)
+    street2 = models.CharField(max_length=200, blank=True)
     city = models.CharField(max_length=100)
     state = models.CharField(max_length=2)
     zip = models.CharField(max_length=10)
@@ -238,6 +239,7 @@ class Release(TimestampedModel):
 
     ship_to_name = models.CharField(max_length=200, blank=True)
     ship_to_street = models.CharField(max_length=200, blank=True)
+    ship_to_street2 = models.CharField(max_length=200, blank=True)
     ship_to_city = models.CharField(max_length=100, blank=True)
     ship_to_state = models.CharField(max_length=2, blank=True)
     ship_to_zip = models.CharField(max_length=10, blank=True)

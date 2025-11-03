@@ -189,6 +189,7 @@ def customer_shiptos(request, customer_id: int):
         shipto_id = data.get('id')
         name = (data.get('name') or '').strip()
         street = (data.get('street') or '').strip()
+        street2 = (data.get('street2') or '').strip()
         city = (data.get('city') or '').strip()
         state = (data.get('state') or '').strip()[:2]
         zip_code = (data.get('zip') or '').strip()
@@ -202,6 +203,7 @@ def customer_shiptos(request, customer_id: int):
                 st = CustomerShipTo.objects.get(id=shipto_id, customer=customer)
                 st.name = name
                 st.street = street
+                st.street2 = street2
                 st.city = city
                 st.state = state
                 st.zip = zip_code
@@ -217,12 +219,19 @@ def customer_shiptos(request, customer_id: int):
                     city=city,
                     state=state,
                     zip=zip_code,
-                    defaults={'name': name, 'is_active': is_active, 'updated_by': request.user.username}
+                    defaults={'name': name, 'street2': street2, 'is_active': is_active, 'updated_by': request.user.username}
                 )
-                if not created and name and st.name != name:
-                    st.name = name
-                    st.updated_by = request.user.username
-                    st.save(update_fields=['name','updated_by'])
+                if not created:
+                    updated = False
+                    if name and st.name != name:
+                        st.name = name
+                        updated = True
+                    if street2 and st.street2 != street2:
+                        st.street2 = street2
+                        updated = True
+                    if updated:
+                        st.updated_by = request.user.username
+                        st.save(update_fields=['name', 'street2', 'updated_by'])
                 audit(request, 'CUSTOMER_SHIPTO_CREATED' if created else 'CUSTOMER_SHIPTO_UPSERT', st, f"Ship-To saved for customer {customer.customer}")
                 return Response({'ok': True, 'id': st.id, 'created': created})
         except CustomerShipTo.DoesNotExist:
@@ -516,10 +525,14 @@ def confirm_bol(request):
         # Build locked fields if using load
         if release_load:
             buyer_name = getattr(customer, 'customer', None) or release_obj.customer_id_text
-            ship_to_text = (release_obj.ship_to_street or '')
+            # Build ship-to address with optional street2
+            addr_parts = [release_obj.ship_to_name, release_obj.ship_to_street]
+            if release_obj.ship_to_street2:
+                addr_parts.append(release_obj.ship_to_street2)
             city_line = ", ".join([p for p in [release_obj.ship_to_city, release_obj.ship_to_state] if p])
             zip_part = f" {release_obj.ship_to_zip}" if release_obj.ship_to_zip else ''
-            ship_to_text = f"{release_obj.ship_to_name}\n{release_obj.ship_to_street}\n{city_line}{zip_part}".strip()
+            addr_parts.append(f"{city_line}{zip_part}".strip())
+            ship_to_text = "\n".join([p for p in addr_parts if p]).strip()
             customer_po = release_obj.customer_po or ''
         else:
             buyer_name = data['buyerName']
@@ -673,6 +686,7 @@ def approve_release(request):
         ship = data.get('shipTo') or data.get('shipToRaw') or {}
         # Ship-To parsing fallback if only provide combined address
         street = ship.get('street') or ''
+        street2 = ship.get('street2') or ''
         city = ship.get('city') or ''
         state = ship.get('state') or ''
         zip_code = ship.get('zip') or ''
@@ -717,6 +731,7 @@ def approve_release(request):
                 fob=data.get('fob', ''),
                 ship_to_name=ship.get('name', ''),
                 ship_to_street=street,
+                ship_to_street2=street2,
                 ship_to_city=city,
                 ship_to_state=state,
                 ship_to_zip=zip_code,
@@ -750,12 +765,18 @@ def approve_release(request):
                     city=city,
                     state=state[:2],
                     zip=zip_code,
-                    defaults={'name': ship.get('name', ''), 'is_active': True}
+                    defaults={'name': ship.get('name', ''), 'street2': street2, 'is_active': True}
                 )
-                # If name updated, keep latest friendly name
+                # If name or street2 updated, keep latest values
+                updated = False
                 if ship.get('name') and ship_to_obj.name != ship.get('name'):
                     ship_to_obj.name = ship.get('name')
-                    ship_to_obj.save(update_fields=['name'])
+                    updated = True
+                if street2 and ship_to_obj.street2 != street2:
+                    ship_to_obj.street2 = street2
+                    updated = True
+                if updated:
+                    ship_to_obj.save(update_fields=['name', 'street2'])
                 rel.ship_to_ref = ship_to_obj
 
             # Upsert Carrier
@@ -920,6 +941,7 @@ def pending_release_loads(request):
                 'shipTo': {
                     'name': r.ship_to_name,
                     'street': r.ship_to_street,
+                    'street2': r.ship_to_street2,
                     'city': r.ship_to_city,
                     'state': r.ship_to_state,
                     'zip': r.ship_to_zip,
@@ -969,6 +991,7 @@ def load_detail_api(request, load_id):
             'customer_ref_id': release.customer_ref.id if release.customer_ref else None,
             'ship_to_name': release.ship_to_name,
             'ship_to_street': release.ship_to_street,
+            'ship_to_street2': release.ship_to_street2,
             'ship_to_city': release.ship_to_city,
             'ship_to_state': release.ship_to_state,
             'ship_to_zip': release.ship_to_zip,
@@ -1038,6 +1061,7 @@ def release_detail_api(request, release_id):
 
         ship = data.get('shipTo') or {}
         street = ship.get('street') or rel.ship_to_street or ''
+        street2 = ship.get('street2') or rel.ship_to_street2 or ''
         city = ship.get('city') or rel.ship_to_city or ''
         state = ship.get('state') or rel.ship_to_state or ''
         zip_code = ship.get('zip') or rel.ship_to_zip or ''
@@ -1076,11 +1100,17 @@ def release_detail_api(request, release_id):
             if customer_obj and street and city and state and zip_code:
                 ship_to_obj, _ = CustomerShipTo.objects.get_or_create(
                     customer=customer_obj, street=street, city=city, state=state[:2], zip=zip_code,
-                    defaults={'name': ship.get('name') or rel.ship_to_name or ''}
+                    defaults={'name': ship.get('name') or rel.ship_to_name or '', 'street2': street2}
                 )
+                updated = False
                 if ship.get('name') and ship_to_obj.name != ship.get('name'):
                     ship_to_obj.name = ship.get('name')
-                    ship_to_obj.save(update_fields=['name'])
+                    updated = True
+                if street2 and ship_to_obj.street2 != street2:
+                    ship_to_obj.street2 = street2
+                    updated = True
+                if updated:
+                    ship_to_obj.save(update_fields=['name', 'street2'])
                 rel.ship_to_ref = ship_to_obj
 
             if carrier_name:
@@ -1152,6 +1182,7 @@ def release_detail_api(request, release_id):
             # Persist text mirrors
             if ship.get('name') is not None: rel.ship_to_name = ship.get('name')
             rel.ship_to_street = street
+            rel.ship_to_street2 = street2
             rel.ship_to_city = city
             rel.ship_to_state = state[:2] if state else ''
             rel.ship_to_zip = zip_code

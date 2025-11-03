@@ -50,7 +50,7 @@ class ReleaseLoadSerializer(serializers.ModelSerializer):
 class CustomerShipToSerializer(serializers.ModelSerializer):
     class Meta:
         model = CustomerShipTo
-        fields = ['id','name','street','city','state','zip']
+        fields = ['id','name','street','street2','city','state','zip']
 
 class LotSerializer(serializers.ModelSerializer):
     class Meta:
@@ -68,7 +68,7 @@ class ReleaseSerializer(serializers.ModelSerializer):
         model = Release
         fields = [
             'id','release_number','release_date','customer_id_text','customer_po',
-            'ship_via','fob','ship_to_name','ship_to_street','ship_to_city','ship_to_state','ship_to_zip',
+            'ship_via','fob','ship_to_name','ship_to_street','ship_to_street2','ship_to_city','ship_to_state','ship_to_zip',
             'lot','material_description','quantity_net_tons','status','loads',
             'customer_ref','ship_to_ref','carrier_ref','lot_ref'
         ]
