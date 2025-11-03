@@ -357,75 +357,93 @@ def parse_release_text(text: str) -> Dict[str, Any]:
 def parse_release_pdf(file_obj, ai_mode: str | None = None) -> Dict[str, Any]:
     """Extract text from a PDF file-like and parse it.
 
-    ai_mode: 'local' for Ollama on localhost, 'cloud' for managed API (Groq), or None.
+    ai_mode: 'local' for Ollama on localhost, 'cloud' for managed API (Gemini), or None.
+
+    When ai_mode is set, uses AI-first extraction with regex fallback.
+    When ai_mode is None, uses regex-only extraction.
     """
     reader = PdfReader(file_obj)
     text = "\n".join(page.extract_text() or "" for page in reader.pages)
-    parsed = parse_release_text(text)
 
     if ai_mode in ("local", "cloud"):
-        def _is_bad_value(s: Any) -> bool:
-            if s is None:
-                return True
-            if isinstance(s, str):
-                lab = s.strip().upper()
-                return lab in {"", "SHIP TO", "CUSTOMER ID", "N/A"}
-            return False
+        # AI-FIRST APPROACH: Let AI extract everything, use regex as fallback
+        ai = ai_parse_release_text(text) if ai_mode == "local" else remote_ai_parse_release_text(text)
 
-        def _addr_contaminated(addr: str) -> bool:
-            if not isinstance(addr, str):
-                return True
-            return bool(re.search(r"Release\s*Date|Ship\s*Via|Customer\s*PO|^\s*\d{2}/\d{2}/\d{4}|Release\s*#", addr, re.I))
+        if isinstance(ai, dict):
+            # Start with AI results
+            parsed = {}
 
-        need = any(
-            _is_bad_value(parsed.get(k))
-            for k in ["customerId", "customerPO", "releaseDate", "shipToRaw"]
-        ) or _addr_contaminated((parsed.get("shipToRaw") or {}).get("address", ""))
+            # Use AI values if available, otherwise try regex
+            regex_fallback = parse_release_text(text)
 
-        if need:
-            ai = ai_parse_release_text(text) if ai_mode == "local" else remote_ai_parse_release_text(text)
-            if isinstance(ai, dict):
-                if _is_bad_value(parsed.get("releaseDate")) and ai.get("releaseDate"):
-                    parsed["releaseDate"] = ai.get("releaseDate")
-                if _is_bad_value(parsed.get("customerId")) and ai.get("customerId"):
-                    parsed["customerId"] = ai.get("customerId")
-                if _is_bad_value(parsed.get("customerPO")) and ai.get("customerPO"):
-                    parsed["customerPO"] = ai.get("customerPO")
-                if _is_bad_value(parsed.get("shipVia")) and ai.get("shipVia"):
-                    parsed["shipVia"] = ai.get("shipVia")
-                if _is_bad_value(parsed.get("fob")) and ai.get("fob"):
-                    parsed["fob"] = ai.get("fob")
-                # Ship To
-                ai_ship = ai.get("shipTo") if isinstance(ai.get("shipTo"), dict) else None
-                if ai_ship and (_is_bad_value(parsed.get("shipToRaw")) or _addr_contaminated((parsed.get("shipToRaw") or {}).get("address", ""))):
-                    parsed["shipToRaw"] = ai_ship
-                # Material
-                if not parsed.get("material", {}).get("lot") and isinstance(ai.get("material"), dict):
-                    parsed.setdefault("material", {})
-                    parsed["material"].setdefault("description", ai.get("material", {}).get("description"))
-                    parsed["material"]["lot"] = ai.get("material", {}).get("lot")
-                # Quantity
-                parsed["quantityNetTons"] = parsed.get("quantityNetTons") or ai.get("quantityNetTons")
-                # Schedule
-                if not parsed.get("schedule") and isinstance(ai.get("schedule"), list):
-                    iso_sched = []
-                    for row in ai.get("schedule"):
-                        try:
-                            d = row.get("date")
-                            if d and "/" in d:
-                                mm, dd, yyyy = d.split("/")
-                                d = f"{yyyy}-{mm.zfill(2)}-{dd.zfill(2)}"
-                            iso_sched.append({"date": d, "load": int(row.get("load"))})
-                        except Exception:
-                            pass
-                    if iso_sched:
-                        parsed["schedule"] = iso_sched
-                # Critical Delivery Instructions - Two-stage extraction
-                # Stage 1: AI extracted all warehouse requirements
-                # Stage 2: Filter to only critical delivery directives
-                warehouse_text = ai.get("allWarehouseRequirements")
-                if warehouse_text:
-                    critical = gemini_filter_critical_instructions(warehouse_text.strip())
-                    if critical:
-                        parsed["specialInstructions"] = critical
-    return parsed
+            parsed["releaseNumber"] = ai.get("releaseNumber") or regex_fallback.get("releaseNumber")
+            parsed["customerId"] = ai.get("customerId") or regex_fallback.get("customerId")
+            parsed["customerPO"] = ai.get("customerPO") or regex_fallback.get("customerPO")
+            parsed["releaseDate"] = ai.get("releaseDate") or regex_fallback.get("releaseDate")
+            parsed["shipVia"] = ai.get("shipVia") or regex_fallback.get("shipVia")
+            parsed["fob"] = ai.get("fob") or regex_fallback.get("fob")
+
+            # Ship To
+            ai_ship = ai.get("shipTo") if isinstance(ai.get("shipTo"), dict) else None
+            parsed["shipToRaw"] = ai_ship or regex_fallback.get("shipToRaw")
+
+            # Material
+            if isinstance(ai.get("material"), dict):
+                parsed["material"] = {
+                    "lot": ai.get("material", {}).get("lot"),
+                    "description": ai.get("material", {}).get("description"),
+                    "analysis": regex_fallback.get("material", {}).get("analysis"),
+                    "extraBOLAnalysis": regex_fallback.get("material", {}).get("extraBOLAnalysis"),
+                }
+            else:
+                parsed["material"] = regex_fallback.get("material", {})
+
+            # Warehouse
+            parsed["warehouse"] = regex_fallback.get("warehouse", {"name": "CRT", "location": "CINCINNATI"})
+
+            # Quantity
+            parsed["quantityNetTons"] = ai.get("quantityNetTons") or regex_fallback.get("quantityNetTons")
+
+            # Schedule - prefer AI, fallback to regex
+            if isinstance(ai.get("schedule"), list) and ai.get("schedule"):
+                iso_sched = []
+                for row in ai.get("schedule"):
+                    try:
+                        d = row.get("date")
+                        if d and "/" in d:
+                            mm, dd, yyyy = d.split("/")
+                            d = f"{yyyy}-{mm.zfill(2)}-{dd.zfill(2)}"
+                        iso_sched.append({"date": d, "load": int(row.get("load"))})
+                    except Exception:
+                        pass
+                parsed["schedule"] = iso_sched if iso_sched else regex_fallback.get("schedule", [])
+            else:
+                parsed["schedule"] = regex_fallback.get("schedule", [])
+
+            # Carrier
+            parsed["carrier"] = regex_fallback.get("carrier")
+
+            # BOL Requirements (from regex only, not in AI schema)
+            parsed["bolRequirements"] = regex_fallback.get("bolRequirements", [])
+
+            # Critical Delivery Instructions - Two-stage AI extraction
+            # Stage 1: AI extracted all warehouse requirements
+            # Stage 2: Filter to only critical delivery directives
+            warehouse_text = ai.get("allWarehouseRequirements")
+            if warehouse_text:
+                critical = gemini_filter_critical_instructions(warehouse_text.strip())
+                parsed["specialInstructions"] = critical if critical else None
+            else:
+                # No warehouse requirements found by AI
+                parsed["specialInstructions"] = None
+
+            # Raw text preview
+            parsed["rawTextPreview"] = text[:1000]
+
+            return parsed
+        else:
+            # AI failed, fall back to regex-only
+            return parse_release_text(text)
+    else:
+        # No AI mode specified, use regex-only
+        return parse_release_text(text)
