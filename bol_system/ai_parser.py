@@ -48,7 +48,9 @@ def ai_parse_release_text(
         "Extract fields from the following RELEASE ORDER text. "
         "Return ONLY valid JSON matching this schema (no prose, no markdown):\n"
         f"{AI_SCHEMA}\n"
-        "For specialInstructions: extract the full text from 'Warehouse:', 'Warehouse requirements:', or similar sections.\n"
+        "For specialInstructions: extract ONLY the bulleted requirements from 'Warehouse requirements:' or 'Warehouse:' sections. "
+        "Include only the dash/bullet items (-). Stop before section headings like 'Trucking requirements:', 'SPECIAL INSTRUCTIONS:', or contact info. "
+        "Do NOT include document headers, addresses, release numbers, or other metadata.\n"
         "Fill unknown fields with null or empty list.\n"
         "Text between <<< and >>> follows.\n<<<\n"
         f"{text}\n>>>\n"
@@ -113,7 +115,9 @@ def remote_ai_parse_release_text(
     system = (
         "You are a precise information extractor for release orders. Return ONLY valid JSON for the schema: "
         f"{AI_SCHEMA}. "
-        "For specialInstructions: extract the full text from 'Warehouse:', 'Warehouse requirements:', or similar sections. "
+        "For specialInstructions: extract ONLY the bulleted requirements (-) from 'Warehouse requirements:' or 'Warehouse:' sections. "
+        "Stop before section headings like 'Trucking requirements:', 'SPECIAL INSTRUCTIONS:', or contact information. "
+        "Do NOT include document headers, addresses, release numbers, or other metadata in specialInstructions. "
         "Use null/[] when unknown. No markdown, no comments."
     )
     user = f"Extract fields from this release order text between <<< and >>>.\n<<<\n{text}\n>>>"
