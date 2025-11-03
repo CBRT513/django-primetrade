@@ -221,9 +221,9 @@ def parse_release_text(text: str) -> Dict[str, Any]:
     # Warehouse section - extract full text for special_instructions
     warehouse_section = None
     try:
-        # Match entire Warehouse:/Warehouse requirements: section until next major section
+        # Match entire Warehouse:/Warehouse requirements: section until next major section or end
         sec = re.search(
-            r"Warehouse\s*(?:requirements)?\s*:\s*([\s\S]*?)(?=\n\s*(?:Trucking\s*(?:requirements)?\s*:|SPECIAL\s+INSTRUCTIONS\s*:|Ship\s+From\s*:|$))",
+            r"Warehouse\s*(?:requirements)?\s*:\s*([\s\S]*?)(?=\n\s*(?:Trucking\s*(?:requirements)?\s*:|SPECIAL\s+INSTRUCTIONS\s*:|Ship\s+From\s*:)|$)",
             t,
             re.I
         )
