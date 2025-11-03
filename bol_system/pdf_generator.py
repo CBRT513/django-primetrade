@@ -58,6 +58,8 @@ def generate_bol_pdf(bol_data, output_path=None):
                     return self._data.get('releaseNumber') or self._data.get('release_number', '')
                 elif key == 'lot_ref':
                     return self._data.get('lot_ref') or self._data.get('lotRef', None)
+                elif key == 'special_instructions':
+                    return self._data.get('specialInstructions') or self._data.get('special_instructions', '')
                 return self._data.get(key, '')
         data = DictWrapper(bol_data)
 
@@ -304,6 +306,15 @@ def generate_bol_pdf(bol_data, output_path=None):
     notes_text += '• Liability Limitation for loss or damage in this shipment may be applicable. See 49 U.S.C. § 14706(c)(1)(A) and (B).<br/>'
     notes_text += '• Material is non-hazardous.<br/>'
     notes_text += '• This is to certify that the above named materials are properly classified, packaged, marked and labeled, and are in proper condition for transportation according to the applicable regulations of the DOT.'
+
+    # Add special instructions if present
+    if hasattr(data, 'special_instructions') and data.special_instructions:
+        # Clean up special instructions text
+        special = data.special_instructions.strip()
+        if special:
+            # Replace newlines with <br/> for proper rendering
+            special = special.replace('\n', '<br/>')
+            notes_text += f'<br/><br/><b>SPECIAL INSTRUCTIONS:</b><br/>{special}'
 
     notes_table = Table([[Paragraph(notes_text, ParagraphStyle('Notes', parent=normal_style, fontSize=8, leading=10))]], colWidths=[9.4*inch])
     notes_table.setStyle(TableStyle([

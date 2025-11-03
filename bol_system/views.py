@@ -557,7 +557,8 @@ def confirm_bol(request):
             customer_po=customer_po,
             created_by_email=f'{request.user.username}@primetrade.com',
             lot_ref=release_obj.lot_ref if release_load else None,
-            release_number=f'{release_obj.release_number}-{release_load.seq}' if release_load else ''
+            release_number=f'{release_obj.release_number}-{release_load.seq}' if release_load else '',
+            special_instructions=release_obj.special_instructions if release_load else ''
         )
 
         # If load provided, mark shipped and attach
@@ -741,6 +742,7 @@ def approve_release(request):
                 lot=lot_code,
                 material_description=(mat.get('description') or ''),
                 quantity_net_tons=data.get('quantityNetTons', None),
+                special_instructions=data.get('specialInstructions', ''),
                 updated_by=request.user.username,
             )
 

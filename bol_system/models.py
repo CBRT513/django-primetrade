@@ -139,7 +139,8 @@ class BOL(TimestampedModel):
     created_by_email = models.CharField(max_length=200, default='system@primetrade.com')
     lot_ref = models.ForeignKey('Lot', on_delete=models.SET_NULL, null=True, blank=True, help_text='Reference to lot for chemistry data')
     release_number = models.CharField(max_length=20, blank=True, help_text='Release number for reference')
-    
+    special_instructions = models.TextField(blank=True, help_text='Special warehouse/BOL requirements from release')
+
     class Meta:
         ordering = ['-created_at']
     
@@ -257,6 +258,11 @@ class Release(TimestampedModel):
 
     quantity_net_tons = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True)
     status = models.CharField(max_length=12, choices=STATUS_CHOICES, default="OPEN")
+
+    special_instructions = models.TextField(
+        blank=True,
+        help_text="Special warehouse/BOL requirements (e.g., Material #, delivery instructions, tarping, etc.)"
+    )
 
     class Meta:
         ordering = ['-created_at']

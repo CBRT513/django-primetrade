@@ -218,6 +218,20 @@ def parse_release_text(text: str) -> Dict[str, Any]:
     if ship_via:
         carrier = ship_via.strip()
 
+    # Warehouse section - extract full text for special_instructions
+    warehouse_section = None
+    try:
+        # Match entire Warehouse: section until next major section (Trucking:, SPECIAL INSTRUCTIONS:, etc.)
+        sec = re.search(
+            r"Warehouse\s*:\s*([\s\S]*?)(?=\n\s*(?:Trucking\s*:|SPECIAL\s+INSTRUCTIONS\s*:|Ship\s+From\s*:|$))",
+            t,
+            re.I
+        )
+        if sec:
+            warehouse_section = sec.group(1).strip()
+    except Exception:
+        pass
+
     # Warehouse requirements bullets (prefer exact section parsing)
     bol_requirements: List[str] = []
     try:
@@ -329,6 +343,7 @@ def parse_release_text(text: str) -> Dict[str, Any]:
         "schedule": sched,
         "carrier": carrier,
         "bolRequirements": bol_requirements,
+        "specialInstructions": warehouse_section,
         "rawTextPreview": text[:1000],
     }
 
