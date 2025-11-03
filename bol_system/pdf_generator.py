@@ -75,10 +75,10 @@ def generate_bol_pdf(bol_data, output_path=None):
     doc = SimpleDocTemplate(
         filepath,
         pagesize=landscape(letter),  # 11" wide x 8.5" tall
-        rightMargin=0.4*inch,
-        leftMargin=0.4*inch,
-        topMargin=0.4*inch,
-        bottomMargin=0.4*inch
+        rightMargin=0.3*inch,
+        leftMargin=0.3*inch,
+        topMargin=0.3*inch,
+        bottomMargin=0.3*inch
     )
 
     elements = []
@@ -88,23 +88,23 @@ def generate_bol_pdf(bol_data, output_path=None):
     title_style = ParagraphStyle(
         'BOLTitle',
         parent=styles['Heading1'],
-        fontSize=24,
+        fontSize=20,
         alignment=TA_CENTER,
         fontName='Helvetica-Bold',
-        spaceAfter=6
+        spaceAfter=4
     )
 
     header_style = ParagraphStyle(
         'Header',
         parent=styles['Normal'],
-        fontSize=9,
+        fontSize=8,
         fontName='Helvetica-Bold'
     )
 
     normal_style = ParagraphStyle(
         'Normal',
         parent=styles['Normal'],
-        fontSize=9
+        fontSize=8
     )
 
     # ========== HEADER SECTION ==========
@@ -174,7 +174,7 @@ def generate_bol_pdf(bol_data, output_path=None):
         ('BACKGROUND', (0, 0), (-1, -1), colors.black),
     ]))
     elements.append(line_table)
-    elements.append(Spacer(1, 0.1*inch))
+    elements.append(Spacer(1, 0.05*inch))
 
     # ========== MAIN INFO SECTION (TWO COLUMNS) ==========
     # Get dynamic data
@@ -215,7 +215,7 @@ def generate_bol_pdf(bol_data, output_path=None):
         [Paragraph('<b>Cincinnati Barge & Rail Terminal, LLC</b><br/>c/o PrimeTrade, LLC<br/>1707 Riverside Drive<br/>Cincinnati, Ohio 45202<br/>Phone: (513) 721-1707', normal_style)],
         [Spacer(1, 0.1*inch)],
         [Paragraph('<b>CONSIGNEE (SHIP TO):</b>', header_style)],
-        [Paragraph(f'<b>{data.buyer_name}</b><br/>{data.ship_to.replace(chr(10), "<br/>")}', normal_style)]
+        [Paragraph(f'<b>{data.buyer_name}</b><br/><font size="7">{data.ship_to.replace(chr(10), "<br/>")}</font>', normal_style)]
     ]
 
     left_col_table = Table(left_col_data, colWidths=[4.5*inch])
@@ -224,10 +224,10 @@ def generate_bol_pdf(bol_data, output_path=None):
         ('BACKGROUND', (0, 3), (0, 3), colors.HexColor('#E0E0E0')),
         ('BOX', (0, 0), (-1, -1), 1, colors.black),
         ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ('TOPPADDING', (0, 0), (-1, -1), 6),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-        ('LEFTPADDING', (0, 0), (-1, -1), 8),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
     ]))
 
     # Right column: Shipment details
@@ -253,10 +253,10 @@ def generate_bol_pdf(bol_data, output_path=None):
     right_col_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (0, 0), colors.HexColor('#E0E0E0')),
         ('BOX', (0, 0), (-1, -1), 1, colors.black),
-        ('TOPPADDING', (0, 0), (-1, -1), 6),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 6),
-        ('LEFTPADDING', (0, 0), (-1, -1), 8),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 4),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
     ]))
 
     # Combine left and right columns
@@ -268,7 +268,7 @@ def generate_bol_pdf(bol_data, output_path=None):
     ]))
 
     elements.append(main_info_table)
-    elements.append(Spacer(1, 0.15*inch))
+    elements.append(Spacer(1, 0.08*inch))
 
     # ========== MATERIAL/PRODUCT SECTION ==========
     material_data = [[
@@ -289,14 +289,14 @@ def generate_bol_pdf(bol_data, output_path=None):
         ('BOX', (0, 0), (-1, -1), 1, colors.black),
         ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.grey),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('TOPPADDING', (0, 0), (-1, -1), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-        ('LEFTPADDING', (0, 0), (-1, -1), 8),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
     ]))
 
     elements.append(material_table)
-    elements.append(Spacer(1, 0.1*inch))
+    elements.append(Spacer(1, 0.05*inch))
 
     # ========== NOTES/DISCLAIMER SECTION ==========
     notes_text = '<b>IMPORTANT NOTES:</b><br/>'
@@ -309,14 +309,14 @@ def generate_bol_pdf(bol_data, output_path=None):
     notes_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#F5F5F5')),
         ('BOX', (0, 0), (-1, -1), 1, colors.black),
-        ('TOPPADDING', (0, 0), (-1, -1), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-        ('LEFTPADDING', (0, 0), (-1, -1), 8),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
     ]))
 
     elements.append(notes_table)
-    elements.append(Spacer(1, 0.15*inch))
+    elements.append(Spacer(1, 0.08*inch))
 
     # ========== SIGNATURE SECTION ==========
     sig_data = [[
@@ -329,10 +329,10 @@ def generate_bol_pdf(bol_data, output_path=None):
         ('BOX', (0, 0), (-1, -1), 1, colors.black),
         ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.grey),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('TOPPADDING', (0, 0), (-1, -1), 8),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 8),
-        ('LEFTPADDING', (0, 0), (-1, -1), 8),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 8),
+        ('TOPPADDING', (0, 0), (-1, -1), 5),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
+        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
     ]))
 
     elements.append(sig_table)
