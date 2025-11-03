@@ -15,15 +15,12 @@ AI_SCHEMA = (
     '"specialInstructions": str|null }'
 )
 
-GROQ_DEFAULT_MODEL = os.environ.get("GROQ_MODEL", "llama-3.1-8b-instant")
-GROQ_ENDPOINT = os.environ.get("GROQ_API_BASE", "https://api.groq.com/openai/v1/chat/completions")
-OPENROUTER_DEFAULT_MODEL = os.environ.get("OPENROUTER_MODEL", "meta-llama/llama-3.1-8b-instruct")
-OPENROUTER_ENDPOINT = os.environ.get("OPENROUTER_API_BASE", "https://openrouter.ai/api/v1/chat/completions")
-TOGETHER_DEFAULT_MODEL = os.environ.get("TOGETHER_MODEL", "meta-llama/llama-3.1-8b-instruct")
-TOGETHER_ENDPOINT = os.environ.get("TOGETHER_API_BASE", "https://api.together.xyz/v1/chat/completions")
+GEMINI_DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
+GEMINI_ENDPOINT_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 
 
 def _strip_code_fence(s: str) -> str:
+    """Remove markdown code fences from JSON response."""
     s = s.strip()
     s = re.sub(r"^```json\s*", "", s, flags=re.I)
     s = re.sub(r"^```\s*", "", s)
@@ -31,110 +28,69 @@ def _strip_code_fence(s: str) -> str:
     return s.strip()
 
 
-def ai_parse_release_text(
+def gemini_parse_release_text(
     text: str,
+    api_key: Optional[str] = None,
     model: Optional[str] = None,
-    ollama_url: Optional[str] = None,
-    timeout: float = 15.0,
+    timeout: float = 20.0,
 ) -> Optional[Dict[str, Any]]:
     """
-    Ask a local Ollama model to extract a strict JSON object.
+    Use Google Gemini API to extract structured data from release order text.
     Returns dict or None on failure.
     """
-    model = model or os.environ.get("OLLAMA_MODEL", "llama3.1:8b")
-    base = ollama_url or os.environ.get("OLLAMA_URL", "http://localhost:11434")
+    api_key = api_key or os.environ.get("GOOGLE_API_KEY")
+    if not api_key:
+        return None
+
+    model = model or GEMINI_DEFAULT_MODEL
+    endpoint = f"{GEMINI_ENDPOINT_BASE}/{model}:generateContent?key={api_key}"
 
     prompt = (
         "Extract fields from the following RELEASE ORDER text. "
         "Return ONLY valid JSON matching this schema (no prose, no markdown):\n"
-        f"{AI_SCHEMA}\n"
-        "For specialInstructions: extract ONLY the bulleted requirements from 'Warehouse requirements:' or 'Warehouse:' sections. "
-        "Include only the dash/bullet items (-). Stop before section headings like 'Trucking requirements:', 'SPECIAL INSTRUCTIONS:', or contact info. "
-        "Do NOT include document headers, addresses, release numbers, or other metadata.\n"
-        "Fill unknown fields with null or empty list.\n"
+        f"{AI_SCHEMA}\n\n"
+        "Instructions:\n"
+        "- For specialInstructions: extract ONLY the bulleted requirements (-) from 'Warehouse requirements:' or 'Warehouse:' sections.\n"
+        "- Include only the dash/bullet items. Stop before section headings like 'Trucking requirements:', 'SPECIAL INSTRUCTIONS:', or contact information.\n"
+        "- Do NOT include document headers, addresses, release numbers, or other metadata in specialInstructions.\n"
+        "- Fill unknown fields with null or empty list.\n\n"
         "Text between <<< and >>> follows.\n<<<\n"
-        f"{text}\n>>>\n"
+        f"{text}\n>>>"
     )
 
-    try:
-        resp = requests.post(
-            f"{base.rstrip('/')}/api/generate",
-            json={
-                "model": model,
-                "prompt": prompt,
-                "stream": False,
-                "options": {"temperature": 0, "num_ctx": 8192},
-            },
-            timeout=timeout,
-        )
-        resp.raise_for_status()
-        body = resp.json()
-        raw = _strip_code_fence(str(body.get("response", "")).strip())
-        return json.loads(raw)
-    except Exception:
-        return None
-
-
-def remote_ai_parse_release_text(
-    text: str,
-    api_key: Optional[str] = None,
-    model: Optional[str] = None,
-    endpoint: Optional[str] = None,
-    timeout: float = 20.0,
-) -> Optional[Dict[str, Any]]:
-    """Use a managed API (Groq/OpenRouter/Together) to return strict JSON."""
-    # Provider autodetect order: GROQ > OPENROUTER > TOGETHER
-    provider = None
-    if os.environ.get("GROQ_API_KEY"):
-        provider = "groq"
-        api_key = api_key or os.environ.get("GROQ_API_KEY")
-        model = model or GROQ_DEFAULT_MODEL
-        endpoint = endpoint or GROQ_ENDPOINT
-        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-    elif os.environ.get("OPENROUTER_API_KEY"):
-        provider = "openrouter"
-        api_key = api_key or os.environ.get("OPENROUTER_API_KEY")
-        model = model or OPENROUTER_DEFAULT_MODEL
-        endpoint = endpoint or OPENROUTER_ENDPOINT
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json",
-            # Optional but recommended; safe defaults
-            "HTTP-Referer": os.environ.get("OPENROUTER_REFERER", "https://primetrade.local"),
-            "X-Title": os.environ.get("OPENROUTER_TITLE", "PrimeTrade Release Parser"),
-        }
-    elif os.environ.get("TOGETHER_API_KEY"):
-        provider = "together"
-        api_key = api_key or os.environ.get("TOGETHER_API_KEY")
-        model = model or TOGETHER_DEFAULT_MODEL
-        endpoint = endpoint or TOGETHER_ENDPOINT
-        headers = {"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"}
-    else:
-        return None
-
-    system = (
-        "You are a precise information extractor for release orders. Return ONLY valid JSON for the schema: "
-        f"{AI_SCHEMA}. "
-        "For specialInstructions: extract ONLY the bulleted requirements (-) from 'Warehouse requirements:' or 'Warehouse:' sections. "
-        "Stop before section headings like 'Trucking requirements:', 'SPECIAL INSTRUCTIONS:', or contact information. "
-        "Do NOT include document headers, addresses, release numbers, or other metadata in specialInstructions. "
-        "Use null/[] when unknown. No markdown, no comments."
-    )
-    user = f"Extract fields from this release order text between <<< and >>>.\n<<<\n{text}\n>>>"
     try:
         payload = {
-            "model": model,
-            "temperature": 0,
-            "response_format": {"type": "json_object"},
-            "messages": [
-                {"role": "system", "content": system},
-                {"role": "user", "content": user},
-            ],
+            "contents": [{
+                "parts": [{"text": prompt}]
+            }],
+            "generationConfig": {
+                "temperature": 0,
+                "responseMimeType": "application/json"
+            }
         }
-        resp = requests.post(endpoint, headers=headers, json=payload, timeout=timeout)
+
+        resp = requests.post(endpoint, json=payload, timeout=timeout)
         resp.raise_for_status()
         data = resp.json()
-        content = data["choices"][0]["message"]["content"].strip()
-        return json.loads(content)
+
+        # Extract text from Gemini response format
+        candidates = data.get("candidates", [])
+        if not candidates:
+            return None
+
+        content = candidates[0].get("content", {})
+        parts = content.get("parts", [])
+        if not parts:
+            return None
+
+        text_response = parts[0].get("text", "")
+        clean_text = _strip_code_fence(text_response.strip())
+
+        return json.loads(clean_text)
     except Exception:
         return None
+
+
+# Aliases for backward compatibility
+ai_parse_release_text = gemini_parse_release_text
+remote_ai_parse_release_text = gemini_parse_release_text
