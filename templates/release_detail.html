@@ -30,6 +30,11 @@
 
     <div class="card">
       <form id="editForm">
+        <div style="display:flex; gap:.5rem; justify-content:flex-end; margin-bottom:1rem;">
+          <a class="btn" href="/api/releases/open/view/">Cancel</a>
+          <button type="submit" class="btn btn-accent">Save Changes</button>
+        </div>
+
         <div class="grid">
           <div class="form-group">
             <label>Release #</label>
@@ -96,12 +101,33 @@
           <div class="form-group"><label>P</label><input id="chemP" type="number" step="0.001"></div>
           <div class="form-group"><label>Mn</label><input id="chemMn" type="number" step="0.001"></div>
         </div>
-
-        <div style="display:flex; gap:.5rem; justify-content:flex-end; margin-top:1rem;">
-          <a class="btn" href="/api/releases/open/view/">Cancel</a>
-          <button type="submit" class="btn btn-accent">Save Changes</button>
-        </div>
       </form>
+
+      <!-- Loads/Shipments Section -->
+      <div id="loads-section" style="margin-top: 2rem; padding-top: 2rem; border-top: 2px solid #ddd;">
+        <h3>Loads / Shipments</h3>
+
+        <table style="width: 100%; border-collapse: collapse; margin-top: 1rem;">
+          <thead>
+            <tr style="background-color: #f5f5f5; text-align: left;">
+              <th style="padding: 12px;">Load #</th>
+              <th style="padding: 12px;">Planned Tons</th>
+              <th style="padding: 12px;">Actual Tons</th>
+              <th style="padding: 12px;">Status</th>
+              <th style="padding: 12px;">BOL Number</th>
+              <th style="padding: 12px;">Date Shipped</th>
+              <th style="padding: 12px;">Action</th>
+            </tr>
+          </thead>
+          <tbody id="loads-table-body">
+            <!-- Populated by JavaScript -->
+          </tbody>
+        </table>
+
+        <div id="loads-summary" style="margin-top: 1rem; padding: 1rem; background-color: #f9f9f9; border-radius: 4px;">
+          <!-- Summary populated by JavaScript -->
+        </div>
+      </div>
     </div>
   </div>
 
@@ -112,6 +138,85 @@
     function toISO(d){ if(!d) return ''; if(/^\d{4}-\d{2}-\d{2}$/.test(d)) return d; try{ const dt=new Date(d); if(!isNaN(dt)) return dt.toISOString().slice(0,10);}catch(e){} return ''; }
     function toNum(v){ const s=(v??'').toString().trim(); if(s==='') return undefined; const n=Number(s); return Number.isFinite(n)?n:undefined; }
     function rid(){ const m=window.location.pathname.match(/\/api\/releases\/(\d+)\//); return m? Number(m[1]) : null; }
+
+    function renderLoads(loads, summary) {
+      const tbody = document.getElementById('loads-table-body');
+      tbody.innerHTML = '';
+
+      if (!loads || loads.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="padding: 1rem; text-align: center; color: #6b7280;">No loads scheduled for this release</td></tr>';
+        document.getElementById('loads-summary').innerHTML = '';
+        return;
+      }
+
+      loads.forEach(load => {
+        const row = document.createElement('tr');
+        row.style.borderBottom = '1px solid #eee';
+
+        // Status badge styling
+        let statusBadge = '';
+        if (load.status === 'SHIPPED') {
+          statusBadge = '<span style="background: #10b981; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem;">SHIPPED</span>';
+        } else if (load.status === 'PENDING') {
+          statusBadge = '<span style="background: #f59e0b; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem;">PENDING</span>';
+        } else if (load.status === 'CANCELLED') {
+          statusBadge = '<span style="background: #6b7280; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem;">CANCELLED</span>';
+        }
+
+        // BOL number (clickable if exists)
+        let bolCell = '-';
+        if (load.bol_number && load.bol_pdf_url) {
+          bolCell = `<a href="${load.bol_pdf_url}" target="_blank" style="color: #2563eb; text-decoration: underline;">${load.bol_number}</a>`;
+        }
+
+        // Date shipped
+        let dateCell = '-';
+        if (load.bol_created_at) {
+          const date = new Date(load.bol_created_at);
+          dateCell = date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+        }
+
+        // Action button
+        let actionCell = '';
+        if (load.status === 'PENDING') {
+          actionCell = `<button onclick="createBOLForLoad(${load.id})" style="background: #2563eb; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">Create BOL</button>`;
+        } else if (load.status === 'SHIPPED' && load.bol_pdf_url) {
+          actionCell = `<button onclick="window.open('${load.bol_pdf_url}', '_blank')" style="background: #059669; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">View BOL</button>`;
+        }
+
+        row.innerHTML = `
+          <td style="padding: 12px;">${load.seq}</td>
+          <td style="padding: 12px;">${load.planned_tons ? parseFloat(load.planned_tons).toFixed(2) : '-'}</td>
+          <td style="padding: 12px;">${load.actual_tons ? parseFloat(load.actual_tons).toFixed(2) : '-'}</td>
+          <td style="padding: 12px;">${statusBadge}</td>
+          <td style="padding: 12px;">${bolCell}</td>
+          <td style="padding: 12px;">${dateCell}</td>
+          <td style="padding: 12px;">${actionCell}</td>
+        `;
+
+        tbody.appendChild(row);
+      });
+
+      // Render summary
+      if (summary) {
+        const summaryDiv = document.getElementById('loads-summary');
+        const shippedPct = summary.total_loads > 0
+          ? Math.round((summary.shipped_loads / summary.total_loads) * 100)
+          : 0;
+
+        summaryDiv.innerHTML = `
+          <strong>Summary:</strong>
+          ${summary.shipped_loads} of ${summary.total_loads} loads shipped (${shippedPct}%) |
+          ${parseFloat(summary.shipped_tons).toFixed(2)} / ${parseFloat(summary.total_tons).toFixed(2)} tons |
+          ${summary.pending_loads} pending, ${summary.cancelled_loads} cancelled
+        `;
+      }
+    }
+
+    function createBOLForLoad(loadId) {
+      // Navigate to office.html with pre-filled load ID
+      window.location.href = `/office.html?loadId=${loadId}`;
+    }
 
     async function load(){
       const id = rid(); if(!id){ show('Invalid URL','error',6000); return; }
@@ -139,6 +244,9 @@
       document.getElementById('chemS').value = lot.s ?? '';
       document.getElementById('chemP').value = lot.p ?? '';
       document.getElementById('chemMn').value = lot.mn ?? '';
+
+      // Render loads table
+      renderLoads(rel.loads || [], rel.loads_summary);
     }
 
     document.getElementById('editForm').addEventListener('submit', async (e) => {

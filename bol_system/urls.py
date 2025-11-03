@@ -13,6 +13,7 @@ urlpatterns = [
     path('bol/preview/', views.preview_bol, name='preview_bol'),
     path('bol/confirm/', views.confirm_bol, name='confirm_bol'),
     path('releases/pending-loads/', views.pending_release_loads, name='pending_release_loads'),
+    path('releases/load/<int:load_id>/', views.load_detail_api, name='load_detail_api'),
     path('bol/', views.confirm_bol, name='create_bol'),  # Backward compatibility
     path('bol/<int:bol_id>/', views.bol_detail, name='bol_detail'),
     path('balances/', views.balances, name='balances'),

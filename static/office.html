@@ -441,6 +441,64 @@
       const pid = params.get("productId");
       if (pid) productSel.value = pid;
 
+      // Check for loadId in URL (from release detail "Create BOL" button)
+      const loadIdParam = params.get("loadId");
+      if (loadIdParam) {
+        try {
+          const loadData = await getJSON(`/api/releases/load/${loadIdParam}/`);
+          const load = loadData.load;
+          const release = loadData.release;
+
+          // Auto-select the load in dropdown
+          loadSel.value = load.id;
+
+          // Pre-fill customer
+          if (release.customer_ref_id) {
+            qs('customer').value = release.customer_ref_id;
+          }
+
+          // Pre-fill ship-to address
+          const shipToLines = [
+            release.ship_to_name,
+            release.ship_to_street,
+            `${release.ship_to_city || ''}, ${release.ship_to_state || ''} ${release.ship_to_zip || ''}`
+          ].filter(Boolean);
+          qs('shipToAddress').value = shipToLines.join('\n');
+
+          // Pre-fill customer PO
+          if (release.customer_po) {
+            qs('customerPO').value = release.customer_po;
+          }
+
+          // Pre-fill product if available
+          if (release.lot_ref && release.lot_ref.product) {
+            productSel.value = release.lot_ref.product;
+            productSel.disabled = true;
+          }
+
+          // Pre-fill carrier if available
+          if (release.carrier_ref_id) {
+            carrierSel.value = release.carrier_ref_id;
+          }
+
+          // Pre-fill buyer name from customer
+          if (release.customer_id_text) {
+            const buyerField = qs('buyerName');
+            if (buyerField) buyerField.value = release.customer_id_text;
+          }
+
+          // Show notice
+          const s = qs("status");
+          s.textContent = `Creating BOL for Release #${release.release_number}, Load #${load.seq}`;
+          s.className = 'status';
+        } catch (e) {
+          console.error('Failed to load release/load data:', e);
+          const s = qs("status");
+          s.textContent = `Error loading load data: ${e.message}`;
+          s.className = 'status error';
+        }
+      }
+
       // Set today's date
       const d = new Date(); 
       const yyyy = d.getFullYear(); 

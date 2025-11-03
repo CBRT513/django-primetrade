@@ -31,13 +31,21 @@ class BOLSerializer(serializers.ModelSerializer):
 
 class ReleaseLoadSerializer(serializers.ModelSerializer):
     bol_number = serializers.SerializerMethodField()
+    bol_pdf_url = serializers.SerializerMethodField()
+    bol_created_at = serializers.SerializerMethodField()
 
     class Meta:
         model = ReleaseLoad
-        fields = ['id', 'seq', 'date', 'planned_tons', 'status', 'bol', 'bol_number']
+        fields = ['id', 'seq', 'date', 'planned_tons', 'actual_tons', 'status', 'bol', 'bol_number', 'bol_pdf_url', 'bol_created_at']
 
     def get_bol_number(self, obj):
         return obj.bol.bol_number if obj.bol else None
+
+    def get_bol_pdf_url(self, obj):
+        return obj.bol.pdf_url if obj.bol else None
+
+    def get_bol_created_at(self, obj):
+        return obj.bol.created_at.isoformat() if obj.bol else None
 
 class CustomerShipToSerializer(serializers.ModelSerializer):
     class Meta:

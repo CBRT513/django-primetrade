@@ -6,7 +6,7 @@ from rest_framework.authentication import SessionAuthentication
 from django.db import models, connection, transaction, IntegrityError
 from django.db.models.functions import Coalesce
 from .models import Product, Customer, Carrier, Truck, BOL, Release, ReleaseLoad, CustomerShipTo, Lot, AuditLog
-from .serializers import ProductSerializer, CustomerSerializer, CarrierSerializer, TruckSerializer, ReleaseSerializer, CustomerShipToSerializer, AuditLogSerializer
+from .serializers import ProductSerializer, CustomerSerializer, CarrierSerializer, TruckSerializer, ReleaseSerializer, ReleaseLoadSerializer, CustomerShipToSerializer, AuditLogSerializer
 from .pdf_generator import generate_bol_pdf
 from .release_parser import parse_release_pdf
 import logging
@@ -948,18 +948,78 @@ def pending_release_loads(request):
         logger.error(f"pending_release_loads error: {e}", exc_info=True)
         return Response({'error': 'Failed to load pending loads', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+# Load detail with release context (for BOL pre-fill)
+@api_view(['GET'])
+@authentication_classes([CsrfExemptSessionAuthentication])
+@permission_classes([IsAuthenticated])
+def load_detail_api(request, load_id):
+    try:
+        load = ReleaseLoad.objects.select_related('release__customer_ref', 'release__ship_to_ref', 'release__carrier_ref', 'release__lot_ref').get(id=load_id)
+    except ReleaseLoad.DoesNotExist:
+        return Response({'error': 'Load not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    # Return load data with nested release context
+    release = load.release
+    data = {
+        'load': ReleaseLoadSerializer(load).data,
+        'release': {
+            'id': release.id,
+            'release_number': release.release_number,
+            'customer_id_text': release.customer_id_text,
+            'customer_ref_id': release.customer_ref.id if release.customer_ref else None,
+            'ship_to_name': release.ship_to_name,
+            'ship_to_street': release.ship_to_street,
+            'ship_to_city': release.ship_to_city,
+            'ship_to_state': release.ship_to_state,
+            'ship_to_zip': release.ship_to_zip,
+            'ship_to_ref_id': release.ship_to_ref.id if release.ship_to_ref else None,
+            'customer_po': release.customer_po,
+            'carrier_ref_id': release.carrier_ref.id if release.carrier_ref else None,
+            'lot_ref': {
+                'id': release.lot_ref.id if release.lot_ref else None,
+                'code': release.lot_ref.code if release.lot_ref else None,
+                'product': release.lot_ref.product.id if (release.lot_ref and release.lot_ref.product) else None
+            } if release.lot_ref else None,
+            'material_description': release.material_description
+        }
+    }
+    return Response(data)
+
 # Release detail (GET/PATCH)
 @api_view(['GET','PATCH'])
 @authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
 def release_detail_api(request, release_id):
     try:
-        rel = Release.objects.get(id=release_id)
+        rel = Release.objects.select_related('customer_ref', 'ship_to_ref', 'carrier_ref', 'lot_ref').prefetch_related('loads__bol').get(id=release_id)
     except Release.DoesNotExist:
         return Response({'error': 'Release not found'}, status=status.HTTP_404_NOT_FOUND)
 
     if request.method == 'GET':
-        return Response(ReleaseSerializer(rel).data)
+        data = ReleaseSerializer(rel).data
+
+        # Add loads_summary
+        loads = rel.loads.all()
+        shipped_loads = loads.filter(status='SHIPPED')
+        pending_loads = loads.filter(status='PENDING')
+        cancelled_loads = loads.filter(status='CANCELLED')
+
+        # Calculate shipped tonnage using Coalesce(actual_tons, planned_tons)
+        from django.db.models import Sum
+        shipped_tons = float(shipped_loads.aggregate(
+            sum=Sum(Coalesce('actual_tons', 'planned_tons'))
+        )['sum'] or 0)
+
+        data['loads_summary'] = {
+            'total_loads': loads.count(),
+            'shipped_loads': shipped_loads.count(),
+            'pending_loads': pending_loads.count(),
+            'cancelled_loads': cancelled_loads.count(),
+            'shipped_tons': shipped_tons,
+            'total_tons': float(rel.quantity_net_tons or 0)
+        }
+
+        return Response(data)
 
     # PATCH update
     try:
