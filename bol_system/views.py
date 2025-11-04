@@ -163,12 +163,65 @@ class ProductListView(generics.ListCreateAPIView):
             return Response({'error': 'Failed to save product', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 # Customer endpoints
-class CustomerListView(generics.ListCreateAPIView):
-    serializer_class = CustomerSerializer
-    permission_classes = [IsAuthenticated]
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+def customer_list(request):
+    try:
+        if request.method == 'GET':
+            customers = Customer.objects.all().order_by('customer')
+            return Response(CustomerSerializer(customers, many=True).data)
 
-    def get_queryset(self):
-        return Customer.objects.filter(is_active=True).order_by('customer')
+        # POST - create or update
+        data = request.data if isinstance(request.data, dict) else {}
+        cust_id = data.get('id')
+        customer_name = (data.get('customer') or '').strip()
+        address = (data.get('address') or '').strip()
+        address2 = (data.get('address2') or '').strip()
+        city = (data.get('city') or '').strip()
+        state = (data.get('state') or '').strip()[:2]
+        zip_code = (data.get('zip') or '').strip()
+        is_active = data.get('is_active', True)
+
+        if not all([customer_name, address, city, state, zip_code]):
+            return Response({'error': 'customer, address, city, state, zip are required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if cust_id:
+            # Update existing customer
+            try:
+                cust = Customer.objects.get(id=cust_id)
+                cust.customer = customer_name
+                cust.address = address
+                cust.address2 = address2
+                cust.city = city
+                cust.state = state
+                cust.zip = zip_code
+                cust.is_active = is_active
+                cust.updated_by = request.user.username
+                cust.save()
+                audit(request, 'CUSTOMER_UPDATED', cust, f"Customer updated: {cust.customer}")
+                return Response({'ok': True, 'id': cust.id})
+            except Customer.DoesNotExist:
+                return Response({'error': 'Customer not found'}, status=status.HTTP_404_NOT_FOUND)
+        else:
+            # Create new customer
+            try:
+                cust = Customer.objects.create(
+                    customer=customer_name,
+                    address=address,
+                    address2=address2,
+                    city=city,
+                    state=state,
+                    zip=zip_code,
+                    is_active=is_active,
+                    updated_by=request.user.username
+                )
+                audit(request, 'CUSTOMER_CREATED', cust, f"Customer created: {cust.customer}")
+                return Response({'ok': True, 'id': cust.id})
+            except IntegrityError as e:
+                return Response({'error': 'Customer already exists', 'detail': str(e)}, status=status.HTTP_409_CONFLICT)
+    except Exception as e:
+        logger.error(f"customer upsert error: {e}", exc_info=True)
+        return Response({'error': 'Failed to save customer', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 # Ship-To endpoints (per-customer)
 @api_view(['GET','POST'])
