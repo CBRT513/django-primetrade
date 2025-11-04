@@ -54,6 +54,7 @@ def gemini_parse_release_text(
         "Return ONLY valid JSON matching this schema (no prose, no markdown):\n"
         f"{AI_SCHEMA}\n\n"
         "Instructions:\n"
+        "- For material.description: include ONLY the base material name (e.g., 'NODULAR PIG IRON'). DO NOT include chemistry values, lot numbers, or supplemental specifications.\n"
         "- For allWarehouseRequirements: extract the COMPLETE text from the 'Warehouse requirements:' or 'Warehouse:' section EXACTLY as written, preserving all bullets and formatting.\n"
         "- If there is no warehouse section, set to null.\n"
         "- Fill unknown fields with null or empty list.\n\n"
