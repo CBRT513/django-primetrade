@@ -126,8 +126,8 @@ def generate_bol_pdf(bol_data, output_path=None):
 
     # Header table: No logos - clean and simple
     header_data = [[
-        # Center: BILL OF LADING title
-        Paragraph('<para align="center"><b>BILL OF LADING</b><br/><font size="7">NON-NEGOTIABLE</font></para>', title_style),
+        # Left: BILL OF LADING title
+        Paragraph('<b>BILL OF LADING</b>', title_style),
 
         # Right: BOL Number
         Paragraph(f'<para align="right"><font size="7">BOL NUMBER</font><br/><b><font size="14">{data.bol_number}</font></b></para>', normal_style),
@@ -136,7 +136,7 @@ def generate_bol_pdf(bol_data, output_path=None):
     header_table = Table(header_data, colWidths=[6.0*inch, 4.0*inch])
     header_table.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
     ]))
 
     elements.append(header_table)
@@ -147,7 +147,7 @@ def generate_bol_pdf(bol_data, output_path=None):
         ('BACKGROUND', (0, 0), (-1, -1), colors.black),
     ]))
     elements.append(line_table)
-    elements.append(Spacer(1, 0.05*inch))
+    elements.append(Spacer(1, 0.02*inch))
 
     # ========== MAIN INFO SECTION (TWO COLUMNS) ==========
     # Get dynamic data
@@ -186,7 +186,7 @@ def generate_bol_pdf(bol_data, output_path=None):
     left_col_data = [
         [Paragraph('<b>SHIP FROM:</b>', header_style)],
         [Paragraph('<b>Cincinnati Barge & Rail Terminal, LLC</b><br/>c/o PrimeTrade, LLC<br/>1707 Riverside Drive<br/>Cincinnati, Ohio 45202<br/>Phone: (513) 721-1707', normal_style)],
-        [Spacer(1, 0.1*inch)],
+        [Spacer(1, 0.05*inch)],
         [Paragraph('<b>CONSIGNEE (SHIP TO):</b>', header_style)],
         [Paragraph(f'<b>{data.buyer_name}</b><br/><font size="7">{data.ship_to.replace(chr(10), "<br/>")}</font>', normal_style)]
     ]
@@ -197,10 +197,10 @@ def generate_bol_pdf(bol_data, output_path=None):
         ('BACKGROUND', (0, 3), (0, 3), colors.HexColor('#E0E0E0')),
         ('BOX', (0, 0), (-1, -1), 1, colors.black),
         ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.grey),
-        ('TOPPADDING', (0, 0), (-1, -1), 4),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 4),
-        ('LEFTPADDING', (0, 0), (-1, -1), 6),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 2),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
     ]))
 
     # Right column: Shipment details
@@ -241,7 +241,7 @@ def generate_bol_pdf(bol_data, output_path=None):
     ]))
 
     elements.append(main_info_table)
-    elements.append(Spacer(1, 0.08*inch))
+    elements.append(Spacer(1, 0.03*inch))
 
     # ========== MATERIAL/PRODUCT SECTION ==========
     material_data = [[
@@ -262,14 +262,14 @@ def generate_bol_pdf(bol_data, output_path=None):
         ('BOX', (0, 0), (-1, -1), 1, colors.black),
         ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.grey),
         ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-        ('TOPPADDING', (0, 0), (-1, -1), 5),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-        ('LEFTPADDING', (0, 0), (-1, -1), 6),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
     ]))
 
     elements.append(material_table)
-    elements.append(Spacer(1, 0.05*inch))
+    elements.append(Spacer(1, 0.02*inch))
 
     # ========== NOTES/DISCLAIMER SECTION ==========
     notes_text = '<b>IMPORTANT NOTES:</b><br/>'
@@ -282,14 +282,14 @@ def generate_bol_pdf(bol_data, output_path=None):
     notes_table.setStyle(TableStyle([
         ('BACKGROUND', (0, 0), (-1, -1), colors.HexColor('#F5F5F5')),
         ('BOX', (0, 0), (-1, -1), 1, colors.black),
-        ('TOPPADDING', (0, 0), (-1, -1), 5),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-        ('LEFTPADDING', (0, 0), (-1, -1), 6),
-        ('RIGHTPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+        ('RIGHTPADDING', (0, 0), (-1, -1), 4),
     ]))
 
     elements.append(notes_table)
-    elements.append(Spacer(1, 0.08*inch))
+    elements.append(Spacer(1, 0.03*inch))
 
     # ========== CRITICAL DELIVERY INSTRUCTIONS ==========
     # Display prominently if present
@@ -321,12 +321,12 @@ def generate_bol_pdf(bol_data, output_path=None):
             ]))
 
             elements.append(critical_table)
-            elements.append(Spacer(1, 0.08*inch))
+            elements.append(Spacer(1, 0.02*inch))
 
     # ========== SIGNATURE SECTION ==========
     sig_data = [[
-        Paragraph('<b>SHIPPER SIGNATURE</b><br/><br/><br/>_____________________________<br/>James Rose<br/><font size="7">Authorized Representative</font>', normal_style),
-        Paragraph('<b>CARRIER SIGNATURE</b><br/><br/><br/>_____________________________<br/>Driver Name<br/><font size="7">Date / Time</font>', normal_style)
+        Paragraph('<b>SHIPPER SIGNATURE</b><br/><br/>_____________________________<br/>James Rose<br/><font size="7">Authorized Representative</font>', normal_style),
+        Paragraph('<b>CARRIER SIGNATURE</b><br/><br/>_____________________________<br/>Driver Name<br/><font size="7">Date / Time</font>', normal_style)
     ]]
 
     sig_table = Table(sig_data, colWidths=[4.7*inch, 4.7*inch])
@@ -334,9 +334,9 @@ def generate_bol_pdf(bol_data, output_path=None):
         ('BOX', (0, 0), (-1, -1), 1, colors.black),
         ('INNERGRID', (0, 0), (-1, -1), 0.5, colors.grey),
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
-        ('TOPPADDING', (0, 0), (-1, -1), 5),
-        ('BOTTOMPADDING', (0, 0), (-1, -1), 5),
-        ('LEFTPADDING', (0, 0), (-1, -1), 6),
+        ('TOPPADDING', (0, 0), (-1, -1), 3),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 3),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
         ('RIGHTPADDING', (0, 0), (-1, -1), 6),
     ]))
 
