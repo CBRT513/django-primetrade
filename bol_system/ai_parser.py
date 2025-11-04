@@ -131,7 +131,9 @@ def gemini_filter_critical_instructions(
         "- Weight limits (e.g., 'DO NOT EXCEED Maximum Legal Truck Weight')\n"
         "- Material cleanliness requirements (e.g., 'truck must be clean', 'no contamination')\n"
         "- Tarping requirements (e.g., 'Truck must be TARPED')\n"
-        "- Standard BOL content requirements (e.g., 'Analysis & PO must be on BOL', 'Material # must be on BOL')\n"
+        "- Standard BOL content requirements (e.g., 'Analysis & PO must be on BOL', 'Material # must be on BOL', 'PO # must be on BOL')\n"
+        "- Chemistry/analysis specifications (e.g., 'CR .004 TI .001 V .004', 'Analysis', chemical element values)\n"
+        "- Material numbers (e.g., 'Material # 5000052')\n"
         "- Shipper information (e.g., 'SHIPPER: Primetrade, LLC')\n"
         "- General delivery hours (e.g., 'Deliveries accepted 8am-4pm')\n"
         "- Standard operating procedures\n\n"
@@ -140,7 +142,7 @@ def gemini_filter_critical_instructions(
         "Input: '- DELIVER TO PLANT ONE\\n- Truck must be TARPED\\n- DO NOT EXCEED Maximum Legal Truck Weight'\n"
         "Output: 'DELIVER TO PLANT ONE'\n\n"
 
-        "Input: '- SEND TO THE FOUNDRY\\n- Material # 5000052 must be on BOL\\n- Analysis must be on BOL'\n"
+        "Input: '- Material # 5000052\\n- P.O. # 450002459\\n- \"SEND TO THE FOUNDRY\"\\n- CR .004 TI .001 V .004\\n- Analysis'\n"
         "Output: 'SEND TO THE FOUNDRY'\n\n"
 
         "Input: '- Pickup & Deliver Same Day\\n- Equipment type: bulk end dump trailer\\n- SHIPPER: Primetrade, LLC'\n"
