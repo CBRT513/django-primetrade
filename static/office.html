@@ -151,17 +151,29 @@
         
         <div class="form-group">
           <label>Carrier *</label>
-          <select name="carrierId" id="carrier" onchange="updateTruckOptions()" required>
-            <option value="">Select a carrier...</option>
-          </select>
+          <div style="display: flex; gap: 0.5rem; align-items: center;">
+            <select name="carrierId" id="carrier" onchange="updateTruckOptions()" required style="flex: 1;">
+              <option value="">Select a carrier...</option>
+            </select>
+            <button type="button" onclick="refreshCarriers()" class="btn btn-sm" title="Refresh carriers/trucks">
+              &#x21BB;
+            </button>
+          </div>
         </div>
-        
+
         <div class="grid">
           <div class="form-group">
             <label>Truck Number *</label>
-            <input name="truckNo" id="truckNo" placeholder="Enter or select below" list="truckList" required />
-            <datalist id="truckList"></datalist>
-            <div class="truck-helper">Type truck number or select from list</div>
+            <div style="display: flex; gap: 0.5rem; align-items: flex-start;">
+              <div style="flex: 1;">
+                <input name="truckNo" id="truckNo" placeholder="Enter or select below" list="truckList" required />
+                <datalist id="truckList"></datalist>
+                <div class="truck-helper">Type truck number or select from list</div>
+              </div>
+              <button type="button" onclick="showAddTruckModal()" class="btn btn-sm" title="Add new truck" style="white-space: nowrap;">
+                + Add Truck
+              </button>
+            </div>
           </div>
           <div class="form-group">
             <label>Trailer Number</label>
@@ -199,6 +211,31 @@
       <div class="modal-footer">
         <button onclick="closePreviewModal()" class="btn btn-secondary">Edit</button>
         <button onclick="approveBOL()" class="btn btn-accent">Approve & Save</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Truck Modal -->
+  <div id="addTruckModal" class="modal-overlay">
+    <div class="modal-content" style="max-width: 500px;">
+      <div class="modal-header">
+        <h3>Add New Truck</h3>
+        <button onclick="closeAddTruckModal()" class="btn btn-secondary">×</button>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Truck Number *</label>
+          <input type="text" id="newTruckNumber" placeholder="Enter truck number" required />
+        </div>
+        <div class="form-group">
+          <label>Trailer Number</label>
+          <input type="text" id="newTrailerNumber" placeholder="Enter trailer number (optional)" />
+        </div>
+        <div id="addTruckStatus" class="status"></div>
+      </div>
+      <div class="modal-footer">
+        <button onclick="closeAddTruckModal()" class="btn btn-secondary">Cancel</button>
+        <button onclick="saveNewTruck()" class="btn btn-accent">Add Truck</button>
       </div>
     </div>
   </div>
@@ -367,7 +404,106 @@
         }
       }
     }
-    
+
+    // Refresh carriers and trucks
+    async function refreshCarriers() {
+      const currentCarrierId = qs("carrier").value;
+      try {
+        carriers = await getJSON("/api/carriers/");
+
+        // Rebuild carrier dropdown
+        const carrierSelect = qs("carrier");
+        const currentSelection = carrierSelect.value;
+        carrierSelect.innerHTML = '<option value="">Select a carrier...</option>';
+        carriers.forEach(c => {
+          const opt = new Option(c.carrier_name, c.id);
+          carrierSelect.add(opt);
+        });
+
+        // Restore selection
+        if (currentSelection) {
+          carrierSelect.value = currentSelection;
+          updateTruckOptions();
+        }
+
+        showStatus('✓ Carriers/trucks refreshed', 'success');
+        setTimeout(() => showStatus('', ''), 2000);
+      } catch (e) {
+        showStatus('Error refreshing carriers: ' + e.message, 'error');
+      }
+    }
+
+    // Show add truck modal
+    function showAddTruckModal() {
+      const carrierId = qs("carrier").value;
+      if (!carrierId) {
+        showStatus('Please select a carrier first', 'error');
+        setTimeout(() => showStatus('', ''), 2000);
+        return;
+      }
+      qs("newTruckNumber").value = '';
+      qs("newTrailerNumber").value = '';
+      qs("addTruckStatus").textContent = '';
+      qs("addTruckModal").classList.add('active');
+    }
+
+    // Close add truck modal
+    function closeAddTruckModal() {
+      qs("addTruckModal").classList.remove('active');
+    }
+
+    // Save new truck
+    async function saveNewTruck() {
+      const carrierId = qs("carrier").value;
+      const truckNumber = qs("newTruckNumber").value.trim();
+      const trailerNumber = qs("newTrailerNumber").value.trim();
+      const statusEl = qs("addTruckStatus");
+
+      if (!truckNumber) {
+        statusEl.textContent = 'Truck number is required';
+        return;
+      }
+
+      const carrier = carriers.find(c => String(c.id) === String(carrierId));
+      if (!carrier) {
+        statusEl.textContent = 'Carrier not found';
+        return;
+      }
+
+      // Add truck to carrier
+      if (!carrier.trucks) carrier.trucks = [];
+      carrier.trucks.push({
+        truck_number: truckNumber,
+        trailer_number: trailerNumber,
+        is_active: true
+      });
+
+      try {
+        await postJSON('/api/carriers/', {
+          id: carrier.id,
+          carrier_name: carrier.carrier_name,
+          contact_name: carrier.contact_name,
+          phone: carrier.phone,
+          email: carrier.email,
+          is_active: carrier.is_active,
+          trucks: carrier.trucks
+        });
+
+        // Close modal
+        closeAddTruckModal();
+
+        // Refresh truck list and select the newly added truck
+        updateTruckOptions();
+        qs("truckNo").value = truckNumber;
+        qs("trailerNo").value = trailerNumber;
+
+        showStatus('✓ Truck added successfully', 'success');
+        setTimeout(() => showStatus('', ''), 2000);
+      } catch (e) {
+        statusEl.textContent = 'Error: ' + e.message;
+      }
+    }
+
     // Auto-fill trailer when truck number is entered from datalist
     qs("truckNo").addEventListener('input', function() {
       const carrierId = qs("carrier").value;
