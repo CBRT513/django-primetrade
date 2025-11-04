@@ -223,6 +223,16 @@ class BOL(TimestampedModel):
 
         self.save()
 
+        # Update any linked ReleaseLoad's actual_tons to reflect official weight
+        try:
+            release_load = self.releaseload_set.first()
+            if release_load:
+                release_load.actual_tons = self.official_weight_tons
+                release_load.save()
+                logger.info(f"Updated ReleaseLoad {release_load.id} actual_tons to {self.official_weight_tons}")
+        except Exception as e:
+            logger.warning(f"Could not update ReleaseLoad for BOL {self.bol_number}: {e}")
+
 class CompanyBranding(TimestampedModel):
     company_name = models.CharField(max_length=200, default="Cincinnati Barge & Rail Terminal, LLC")
     address_line1 = models.CharField(max_length=200, default="1707 Riverside Drive")
