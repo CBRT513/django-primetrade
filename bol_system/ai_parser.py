@@ -1,9 +1,12 @@
 import json
+import logging
 import os
 import re
 from typing import Any, Dict, Optional
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 AI_SCHEMA = (
     '{ "releaseNumber": str|null, "releaseDate": "MM/DD/YYYY"|null, '
@@ -40,6 +43,7 @@ def gemini_parse_release_text(
     """
     api_key = api_key or os.environ.get("GOOGLE_API_KEY")
     if not api_key:
+        logger.warning("GOOGLE_API_KEY not set, AI extraction disabled")
         return None
 
     model = model or GEMINI_DEFAULT_MODEL
@@ -86,7 +90,8 @@ def gemini_parse_release_text(
         clean_text = _strip_code_fence(text_response.strip())
 
         return json.loads(clean_text)
-    except Exception:
+    except Exception as e:
+        logger.error(f"Gemini API Stage 1 failed: {e}", exc_info=True)
         return None
 
 
@@ -105,6 +110,7 @@ def gemini_filter_critical_instructions(
 
     api_key = api_key or os.environ.get("GOOGLE_API_KEY")
     if not api_key:
+        logger.warning("GOOGLE_API_KEY not set, Stage 2 filter disabled")
         return None
 
     model = model or GEMINI_DEFAULT_MODEL
@@ -179,7 +185,8 @@ def gemini_filter_critical_instructions(
             return None
 
         return result
-    except Exception:
+    except Exception as e:
+        logger.error(f"Gemini API Stage 2 filter failed: {e}", exc_info=True)
         return None
 
 
