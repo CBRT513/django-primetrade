@@ -440,6 +440,8 @@ def preview_bol(request):
             'trailerNumber': truck.trailer_number if truck else data.get('trailerNo', ''),
             'netTons': net_tons,
             'customerPO': data.get('customerPO', ''),
+            'specialInstructions': data.get('specialInstructions', ''),
+            'releaseNumber': data.get('releaseNumber', ''),
         }
 
         # Generate temporary PDF
