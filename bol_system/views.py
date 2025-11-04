@@ -327,7 +327,7 @@ def customer_branding(request):
 
         if customer:
             return Response({
-                'logo_url': customer.logo_url or '/static/cbrt-logo-optimized.svg',
+                'logo_url': customer.logo_url or '/static/primetrade-logo.jpg',
                 'primary_color': customer.primary_color or '#2563eb',
                 'secondary_color': customer.secondary_color or '#667eea',
                 'customer_name': customer.customer
@@ -335,7 +335,7 @@ def customer_branding(request):
         else:
             # Default PrimeTrade branding
             return Response({
-                'logo_url': '/static/cbrt-logo-optimized.svg',
+                'logo_url': '/static/primetrade-logo.jpg',
                 'primary_color': '#2563eb',
                 'secondary_color': '#667eea',
                 'customer_name': 'PrimeTrade'
