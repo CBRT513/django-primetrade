@@ -18,7 +18,7 @@ AI_SCHEMA = (
     '"allWarehouseRequirements": str|null }'
 )
 
-GEMINI_DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-1.5-flash")
+GEMINI_DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.0-flash-exp")
 GEMINI_ENDPOINT_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
 
 
