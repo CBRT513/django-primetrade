@@ -146,7 +146,12 @@
             <label>Street Address *</label>
             <input type="text" id="address" placeholder="e.g., 123 Main Street" required />
           </div>
-          
+
+          <div class="form-group">
+            <label>Address Line 2</label>
+            <input type="text" id="address2" placeholder="e.g., Suite 100, Building A" />
+          </div>
+
           <div class="form-row">
             <div class="form-group">
               <label>City *</label>
@@ -319,7 +324,10 @@
 
       tbody.innerHTML = customers.map(customer => {
         const isActive = customer.is_active !== false;
-        const fullAddress = `${customer.address}<br>${customer.city}, ${customer.state} ${customer.zip}`;
+        const addressParts = [customer.address];
+        if (customer.address2) addressParts.push(customer.address2);
+        addressParts.push(`${customer.city}, ${customer.state} ${customer.zip}`);
+        const fullAddress = addressParts.join('<br>');
 
         return `
           <tr class="${isActive ? '' : 'inactive'}">
@@ -349,6 +357,7 @@
       document.getElementById('editId').value = id;
       document.getElementById('customer').value = customer.customer;
       document.getElementById('address').value = customer.address;
+      document.getElementById('address2').value = customer.address2 || '';
       document.getElementById('city').value = customer.city;
       document.getElementById('state').value = customer.state;
       document.getElementById('zip').value = customer.zip;
@@ -369,6 +378,7 @@
           id: customer.id,
           customer: customer.customer,
           address: customer.address,
+          address2: customer.address2 || '',
           city: customer.city,
           state: customer.state,
           zip: customer.zip,
@@ -397,6 +407,7 @@
       const customerData = {
         customer: document.getElementById('customer').value.trim(),
         address: document.getElementById('address').value.trim(),
+        address2: document.getElementById('address2').value.trim(),
         city: document.getElementById('city').value.trim(),
         state: document.getElementById('state').value.trim().toUpperCase(),
         zip: document.getElementById('zip').value.trim(),

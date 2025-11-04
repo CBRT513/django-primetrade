@@ -11,7 +11,7 @@ class ProductSerializer(serializers.ModelSerializer):
 class CustomerSerializer(serializers.ModelSerializer):
     class Meta:
         model = Customer
-        fields = ['id', 'customer', 'address', 'city', 'state', 'zip', 'is_active']
+        fields = ['id', 'customer', 'address', 'address2', 'city', 'state', 'zip', 'is_active']
 
 class CarrierSerializer(serializers.ModelSerializer):
     class Meta:

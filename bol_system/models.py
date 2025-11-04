@@ -45,20 +45,25 @@ class Product(TimestampedModel):
 class Customer(TimestampedModel):
     customer = models.CharField(max_length=200, unique=True)
     address = models.CharField(max_length=200)
+    address2 = models.CharField(max_length=200, blank=True)
     city = models.CharField(max_length=100)
     state = models.CharField(max_length=2)
     zip = models.CharField(max_length=10)
     is_active = models.BooleanField(default=True)
-    
+
     class Meta:
         ordering = ['customer']
-    
+
     def __str__(self):
         return self.customer
-    
+
     @property
     def full_address(self):
-        return f"{self.address}\n{self.city}, {self.state} {self.zip}"
+        address_lines = [self.address]
+        if self.address2:
+            address_lines.append(self.address2)
+        address_lines.append(f"{self.city}, {self.state} {self.zip}")
+        return "\n".join(address_lines)
 
 class CustomerShipTo(TimestampedModel):
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='ship_tos')
