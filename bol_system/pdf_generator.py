@@ -341,7 +341,14 @@ def generate_bol_pdf(bol_data, output_path=None):
     # Build PDF
     doc.build(elements)
 
-    # Save to storage (S3 in production, local filesystem in development)
+    # If output_path is provided (for preview mode), save to local file
+    if output_path:
+        buffer.seek(0)
+        with open(output_path, 'wb') as f:
+            f.write(buffer.read())
+        return output_path
+
+    # Otherwise, save to storage (S3 in production, local filesystem in development)
     buffer.seek(0)
 
     # Organize by year for better file management
