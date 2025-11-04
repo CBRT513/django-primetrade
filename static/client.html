@@ -32,16 +32,31 @@
       display: flex;
       align-items: center;
       gap: 2rem;
+      flex: 1;
     }
 
     .logo {
       max-height: 80px;
-      max-width: 250px;
+      max-width: 200px;
     }
 
     .welcome {
       border-left: 3px solid var(--primary, #2563eb);
       padding-left: 1.5rem;
+      flex: 1;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 2rem;
+      padding-left: 2rem;
+      border-left: 3px solid var(--primary, #2563eb);
+    }
+
+    .customer-logo {
+      max-height: 80px;
+      max-width: 200px;
     }
 
     .welcome h1 {
@@ -322,15 +337,18 @@
   <div class="wrap">
     <div class="header">
       <div class="header-left">
-        <img src="/static/cbrt-logo-optimized.svg" alt="PrimeTrade" class="logo" />
+        <img src="/static/cbrt-logo-optimized.svg" alt="CBRT" class="logo" />
         <div class="welcome">
           <h1>Welcome to Your Dashboard</h1>
           <p>Real-time inventory and shipment tracking</p>
         </div>
       </div>
-      <div class="header-actions">
-        <span id="usernameDisplay" style="color: #64748b; font-weight: 500;">Loading...</span>
-        <a href="/auth/logout/" class="btn btn-secondary">Logout</a>
+      <div class="header-right">
+        <img id="customerLogo" src="" alt="Customer Logo" class="customer-logo" style="display: none;" />
+        <div class="header-actions">
+          <span id="usernameDisplay" style="color: #64748b; font-weight: 500;">Loading...</span>
+          <a href="/auth/logout/" class="btn btn-secondary">Logout</a>
+        </div>
       </div>
     </div>
 
@@ -409,7 +427,9 @@
 
         // Apply branding
         if (branding.logo_url) {
-          document.querySelector('.logo').src = branding.logo_url;
+          const customerLogo = document.getElementById('customerLogo');
+          customerLogo.src = branding.logo_url;
+          customerLogo.style.display = 'block';
         }
         if (branding.primary_color) {
           document.documentElement.style.setProperty('--primary', branding.primary_color);
