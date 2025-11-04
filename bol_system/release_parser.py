@@ -367,7 +367,12 @@ def parse_release_pdf(file_obj, ai_mode: str | None = None) -> Dict[str, Any]:
 
     if ai_mode in ("local", "cloud"):
         # AI-FIRST APPROACH: Let AI extract everything, use regex as fallback
+        import logging
+        logger = logging.getLogger(__name__)
         ai = ai_parse_release_text(text) if ai_mode == "local" else remote_ai_parse_release_text(text)
+        logger.info(f"AI extraction result type: {type(ai)}, is dict: {isinstance(ai, dict)}")
+        if ai:
+            logger.info(f"AI keys: {list(ai.keys()) if isinstance(ai, dict) else 'Not a dict'}")
 
         if isinstance(ai, dict):
             # Start with AI results
