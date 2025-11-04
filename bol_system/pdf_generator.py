@@ -10,7 +10,10 @@ from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
 from datetime import datetime
 import os
+from io import BytesIO
 from django.conf import settings
+from django.core.files.storage import default_storage
+from django.core.files.base import ContentFile
 
 
 def generate_bol_pdf(bol_data, output_path=None):
@@ -63,19 +66,12 @@ def generate_bol_pdf(bol_data, output_path=None):
                 return self._data.get(key, '')
         data = DictWrapper(bol_data)
 
-    # Determine output path
-    if output_path:
-        filepath = output_path
-        os.makedirs(os.path.dirname(filepath), exist_ok=True)
-    else:
-        pdf_dir = os.path.join(settings.MEDIA_ROOT, 'bol_pdfs')
-        os.makedirs(pdf_dir, exist_ok=True)
-        filename = f"{data.bol_number}.pdf"
-        filepath = os.path.join(pdf_dir, filename)
+    # Generate PDF to memory buffer (works with both S3 and local storage)
+    buffer = BytesIO()
 
     # Create PDF in landscape for more space
     doc = SimpleDocTemplate(
-        filepath,
+        buffer,
         pagesize=landscape(letter),  # 11" wide x 8.5" tall
         rightMargin=0.3*inch,
         leftMargin=0.3*inch,
@@ -345,8 +341,21 @@ def generate_bol_pdf(bol_data, output_path=None):
     # Build PDF
     doc.build(elements)
 
-    # Return path
-    if output_path:
-        return filepath
-    else:
-        return f'/media/bol_pdfs/{os.path.basename(filepath)}'
+    # Save to storage (S3 in production, local filesystem in development)
+    buffer.seek(0)
+
+    # Organize by year for better file management
+    try:
+        date_obj = datetime.strptime(data.date, '%Y-%m-%d')
+        year = date_obj.year
+    except:
+        year = datetime.now().year
+
+    # Generate file path: bols/YYYY/PRT-YYYY-NNNN.pdf
+    filename = f"bols/{year}/{data.bol_number}.pdf"
+
+    # Save using Django storage backend (automatically uses S3 or filesystem)
+    saved_path = default_storage.save(filename, ContentFile(buffer.read()))
+
+    # Return URL (automatically generates signed URL if using S3)
+    return default_storage.url(saved_path)

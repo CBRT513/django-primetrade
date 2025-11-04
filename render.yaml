@@ -26,3 +26,13 @@ services:
         sync: false  # Set via Render PostgreSQL database connection
       - key: SECRET_KEY
         generateValue: true  # Auto-generate Django secret key
+      - key: USE_S3
+        value: "True"  # Enable S3 storage in production
+      - key: AWS_ACCESS_KEY_ID
+        sync: false  # Set manually in Render dashboard
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false  # Set manually in Render dashboard
+      - key: AWS_STORAGE_BUCKET_NAME
+        value: "primetrade-documents"
+      - key: AWS_S3_REGION_NAME
+        value: "us-east-2"  # Ohio region

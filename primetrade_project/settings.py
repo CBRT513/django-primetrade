@@ -156,18 +156,50 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
 # WhiteNoise configuration for serving static files with DEBUG=False
-STORAGES = {
-    "default": {
-        "BACKEND": "django.core.files.storage.FileSystemStorage",
-    },
-    "staticfiles": {
-        "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
-    },
-}
+# Storage configuration - Use S3 in production, local filesystem in development
+USE_S3 = config('USE_S3', default='False', cast=bool)
 
-# Media files (PDFs)
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
+if USE_S3:
+    # AWS S3 Configuration for production
+    AWS_ACCESS_KEY_ID = config('AWS_ACCESS_KEY_ID')
+    AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
+    AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME', default='primetrade-documents')
+    AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME', default='us-east-2')  # Ohio region
+    AWS_S3_CUSTOM_DOMAIN = f'{AWS_STORAGE_BUCKET_NAME}.s3.amazonaws.com'
+    AWS_S3_OBJECT_PARAMETERS = {
+        'CacheControl': 'max-age=86400',  # 24 hours
+    }
+    AWS_DEFAULT_ACL = None  # Use bucket ACL
+    AWS_S3_FILE_OVERWRITE = False  # Never overwrite existing files
+    AWS_QUERYSTRING_AUTH = True  # Use signed URLs
+    AWS_QUERYSTRING_EXPIRE = 86400  # Signed URLs expire after 24 hours
+
+    # Use S3 for media files (PDFs)
+    STORAGES = {
+        "default": {
+            "BACKEND": "storages.backends.s3boto3.S3Boto3Storage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
+
+    # Media files served from S3
+    MEDIA_URL = f'https://{AWS_S3_CUSTOM_DOMAIN}/'
+else:
+    # Local development - use filesystem storage
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+        },
+        "staticfiles": {
+            "BACKEND": "whitenoise.storage.CompressedManifestStaticFilesStorage",
+        },
+    }
+
+    # Media files (PDFs) - local storage
+    MEDIA_URL = '/media/'
+    MEDIA_ROOT = BASE_DIR / 'media'
 
 # Default primary key field type
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

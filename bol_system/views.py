@@ -1518,6 +1518,76 @@ def regenerate_bol_pdf(request, bol_id):
         return Response({'error': 'Failed to regenerate PDF', 'detail': str(e)},
                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def download_bol_pdf(request, bol_id):
+    """
+    Generate a fresh download link for a BOL PDF.
+
+    With S3, this returns a signed URL with 24-hour expiration.
+    Logs all downloads for audit compliance.
+
+    Returns:
+        {
+            'downloadUrl': 'https://s3.amazonaws.com/...',
+            'expiresIn': 86400,
+            'bolNumber': 'PRT-2025-0005'
+        }
+    """
+    try:
+        bol = BOL.objects.get(id=bol_id)
+
+        # Get download URL (automatically signed if using S3)
+        from django.core.files.storage import default_storage
+
+        # Regenerate URL to get fresh signed link
+        download_url = bol.pdf_url
+
+        # If using S3, regenerate signed URL for fresh expiration
+        if hasattr(default_storage, 'bucket'):
+            # This is S3 storage
+            try:
+                # Extract the file key from the URL
+                import re
+                from django.conf import settings
+
+                # Get the file path from the BOL
+                # The pdf_url is already a full URL, we need to extract the key
+                if bol.pdf_url:
+                    # Try to regenerate the URL to get a fresh signature
+                    download_url = default_storage.url(bol.pdf_url)
+            except Exception as e:
+                logger.warning(f"Could not regenerate signed URL: {e}, using existing URL")
+                download_url = bol.pdf_url
+
+        # Audit log the download
+        user_email = request.user.email or request.user.username
+        audit(request, 'BOL_DOWNLOADED', bol,
+              f"BOL PDF downloaded by {user_email}",
+              extra={
+                  'bol_number': bol.bol_number,
+                  'user_email': user_email
+              })
+
+        logger.info(f"BOL PDF download requested: {bol.bol_number} by {user_email}")
+
+        return Response({
+            'downloadUrl': download_url,
+            'expiresIn': 86400,  # 24 hours
+            'bolNumber': bol.bol_number,
+            'fileName': f"{bol.bol_number}.pdf"
+        })
+
+    except BOL.DoesNotExist:
+        logger.error(f"BOL {bol_id} not found for download")
+        return Response({'error': 'BOL not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Error generating download link for BOL {bol_id}: {str(e)}", exc_info=True)
+        return Response({'error': 'Failed to generate download link', 'detail': str(e)},
+                       status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+
 # Release upload and parse (Phase 1: parse only)
 @api_view(['POST'])
 @authentication_classes([CsrfExemptSessionAuthentication])

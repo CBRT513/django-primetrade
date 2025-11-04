@@ -19,6 +19,7 @@ urlpatterns = [
     path('bol/<int:bol_id>/', views.bol_detail, name='bol_detail'),
     path('bol/<int:bol_id>/set-official-weight/', views.set_official_weight, name='set_official_weight'),
     path('bol/<int:bol_id>/regenerate-pdf/', views.regenerate_bol_pdf, name='regenerate_bol_pdf'),
+    path('bol/<int:bol_id>/download/', views.download_bol_pdf, name='download_bol_pdf'),
     path('balances/', views.balances, name='balances'),
     path('history/', views.bol_history, name='history'),
     path('audit/', views.audit_logs, name='audit_logs'),
