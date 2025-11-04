@@ -34,8 +34,10 @@ class Product(TimestampedModel):
     
     @property
     def shipped_tons(self):
+        """Calculate shipped tons using official weight if available, otherwise CBRT scale weight"""
+        from django.db.models.functions import Coalesce
         return self.bol_set.aggregate(
-            total=models.Sum('net_tons')
+            total=models.Sum(Coalesce('official_weight_tons', 'net_tons'))
         )['total'] or 0
     
     @property
@@ -138,13 +140,20 @@ class BOL(TimestampedModel):
     truck_number = models.CharField(max_length=50)
     trailer_number = models.CharField(max_length=50)
     date = models.CharField(max_length=20)  # Keep as string to match Firebase
-    net_tons = models.DecimalField(max_digits=10, decimal_places=2)
+    net_tons = models.DecimalField(max_digits=10, decimal_places=2, help_text='CBRT scale weight (estimate)')
     notes = models.TextField(blank=True)
     pdf_url = models.URLField(blank=True)
     created_by_email = models.CharField(max_length=200, default='system@primetrade.com')
     lot_ref = models.ForeignKey('Lot', on_delete=models.SET_NULL, null=True, blank=True, help_text='Reference to lot for chemistry data')
     release_number = models.CharField(max_length=20, blank=True, help_text='Release number for reference')
     special_instructions = models.TextField(blank=True, help_text='Special warehouse/BOL requirements from release')
+
+    # Official weight tracking (certified scale)
+    official_weight_tons = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text='Certified scale weight (official)')
+    official_weight_entered_by = models.CharField(max_length=200, blank=True, help_text='User who entered official weight')
+    official_weight_entered_at = models.DateTimeField(null=True, blank=True, help_text='When official weight was entered')
+    weight_variance_tons = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text='Difference between official and CBRT scale')
+    weight_variance_percent = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, help_text='Percentage variance')
 
     class Meta:
         ordering = ['-created_at']
@@ -182,7 +191,30 @@ class BOL(TimestampedModel):
     def total_weight_lbs(self):
         if self.net_tons is None:
             return 0.0
-        return float(self.net_tons) * 2204.62
+        return float(self.net_tons) * 2000
+
+    @property
+    def effective_weight_tons(self):
+        """Returns official weight if available, otherwise CBRT scale weight"""
+        return self.official_weight_tons if self.official_weight_tons is not None else self.net_tons
+
+    def set_official_weight(self, weight_tons, entered_by_email):
+        """Set official weight and calculate variance"""
+        from django.utils import timezone
+        from decimal import Decimal
+
+        self.official_weight_tons = Decimal(str(weight_tons))
+        self.official_weight_entered_by = entered_by_email
+        self.official_weight_entered_at = timezone.now()
+
+        # Calculate variance
+        self.weight_variance_tons = self.official_weight_tons - self.net_tons
+        if self.net_tons != 0:
+            self.weight_variance_percent = (self.weight_variance_tons / self.net_tons) * 100
+        else:
+            self.weight_variance_percent = Decimal('0.00')
+
+        self.save()
 
 class CompanyBranding(TimestampedModel):
     company_name = models.CharField(max_length=200, default="Cincinnati Barge & Rail Terminal, LLC")

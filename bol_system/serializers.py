@@ -24,10 +24,14 @@ class TruckSerializer(serializers.ModelSerializer):
         fields = ['id', 'truck_number', 'trailer_number', 'is_active']
 
 class BOLSerializer(serializers.ModelSerializer):
+    effective_weight_tons = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+
     class Meta:
         model = BOL
-        fields = ['id', 'bol_number', 'product_name', 'buyer_name', 'date', 
-                 'truck_number', 'net_tons', 'pdf_url']
+        fields = ['id', 'bol_number', 'product_name', 'buyer_name', 'date',
+                 'truck_number', 'net_tons', 'pdf_url',
+                 'official_weight_tons', 'official_weight_entered_by', 'official_weight_entered_at',
+                 'weight_variance_tons', 'weight_variance_percent', 'effective_weight_tons']
 
 class ReleaseLoadSerializer(serializers.ModelSerializer):
     bol_number = serializers.SerializerMethodField()

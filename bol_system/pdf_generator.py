@@ -178,8 +178,8 @@ def generate_bol_pdf(bol_data, output_path=None):
     if hasattr(data, 'release_number') and data.release_number:
         release_num = data.release_number
 
-    # Calculate weights
-    total_weight_lbs = int(float(data.net_tons) * 2204.62) if data.net_tons else 0
+    # Calculate weights (short tons: 2000 lbs/ton)
+    total_weight_lbs = int(float(data.net_tons) * 2000) if data.net_tons else 0
     net_tons = float(data.net_tons) if data.net_tons else 0
 
     # Left column: Ship From + Consignee

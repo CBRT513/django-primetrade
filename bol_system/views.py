@@ -1280,25 +1280,29 @@ def audit_logs(request):
 def bol_history(request):
     try:
         product_id = request.GET.get('productId')
-        if not product_id:
-            return Response({'error': 'productId required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        try:
-            product = Product.objects.get(id=product_id)
-        except Product.DoesNotExist:
-            return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
+        if product_id:
+            # Product-specific history (legacy behavior)
+            try:
+                product = Product.objects.get(id=product_id)
+            except Product.DoesNotExist:
+                return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        bols = BOL.objects.filter(product=product).order_by('date')
-
-        shipped = sum(float(bol.net_tons) for bol in bols)
-        remaining = float(product.start_tons) - shipped
-
-        return Response({
-            'summary': {
+            bols = BOL.objects.filter(product=product).order_by('date')
+            shipped = sum(float(bol.net_tons) for bol in bols)
+            remaining = float(product.start_tons) - shipped
+            summary = {
                 'start': float(product.start_tons),
                 'shipped': shipped,
                 'remaining': remaining
-            },
+            }
+        else:
+            # All BOLs (for weight management page)
+            bols = BOL.objects.all().order_by('-created_at')
+            summary = None
+
+        return Response({
+            'summary': summary,
             'rows': [
                 {
                     'id': bol.id,
@@ -1306,7 +1310,14 @@ def bol_history(request):
                     'date': bol.date,
                     'truckNo': bol.truck_number,
                     'netTons': float(bol.net_tons),
-                    'pdfUrl': bol.pdf_url
+                    'pdfUrl': bol.pdf_url,
+                    'productName': bol.product_name,
+                    'buyerName': bol.buyer_name,
+                    'officialWeightTons': float(bol.official_weight_tons) if bol.official_weight_tons else None,
+                    'varianceTons': float(bol.weight_variance_tons) if bol.weight_variance_tons else None,
+                    'variancePercent': float(bol.weight_variance_percent) if bol.weight_variance_percent else None,
+                    'enteredBy': bol.official_weight_entered_by or None,
+                    'enteredAt': bol.official_weight_entered_at.isoformat() if bol.official_weight_entered_at else None
                 }
                 for bol in bols
             ]
@@ -1348,6 +1359,74 @@ def bol_detail(request, bol_id):
             {'error': 'An unexpected error occurred'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def set_official_weight(request, bol_id):
+    """
+    Set official certified scale weight for a BOL.
+
+    Requires: officialWeightTons (decimal)
+    Auto-calculates variance and logs who/when.
+    """
+    try:
+        bol = BOL.objects.get(id=bol_id)
+
+        # Validate input
+        weight_tons = request.data.get('officialWeightTons')
+        if weight_tons is None or weight_tons == '':
+            return Response({'error': 'officialWeightTons is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        try:
+            weight_tons = Decimal(str(weight_tons))
+        except (ValueError, TypeError):
+            return Response({'error': 'officialWeightTons must be a valid number'}, status=status.HTTP_400_BAD_REQUEST)
+
+        if weight_tons <= 0:
+            return Response({'error': 'officialWeightTons must be positive'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check if official weight already set
+        if bol.official_weight_tons is not None:
+            return Response({
+                'error': 'Official weight already set',
+                'detail': f'Official weight of {bol.official_weight_tons} tons was entered on {bol.official_weight_entered_at} by {bol.official_weight_entered_by}'
+            }, status=status.HTTP_409_CONFLICT)
+
+        # Set official weight using model method (handles variance calculation)
+        entered_by = request.user.email or request.user.username
+        bol.set_official_weight(weight_tons, entered_by)
+
+        # Audit log
+        audit(request, 'OFFICIAL_WEIGHT_SET', bol,
+              f"Official weight set to {weight_tons} tons (CBRT: {bol.net_tons} tons, variance: {bol.weight_variance_tons} tons / {bol.weight_variance_percent}%)",
+              extra={
+                  'bol_number': bol.bol_number,
+                  'official_weight_tons': float(weight_tons),
+                  'cbrt_weight_tons': float(bol.net_tons),
+                  'variance_tons': float(bol.weight_variance_tons),
+                  'variance_percent': float(bol.weight_variance_percent)
+              })
+
+        logger.info(f"Official weight set for BOL {bol.bol_number}: {weight_tons} tons by {entered_by}")
+
+        return Response({
+            'ok': True,
+            'bolNumber': bol.bol_number,
+            'officialWeightTons': float(bol.official_weight_tons),
+            'cbrtWeightTons': float(bol.net_tons),
+            'varianceTons': float(bol.weight_variance_tons),
+            'variancePercent': float(bol.weight_variance_percent),
+            'enteredBy': bol.official_weight_entered_by,
+            'enteredAt': bol.official_weight_entered_at.isoformat() if bol.official_weight_entered_at else None
+        })
+
+    except BOL.DoesNotExist:
+        logger.error(f"BOL {bol_id} not found")
+        return Response({'error': 'BOL not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Error setting official weight for BOL {bol_id}: {str(e)}", exc_info=True)
+        return Response({'error': 'Failed to set official weight', 'detail': str(e)},
+                       status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # Release upload and parse (Phase 1: parse only)
 @api_view(['POST'])

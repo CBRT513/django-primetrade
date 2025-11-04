@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>BOL Weight Management</title>
+  <link rel="stylesheet" href="/static/css/cbrt-brand.css">
+  <style>
+    .wrap { max-width: 1200px; }
+    .page-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 2rem;
+      padding: 1.5rem;
+      background: var(--surface);
+      border-radius: 12px;
+      box-shadow: var(--shadow-md);
+    }
+    .nav-links {
+      display: flex;
+      gap: 1rem;
+    }
+    .nav-links a {
+      color: white !important;
+      background: rgba(255, 255, 255, 0.1) !important;
+      border: 1px solid rgba(255, 255, 255, 0.2) !important;
+    }
+    .nav-links a:hover {
+      background: rgba(255, 255, 255, 0.2) !important;
+      border-color: rgba(255, 255, 255, 0.3) !important;
+    }
+    .bol-table {
+      width: 100%;
+      border-collapse: collapse;
+      background: var(--surface);
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: var(--shadow-lg);
+    }
+    .bol-table th {
+      background: var(--primary);
+      color: white;
+      padding: 1rem;
+      text-align: left;
+      font-weight: 600;
+    }
+    .bol-table td {
+      padding: 1rem;
+      border-bottom: 1px solid var(--border);
+    }
+    .bol-table tr:last-child td {
+      border-bottom: none;
+    }
+    .bol-table tr:hover {
+      background: rgba(var(--primary-rgb), 0.05);
+    }
+    .weight-cell {
+      font-family: 'Courier New', monospace;
+      font-weight: 600;
+    }
+    .variance-good {
+      color: #10b981;
+    }
+    .variance-warning {
+      color: #f59e0b;
+    }
+    .variance-critical {
+      color: #ef4444;
+      font-weight: 700;
+    }
+    .official-weight-badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      background: #10b981;
+      color: white;
+    }
+    .pending-weight-badge {
+      display: inline-block;
+      padding: 0.25rem 0.75rem;
+      border-radius: 6px;
+      font-size: 0.875rem;
+      font-weight: 600;
+      background: #f59e0b;
+      color: white;
+    }
+
+    /* Weight Entry Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0, 0, 0, 0.7);
+      z-index: 1000;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.active {
+      display: flex;
+    }
+    .modal-content {
+      background: white;
+      border-radius: 12px;
+      width: 90%;
+      max-width: 500px;
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+    }
+    .modal-header {
+      padding: 1.5rem;
+      border-bottom: 1px solid #e0e0e0;
+    }
+    .modal-header h3 {
+      margin: 0;
+      color: var(--primary);
+    }
+    .modal-body {
+      padding: 1.5rem;
+    }
+    .modal-footer {
+      padding: 1.5rem;
+      border-top: 1px solid #e0e0e0;
+      display: flex;
+      gap: 1rem;
+      justify-content: flex-end;
+    }
+    .info-row {
+      display: flex;
+      justify-content: space-between;
+      padding: 0.75rem;
+      background: var(--surface-light, #f8f9fa);
+      border-radius: 6px;
+      margin-bottom: 1rem;
+    }
+    .info-label {
+      font-weight: 600;
+      color: var(--text-secondary);
+    }
+    .info-value {
+      font-weight: 600;
+      font-family: 'Courier New', monospace;
+    }
+    .ta-r { text-align: right; }
+    .ta-c { text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="page-header">
+      <div>
+        <h1 style="margin: 0 0 0.5rem 0;">BOL Weight Management</h1>
+        <p style="margin: 0; color: var(--text-secondary);">Enter official certified scale weights for shipped BOLs</p>
+      </div>
+      <div class="nav-links">
+        <a href="/" class="btn">Home</a>
+        <a href="/office" class="btn">Create BOL</a>
+      </div>
+    </div>
+
+    <div style="margin-bottom: 1rem; display: flex; gap: 1rem; align-items: center;">
+      <label>
+        <input type="checkbox" id="showAll" onchange="loadBOLs()" style="margin-right: 0.5rem;">
+        Show all BOLs (including those with official weights)
+      </label>
+    </div>
+
+    <table class="bol-table">
+      <thead>
+        <tr>
+          <th>BOL #</th>
+          <th>Date</th>
+          <th>Customer</th>
+          <th>Product</th>
+          <th class="ta-r">CBRT Weight</th>
+          <th class="ta-r">Official Weight</th>
+          <th class="ta-r">Variance</th>
+          <th class="ta-c">Status</th>
+          <th class="ta-c">Action</th>
+        </tr>
+      </thead>
+      <tbody id="bolTableBody">
+        <tr>
+          <td colspan="9" class="ta-c">Loading...</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- Weight Entry Modal -->
+  <div class="modal-overlay" id="weightModal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3>Enter Official Weight</h3>
+      </div>
+      <div class="modal-body">
+        <div class="info-row">
+          <span class="info-label">BOL Number:</span>
+          <span class="info-value" id="modalBOLNumber"></span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">Customer:</span>
+          <span class="info-value" id="modalCustomer"></span>
+        </div>
+        <div class="info-row">
+          <span class="info-label">CBRT Weight:</span>
+          <span class="info-value" id="modalCBRTWeight"></span>
+        </div>
+
+        <div class="form-group">
+          <label>Official Weight (Net Tons) *</label>
+          <input
+            type="number"
+            id="officialWeightInput"
+            step="0.01"
+            min="0.01"
+            placeholder="Enter certified scale weight"
+            autofocus
+          />
+          <div class="truck-helper">Enter the weight from the certified scale ticket</div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button onclick="closeWeightModal()" class="btn-secondary">Cancel</button>
+        <button onclick="submitOfficialWeight()" class="btn">Submit Weight</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentBOL = null;
+
+    async function getJSON(url) {
+      const res = await fetch(url, { credentials: 'include' });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `HTTP ${res.status}`);
+      }
+      return res.json();
+    }
+
+    async function postJSON(url, data) {
+      const res = await fetch(url, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+      });
+      if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `HTTP ${res.status}`);
+      }
+      return res.json();
+    }
+
+    async function loadBOLs() {
+      try {
+        const showAll = document.getElementById('showAll').checked;
+        const data = await getJSON('/api/history');
+        const tbody = document.getElementById('bolTableBody');
+
+        if (!data.rows || data.rows.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="9" class="ta-c">No BOLs found</td></tr>';
+          return;
+        }
+
+        // Filter based on checkbox
+        const rows = showAll ? data.rows : data.rows.filter(r => !r.officialWeightTons);
+
+        if (rows.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="9" class="ta-c">No BOLs awaiting official weights</td></tr>';
+          return;
+        }
+
+        let html = '';
+        rows.forEach(row => {
+          const hasOfficialWeight = row.officialWeightTons !== null && row.officialWeightTons !== undefined;
+          const cbrtWeight = Number(row.netTons || 0).toFixed(2);
+          const officialWeight = hasOfficialWeight ? Number(row.officialWeightTons).toFixed(2) : '-';
+
+          let varianceHTML = '-';
+          let varianceClass = '';
+          if (hasOfficialWeight) {
+            const variance = Number(row.varianceTons || 0);
+            const variancePercent = Number(row.variancePercent || 0);
+            const absPercent = Math.abs(variancePercent);
+
+            if (absPercent >= 5 || Math.abs(variance) >= 0.5) {
+              varianceClass = 'variance-critical';
+            } else if (absPercent >= 2 || Math.abs(variance) >= 0.2) {
+              varianceClass = 'variance-warning';
+            } else {
+              varianceClass = 'variance-good';
+            }
+
+            const sign = variance >= 0 ? '+' : '';
+            varianceHTML = `<span class="${varianceClass}">${sign}${variance.toFixed(2)} t (${sign}${variancePercent.toFixed(1)}%)</span>`;
+          }
+
+          const statusBadge = hasOfficialWeight
+            ? '<span class="official-weight-badge">Official</span>'
+            : '<span class="pending-weight-badge">Pending</span>';
+
+          const actionButton = hasOfficialWeight
+            ? '-'
+            : `<button class="btn btn-sm" onclick='openWeightModal(${JSON.stringify(row)})'>Enter Weight</button>`;
+
+          html += `
+            <tr>
+              <td><a href="${row.pdfUrl || '#'}" target="_blank">${row.bolNo || '-'}</a></td>
+              <td>${row.date || '-'}</td>
+              <td>${row.buyerName || '-'}</td>
+              <td>${row.productName || '-'}</td>
+              <td class="ta-r weight-cell">${cbrtWeight}</td>
+              <td class="ta-r weight-cell">${officialWeight}</td>
+              <td class="ta-r">${varianceHTML}</td>
+              <td class="ta-c">${statusBadge}</td>
+              <td class="ta-c">${actionButton}</td>
+            </tr>
+          `;
+        });
+        tbody.innerHTML = html;
+
+      } catch (err) {
+        console.error('Error loading BOLs:', err);
+        document.getElementById('bolTableBody').innerHTML =
+          `<tr><td colspan="9" class="ta-c" style="color: red;">Error: ${err.message}</td></tr>`;
+      }
+    }
+
+    function openWeightModal(bol) {
+      currentBOL = bol;
+      document.getElementById('modalBOLNumber').textContent = bol.bolNo || '-';
+      document.getElementById('modalCustomer').textContent = bol.buyerName || '-';
+      document.getElementById('modalCBRTWeight').textContent = Number(bol.netTons || 0).toFixed(2) + ' tons';
+      document.getElementById('officialWeightInput').value = '';
+      document.getElementById('weightModal').classList.add('active');
+
+      // Focus input after a brief delay to ensure modal is visible
+      setTimeout(() => document.getElementById('officialWeightInput').focus(), 100);
+    }
+
+    function closeWeightModal() {
+      document.getElementById('weightModal').classList.remove('active');
+      currentBOL = null;
+    }
+
+    async function submitOfficialWeight() {
+      if (!currentBOL) return;
+
+      const weight = document.getElementById('officialWeightInput').value;
+      if (!weight || Number(weight) <= 0) {
+        alert('Please enter a valid weight greater than 0');
+        return;
+      }
+
+      try {
+        const result = await postJSON(`/api/bol/${currentBOL.id}/set-official-weight/`, {
+          officialWeightTons: weight
+        });
+
+        alert(`Official weight set successfully!\n\nBOL: ${result.bolNumber}\nOfficial: ${result.officialWeightTons} tons\nVariance: ${result.varianceTons >= 0 ? '+' : ''}${result.varianceTons} tons (${result.variancePercent >= 0 ? '+' : ''}${result.variancePercent}%)`);
+
+        closeWeightModal();
+        loadBOLs();
+      } catch (err) {
+        console.error('Error submitting weight:', err);
+        alert('Error: ' + err.message);
+      }
+    }
+
+    // Allow Enter key to submit in modal
+    document.getElementById('officialWeightInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') {
+        submitOfficialWeight();
+      }
+    });
+
+    // Close modal on Escape key
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape' && document.getElementById('weightModal').classList.contains('active')) {
+        closeWeightModal();
+      }
+    });
+
+    // Load BOLs on page load
+    loadBOLs();
+  </script>
+</body>
+</html>
