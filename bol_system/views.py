@@ -298,6 +298,52 @@ def customer_shiptos(request, customer_id: int):
         logger.error(f"customer_shiptos outer error: {e}", exc_info=True)
         return Response({'error': 'Unexpected error'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+# Customer branding endpoint (for branded dashboard)
+@api_view(['GET'])
+@permission_classes([AllowAny])  # Allow unauthenticated access for public dashboard
+def customer_branding(request):
+    """
+    Returns customer branding information (logo URL, colors) for the dashboard.
+    Query params:
+      - customer_id: optional customer ID to get specific branding
+      - customer_name: optional customer name to lookup branding
+    If no params provided, returns default PrimeTrade branding.
+    """
+    try:
+        customer_id = request.GET.get('customer_id')
+        customer_name = request.GET.get('customer_name')
+
+        customer = None
+        if customer_id:
+            try:
+                customer = Customer.objects.get(id=customer_id)
+            except Customer.DoesNotExist:
+                pass
+        elif customer_name:
+            try:
+                customer = Customer.objects.get(customer__iexact=customer_name)
+            except Customer.DoesNotExist:
+                pass
+
+        if customer:
+            return Response({
+                'logo_url': customer.logo_url or '/static/primetrade-logo.png',
+                'primary_color': customer.primary_color or '#2563eb',
+                'secondary_color': customer.secondary_color or '#667eea',
+                'customer_name': customer.customer
+            })
+        else:
+            # Default PrimeTrade branding
+            return Response({
+                'logo_url': '/static/primetrade-logo.png',
+                'primary_color': '#2563eb',
+                'secondary_color': '#667eea',
+                'customer_name': 'PrimeTrade'
+            })
+    except Exception as e:
+        logger.error(f"customer_branding error: {e}", exc_info=True)
+        return Response({'error': 'Failed to fetch branding'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 # Carrier endpoints with trucks
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])

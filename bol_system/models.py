@@ -53,6 +53,13 @@ class Customer(TimestampedModel):
     zip = models.CharField(max_length=10)
     is_active = models.BooleanField(default=True)
 
+    # Customer branding for dashboard
+    logo_url = models.URLField(max_length=500, blank=True, help_text="URL to customer's logo image")
+    primary_color = models.CharField(max_length=7, blank=True, default='#2563eb',
+                                    help_text="Primary brand color (hex code, e.g., #2563eb)")
+    secondary_color = models.CharField(max_length=7, blank=True, default='#667eea',
+                                      help_text="Secondary brand color (hex code, e.g., #667eea)")
+
     class Meta:
         ordering = ['customer']
 
