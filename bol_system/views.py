@@ -697,7 +697,8 @@ def approve_release(request):
         if (not street or not city or not state or not zip_code) and ship.get('address'):
             addr = ship.get('address')
             # Try to parse "<street>\n<city>, <ST> <ZIP>" or "<street>, <city>, <ST> <ZIP>"
-            m = re.search(r"^(.*?)[\n,]\s*([^,\n]+),\s*([A-Z]{2})\s*(\d{5}(?:-\d{4})?)$", addr.strip())
+            # DOTALL flag allows .*? to match across newlines for multi-line streets
+            m = re.search(r"^(.*?)[\n,]\s*([^,\n]+),\s*([A-Z]{2})\s*(\d{5}(?:-\d{4})?)$", addr.strip(), re.DOTALL)
             if m:
                 street = street or m.group(1).strip()
                 city = city or m.group(2).strip()
@@ -1074,7 +1075,8 @@ def release_detail_api(request, release_id):
         zip_code = ship.get('zip') or rel.ship_to_zip or ''
         if (not street or not city or not state or not zip_code) and ship.get('address'):
             # Try to parse "<street>\n<city>, <ST> <ZIP>" or "<street>, <city>, <ST> <ZIP>"
-            m = re.search(r"^(.*?)[\n,]\s*([^,\n]+),\s*([A-Z]{2})\s*(\d{5}(?:-\d{4})?)$", ship.get('address').strip())
+            # DOTALL flag allows .*? to match across newlines for multi-line streets
+            m = re.search(r"^(.*?)[\n,]\s*([^,\n]+),\s*([A-Z]{2})\s*(\d{5}(?:-\d{4})?)$", ship.get('address').strip(), re.DOTALL)
             if m:
                 street = street or m.group(1).strip()
                 city = city or m.group(2).strip()
