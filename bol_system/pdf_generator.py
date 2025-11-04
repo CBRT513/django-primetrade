@@ -117,20 +117,6 @@ def generate_bol_pdf(bol_data, output_path=None):
     cbrt_logo = None
     prime_logo = None
 
-    if os.path.exists(cbrt_logo_path):
-        try:
-            # Larger logo for legibility (1 inch square)
-            cbrt_logo = Image(cbrt_logo_path, width=1.0*inch, height=1.0*inch)
-        except:
-            pass
-
-    if os.path.exists(prime_logo_path):
-        try:
-            # Larger logo to match CBRT
-            prime_logo = Image(prime_logo_path, width=0.8*inch, height=0.8*inch)
-        except:
-            pass
-
     # Format date
     try:
         date_obj = datetime.strptime(data.date, '%Y-%m-%d')
@@ -138,26 +124,16 @@ def generate_bol_pdf(bol_data, output_path=None):
     except:
         formatted_date = data.date
 
-    # Header table: CBRT Logo | BILL OF LADING | BOL Number + PrimeTrade logo
+    # Header table: No logos - clean and simple
     header_data = [[
-        # Left: CBRT Logo only (no text, logo is legible)
-        cbrt_logo if cbrt_logo else '',
-
         # Center: BILL OF LADING title
         Paragraph('<para align="center"><b>BILL OF LADING</b><br/><font size="7">NON-NEGOTIABLE</font></para>', title_style),
 
-        # Right: BOL Number + PrimeTrade logo
-        Table([[
-            Paragraph(f'<para align="right"><font size="7">BOL NUMBER</font><br/><b><font size="14">{data.bol_number}</font></b></para>', normal_style),
-            prime_logo if prime_logo else ''
-        ]], colWidths=[2.5*inch, 0.9*inch], style=TableStyle([
-            ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
-            ('LEFTPADDING', (0, 0), (-1, -1), 5),
-            ('RIGHTPADDING', (0, 0), (-1, -1), 0),
-        ]))
+        # Right: BOL Number
+        Paragraph(f'<para align="right"><font size="7">BOL NUMBER</font><br/><b><font size="14">{data.bol_number}</font></b></para>', normal_style),
     ]]
 
-    header_table = Table(header_data, colWidths=[1.2*inch, 4.5*inch, 3.4*inch])
+    header_table = Table(header_data, colWidths=[6.0*inch, 4.0*inch])
     header_table.setStyle(TableStyle([
         ('VALIGN', (0, 0), (-1, -1), 'TOP'),
         ('BOTTOMPADDING', (0, 0), (-1, -1), 10),
