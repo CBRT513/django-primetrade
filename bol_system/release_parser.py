@@ -398,11 +398,15 @@ def parse_release_pdf(file_obj, ai_mode: str | None = None) -> Dict[str, Any]:
 
             # Material
             if isinstance(ai.get("material"), dict):
+                # Use AI-extracted extraBOLAnalysis, fallback to regex only if AI didn't find it
+                ai_extras = ai.get("material", {}).get("extraBOLAnalysis")
+                regex_extras = regex_fallback.get("material", {}).get("extraBOLAnalysis")
+
                 parsed["material"] = {
                     "lot": ai.get("material", {}).get("lot"),
                     "description": ai.get("material", {}).get("description"),
                     "analysis": regex_fallback.get("material", {}).get("analysis"),
-                    "extraBOLAnalysis": regex_fallback.get("material", {}).get("extraBOLAnalysis"),
+                    "extraBOLAnalysis": ai_extras or regex_extras,
                 }
             else:
                 parsed["material"] = regex_fallback.get("material", {})

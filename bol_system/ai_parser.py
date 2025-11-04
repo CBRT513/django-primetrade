@@ -12,7 +12,7 @@ AI_SCHEMA = (
     '{ "releaseNumber": str|null, "releaseDate": "MM/DD/YYYY"|null, '
     '"customerId": str|null, "customerPO": str|null, "shipVia": str|null, "fob": str|null, '
     '"shipTo": {"name": str|null, "address": str|null}, '
-    '"material": {"lot": str|null, "description": str|null}, '
+    '"material": {"lot": str|null, "description": str|null, "extraBOLAnalysis": str|null}, '
     '"quantityNetTons": number|null, '
     '"schedule": [{"date": "MM/DD/YYYY", "load": number}], '
     '"allWarehouseRequirements": str|null }'
@@ -54,7 +54,9 @@ def gemini_parse_release_text(
         "Return ONLY valid JSON matching this schema (no prose, no markdown):\n"
         f"{AI_SCHEMA}\n\n"
         "Instructions:\n"
-        "- For material.description: include the base material name (e.g., 'NODULAR PIG IRON'). DO NOT include chemistry values or supplemental specifications (CR, TI, V, etc.).\n"
+        "- For material.description: include ONLY the base material name (e.g., 'NODULAR PIG IRON'). DO NOT include chemistry values.\n"
+        "- For material.extraBOLAnalysis: extract ONLY supplemental chemistry specifications that are NOT standard chemistry (C, Si, S, P, Mn). "
+        "Examples: 'CR .004 TI .001 V .004', 'CU 0.15 NI 0.08'. If found, preserve EXACTLY as written. Set to null if not present.\n"
         "- For allWarehouseRequirements: extract the COMPLETE text from the 'Warehouse requirements:' or 'Warehouse:' section EXACTLY as written, preserving all bullets and formatting.\n"
         "- If there is no warehouse section, set to null.\n"
         "- Fill unknown fields with null or empty list.\n\n"
