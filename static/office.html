@@ -396,12 +396,8 @@
           option.textContent = `${truck.truck_number} / ${truck.trailer_number || 'N/A'}`;
           truckDatalist.appendChild(option);
         });
-        
-        // Auto-select first truck if only one available
-        if (activeTrucks.length === 1) {
-          truckNoField.value = activeTrucks[0].truck_number;
-          trailerNoField.value = activeTrucks[0].trailer_number || '';
-        }
+
+        // Don't auto-select - user must consciously choose truck/trailer
       }
     }
 
