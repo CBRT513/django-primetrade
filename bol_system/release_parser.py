@@ -153,13 +153,17 @@ def parse_release_text(text: str) -> Dict[str, Any]:
                 pass
 
     # Optional microelements (appear in MINSTER)
-    cr = _find(r"\bCR\s*(\d+\.\d+)", t)
-    ti = _find(r"\bTI\s*(\d+\.\d+)", t)
-    v = _find(r"\bV\s*(\d+\.\d+)", t)
+    # Pattern matches both "CR 0.004" and "CR .004" formats
+    cr = _find(r"\bCR\s*\.?(\d+(?:\.\d+)?)", t)
+    ti = _find(r"\bTI\s*\.?(\d+(?:\.\d+)?)", t)
+    v = _find(r"\bV\s*\.?(\d+(?:\.\d+)?)", t)
     extras = {}
     for k, val in [("Cr", cr), ("Ti", ti), ("V", v)]:
         if val:
             try:
+                # Normalize values like "004" to "0.004"
+                if not val.startswith('0.') and '.' not in val:
+                    val = f"0.{val}"
                 extras[k] = float(val)
             except ValueError:
                 pass
