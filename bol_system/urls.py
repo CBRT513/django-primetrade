@@ -4,8 +4,14 @@ from django.views.generic import TemplateView
 from . import views
 from . import auth_views
 
+# Serve static HTML files as templates
+class StaticHTMLView(TemplateView):
+    def get_template_names(self):
+        return [self.kwargs.get('template')]
+
 urlpatterns = [
     path('health/', views.health_check, name='health_check'),
+    path('bol-weights.html', login_required(TemplateView.as_view(template_name='bol-weights.html')), name='bol_weights'),
     path('products/', views.ProductListView.as_view(), name='products'),
     path('customers/', views.customer_list, name='customers'),
     path('customers/<int:customer_id>/shiptos/', views.customer_shiptos, name='customer_shiptos'),
