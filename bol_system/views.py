@@ -1474,6 +1474,50 @@ def set_official_weight(request, bol_id):
         return Response({'error': 'Failed to set official weight', 'detail': str(e)},
                        status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+@api_view(['POST'])
+@authentication_classes([CsrfExemptSessionAuthentication])
+@permission_classes([IsAuthenticated])
+def regenerate_bol_pdf(request, bol_id):
+    """
+    Regenerate the PDF for a BOL using current data.
+    Useful when BOL data changes after creation or PDF is corrupted.
+    """
+    try:
+        bol = BOL.objects.get(id=bol_id)
+
+        # Regenerate PDF
+        try:
+            pdf_url = generate_bol_pdf(bol)
+            bol.pdf_url = pdf_url
+            bol.save()
+            logger.info(f"Regenerated PDF for BOL {bol.bol_number} at {pdf_url}")
+
+            # Audit log
+            audit(request, 'BOL_PDF_REGENERATED', bol,
+                  f"PDF regenerated for BOL {bol.bol_number}",
+                  extra={'bol_number': bol.bol_number, 'pdf_url': pdf_url})
+
+            return Response({
+                'success': True,
+                'message': f'PDF regenerated for BOL {bol.bol_number}',
+                'pdfUrl': pdf_url,
+                'bolNumber': bol.bol_number
+            })
+        except Exception as pdf_error:
+            logger.error(f"Failed to regenerate PDF for BOL {bol.bol_number}: {str(pdf_error)}", exc_info=True)
+            return Response({
+                'error': 'Failed to generate PDF',
+                'detail': str(pdf_error)
+            }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+    except BOL.DoesNotExist:
+        logger.error(f"BOL {bol_id} not found for PDF regeneration")
+        return Response({'error': 'BOL not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"Error regenerating PDF for BOL {bol_id}: {str(e)}", exc_info=True)
+        return Response({'error': 'Failed to regenerate PDF', 'detail': str(e)},
+                       status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
 # Release upload and parse (Phase 1: parse only)
 @api_view(['POST'])
 @authentication_classes([CsrfExemptSessionAuthentication])
