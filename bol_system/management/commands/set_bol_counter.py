@@ -8,7 +8,7 @@ This will make the next BOL number PRT-2025-0005
 """
 
 from django.core.management.base import BaseCommand
-from bol_system.models import BOLNumberCounter
+from bol_system.models import BOLCounter
 from datetime import datetime
 
 
@@ -22,7 +22,7 @@ class Command(BaseCommand):
         sequence = options['sequence']
         current_year = datetime.now().year
 
-        counter, created = BOLNumberCounter.objects.get_or_create(
+        counter, created = BOLCounter.objects.get_or_create(
             year=current_year,
             defaults={'sequence': sequence}
         )
