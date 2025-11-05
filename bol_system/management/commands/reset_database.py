@@ -10,7 +10,7 @@ WARNING: This deletes ALL data!
 from django.core.management.base import BaseCommand
 from bol_system.models import (
     ReleaseLoad, BOL, Release, Carrier, Truck,
-    Product, Customer, Warehouse, Lot
+    Product, Customer, CustomerShipTo, Lot, BOLCounter
 )
 
 
@@ -46,8 +46,11 @@ class Command(BaseCommand):
         count_customers = Customer.objects.all().delete()[0]
         self.stdout.write(f'  ✓ Deleted {count_customers} customers')
 
-        count_warehouses = Warehouse.objects.all().delete()[0]
-        self.stdout.write(f'  ✓ Deleted {count_warehouses} warehouses')
+        count_shipto = CustomerShipTo.objects.all().delete()[0]
+        self.stdout.write(f'  ✓ Deleted {count_shipto} ship-to addresses')
+
+        count_counters = BOLCounter.objects.all().delete()[0]
+        self.stdout.write(f'  ✓ Deleted {count_counters} BOL counters')
 
         self.stdout.write(self.style.SUCCESS('\n✅ Database reset complete!'))
         self.stdout.write('\nNext steps:')
