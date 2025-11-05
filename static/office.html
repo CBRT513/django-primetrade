@@ -176,8 +176,9 @@
         
         <div class="grid">
           <div class="form-group">
-            <label>Net Tons *</label>
-            <input type="number" step="0.01" name="netTons" placeholder="0.00" required />
+            <label>Net Weight (lbs) *</label>
+            <input type="number" step="1" name="netWeightLbs" id="netWeightLbs" placeholder="0" required />
+            <div class="truck-helper" id="weightTonsDisplay"></div>
           </div>
           <div class="form-group">
             <label>Notes</label>
@@ -518,6 +519,19 @@
       }
     });
 
+    // Show tons equivalent as user types weight in lbs
+    qs("netWeightLbs").addEventListener('input', function() {
+      const lbs = parseFloat(this.value) || 0;
+      const tons = (lbs / 2000).toFixed(2);
+      const display = qs("weightTonsDisplay");
+      if (lbs > 0) {
+        display.textContent = `≈ ${tons} tons`;
+        display.style.color = '#666';
+      } else {
+        display.textContent = '';
+      }
+    });
+
     (async () => {
       // Load current user info
       try {
@@ -668,8 +682,13 @@
           // Manually trigger truck options update since onchange doesn't fire for programmatic changes
           updateTruckOptions();
         }
-        // Suggest planned tons (editable)
-        const nt = document.querySelector('input[name=netTons]'); if (nt && chosen.plannedTons) nt.value = Number(chosen.plannedTons||0).toFixed(2);
+        // Suggest planned tons (editable) - convert to LBS
+        const nt = document.querySelector('input[name=netWeightLbs]');
+        if (nt && chosen.plannedTons) {
+          nt.value = Math.round(Number(chosen.plannedTons||0) * 2000);
+          // Trigger the input event to update tons display
+          nt.dispatchEvent(new Event('input'));
+        }
       });
       window._loadsCache = await getJSON('/api/releases/pending-loads/');
 
@@ -680,6 +699,13 @@
         s.textContent = "Generating preview...";
 
         const data = Object.fromEntries(new FormData(ev.target).entries());
+
+        // Convert LBS to tons for backend
+        if (data.netWeightLbs) {
+          data.netTons = (parseFloat(data.netWeightLbs) / 2000).toFixed(2);
+          delete data.netWeightLbs;
+        }
+
         // Ensure locked fields are present even if controls are disabled/readonly
         if (!data.productId) { const ps = qs('product'); if (ps && ps.value) data.productId = ps.value; }
         if (!data.buyerName) { const bf = qs('buyerName'); if (bf && bf.value) data.buyerName = bf.value; }
