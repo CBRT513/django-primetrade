@@ -612,6 +612,8 @@
           // Pre-fill carrier if available
           if (release.carrier_ref_id) {
             carrierSel.value = release.carrier_ref_id;
+            // Manually trigger truck options update since onchange doesn't fire for programmatic changes
+            updateTruckOptions();
           }
 
           // Pre-fill buyer name from customer
@@ -660,7 +662,12 @@
         const buyer = (chosen.customer && chosen.customer.name) || '';
         const buyerField = qs('buyerName'); if (buyerField) buyerField.value = buyer;
         // Default carrier to planned one (editable)
-        const carrierSel = qs('carrier'); if (carrierSel && chosen.carrier && chosen.carrier.id) carrierSel.value = chosen.carrier.id;
+        const carrierSel = qs('carrier');
+        if (carrierSel && chosen.carrier && chosen.carrier.id) {
+          carrierSel.value = chosen.carrier.id;
+          // Manually trigger truck options update since onchange doesn't fire for programmatic changes
+          updateTruckOptions();
+        }
         // Suggest planned tons (editable)
         const nt = document.querySelector('input[name=netTons]'); if (nt && chosen.plannedTons) nt.value = Number(chosen.plannedTons||0).toFixed(2);
       });
