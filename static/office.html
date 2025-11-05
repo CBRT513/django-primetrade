@@ -164,16 +164,9 @@
         <div class="grid">
           <div class="form-group">
             <label>Truck Number *</label>
-            <div style="display: flex; gap: 0.5rem; align-items: flex-start;">
-              <div style="flex: 1;">
-                <input name="truckNo" id="truckNo" placeholder="Enter or select below" list="truckList" required />
-                <datalist id="truckList"></datalist>
-                <div class="truck-helper">Type truck number or select from list</div>
-              </div>
-              <button type="button" onclick="showAddTruckModal()" class="btn btn-sm" title="Add new truck" style="white-space: nowrap;">
-                + Add Truck
-              </button>
-            </div>
+            <select name="truckNo" id="truckNo" required>
+              <option value="">Select truck number...</option>
+            </select>
           </div>
           <div class="form-group">
             <label>Trailer Number</label>
@@ -374,30 +367,33 @@
       const carrierId = qs("carrier").value;
       const truckNoField = qs("truckNo");
       const trailerNoField = qs("trailerNo");
-      const truckDatalist = qs("truckList");
-      
+
       // Clear existing options
-      truckDatalist.innerHTML = "";
-      truckNoField.value = "";
+      truckNoField.innerHTML = '<option value="">Select truck number...</option>';
       trailerNoField.value = "";
-      
+
       if (!carrierId) return;
-      
+
       // Find carrier - convert IDs to strings for comparison
       const carrier = carriers.find(c => String(c.id) === String(carrierId));
       if (carrier && carrier.trucks) {
         // Filter active trucks (Django uses snake_case: is_active)
         const activeTrucks = carrier.trucks.filter(t => t.is_active !== false);
-        
-        // Add trucks to datalist for autocomplete
+
+        // Add trucks to dropdown
         activeTrucks.forEach(truck => {
           const option = document.createElement('option');
           option.value = truck.truck_number;
           option.textContent = `${truck.truck_number} / ${truck.trailer_number || 'N/A'}`;
-          truckDatalist.appendChild(option);
+          option.dataset.trailerNumber = truck.trailer_number || '';
+          truckNoField.appendChild(option);
         });
 
-        // Don't auto-select - user must consciously choose truck/trailer
+        // Add "Add Truck/Trailer" option at the end
+        const addOption = document.createElement('option');
+        addOption.value = '__add_new__';
+        addOption.textContent = '+ Add Truck/Trailer';
+        truckNoField.appendChild(addOption);
       }
     }
 
@@ -500,20 +496,25 @@
       }
     }
 
-    // Auto-fill trailer when truck number is entered from datalist
-    qs("truckNo").addEventListener('input', function() {
-      const carrierId = qs("carrier").value;
-      const truckNo = this.value;
+    // Handle truck selection (auto-fill trailer or open add modal)
+    qs("truckNo").addEventListener('change', function() {
+      const selectedValue = this.value;
       const trailerNoField = qs("trailerNo");
-      
-      if (!carrierId || !truckNo) return;
-      
-      const carrier = carriers.find(c => String(c.id) === String(carrierId));
-      if (carrier && carrier.trucks) {
-        const truck = carrier.trucks.find(t => t.truck_number === truckNo);
-        if (truck && truck.trailer_number) {
-          trailerNoField.value = truck.trailer_number;
-        }
+
+      // Check if "Add Truck/Trailer" was selected
+      if (selectedValue === '__add_new__') {
+        showAddTruckModal();
+        // Reset to empty selection
+        this.value = '';
+        return;
+      }
+
+      // Auto-fill trailer number from selected truck
+      const selectedOption = this.options[this.selectedIndex];
+      if (selectedOption && selectedOption.dataset.trailerNumber) {
+        trailerNoField.value = selectedOption.dataset.trailerNumber;
+      } else {
+        trailerNoField.value = '';
       }
     });
 
