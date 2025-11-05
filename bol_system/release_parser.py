@@ -297,14 +297,16 @@ def parse_release_text(text: str) -> Dict[str, Any]:
         if not addr:
             return {}
 
-        # Split by comma
-        parts = [p.strip() for p in addr.split(',')]
+        # Split by newlines first, then handle comma-separated if needed
+        # This handles both formats:
+        # "Street\nCity, ST ZIP" and "Street, City, ST ZIP"
+        lines = [line.strip() for line in addr.replace('\n', ',').split(',') if line.strip()]
         parsed = {}
 
-        # Last part should be "City, ST ZIP" or just "ST ZIP"
-        if parts:
-            last = parts[-1].strip()
-            # Try to extract State ZIP from last part
+        # Last line should contain "City ST ZIP" or just "ST ZIP"
+        if lines:
+            last = lines[-1].strip()
+            # Try to extract State ZIP from last line (e.g., "Rushville, IN 46173" or "IN 46173")
             m = re.match(r'^([A-Za-z ]+)?\s*([A-Z]{2})\s+(\d{5})$', last)
             if m:
                 city_from_last, state, zip_code = m.groups()
@@ -312,18 +314,19 @@ def parse_release_text(text: str) -> Dict[str, Any]:
                 parsed['zip'] = zip_code
                 if city_from_last:
                     parsed['city'] = city_from_last.strip()
-                parts = parts[:-1]  # Remove last part
+                lines = lines[:-1]  # Remove last line
 
-        # If we didn't get city from last part, try second-to-last
-        if 'city' not in parsed and parts:
-            parsed['city'] = parts[-1].strip()
-            parts = parts[:-1]
+        # If we didn't get city from last line, try second-to-last
+        if 'city' not in parsed and lines:
+            parsed['city'] = lines[-1].strip()
+            lines = lines[:-1]
 
-        # Remaining parts are street address lines
-        if parts:
-            parsed['street'] = parts[0].strip()
-        if len(parts) > 1:
-            parsed['street2'] = ', '.join(parts[1:]).strip()
+        # Remaining lines are street address
+        if lines:
+            parsed['street'] = lines[0].strip()
+        if len(lines) > 1:
+            # Join additional lines as street2 (e.g., "PLANT ONE")
+            parsed['street2'] = ', '.join(lines[1:]).strip()
 
         return parsed
 
