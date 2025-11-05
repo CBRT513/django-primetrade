@@ -663,11 +663,11 @@ def confirm_bol(request):
         )
 
         # If load provided, mark shipped and attach
+        # Note: actual_tons stays NULL until official scale weight is entered
         if release_load:
             release_load.status = 'SHIPPED'
             release_load.bol = bol
-            release_load.actual_tons = net_tons
-            release_load.save(update_fields=['status','bol','actual_tons','updated_at','updated_by'])
+            release_load.save(update_fields=['status','bol','updated_at','updated_by'])
             # If all loads shipped, close release
             try:
                 if release_load.release.loads.filter(status='PENDING').count() == 0:
