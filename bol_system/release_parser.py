@@ -29,6 +29,45 @@ def _find(pattern: str, text: str, flags: int = re.IGNORECASE) -> str | None:
         return m.group(0).strip()
 
 
+def _parse_shipto_address(addr: str | None) -> Dict[str, str]:
+    """Split combined address into street, street2, city, state, zip"""
+    if not addr:
+        return {}
+
+    # Split by newlines first, then handle comma-separated if needed
+    # This handles both formats:
+    # "Street\nCity, ST ZIP" and "Street, City, ST ZIP"
+    lines = [line.strip() for line in addr.replace('\n', ',').split(',') if line.strip()]
+    parsed = {}
+
+    # Last line should contain "City ST ZIP" or just "ST ZIP"
+    if lines:
+        last = lines[-1].strip()
+        # Try to extract State ZIP from last line (e.g., "Rushville, IN 46173" or "IN 46173")
+        m = re.match(r'^([A-Za-z ]+)?\s*([A-Z]{2})\s+(\d{5})$', last)
+        if m:
+            city_from_last, state, zip_code = m.groups()
+            parsed['state'] = state
+            parsed['zip'] = zip_code
+            if city_from_last:
+                parsed['city'] = city_from_last.strip()
+            lines = lines[:-1]  # Remove last line
+
+    # If we didn't get city from last line, try second-to-last
+    if 'city' not in parsed and lines:
+        parsed['city'] = lines[-1].strip()
+        lines = lines[:-1]
+
+    # Remaining lines are street address
+    if lines:
+        parsed['street'] = lines[0].strip()
+    if len(lines) > 1:
+        # Join additional lines as street2 (e.g., "PLANT ONE")
+        parsed['street2'] = ', '.join(lines[1:]).strip()
+
+    return parsed
+
+
 def parse_release_text(text: str) -> Dict[str, Any]:
     """Parse release order text extracted from a customer PDF.
 
@@ -291,46 +330,7 @@ def parse_release_text(text: str) -> Dict[str, Any]:
             if m:
                 bol_requirements.append(re.sub(r"\s+", " ", m.group(0)).strip())
 
-    # Parse ship-to address into components for easier frontend handling
-    def _parse_shipto_address(addr: str | None) -> Dict[str, str]:
-        """Split combined address into street, street2, city, state, zip"""
-        if not addr:
-            return {}
-
-        # Split by newlines first, then handle comma-separated if needed
-        # This handles both formats:
-        # "Street\nCity, ST ZIP" and "Street, City, ST ZIP"
-        lines = [line.strip() for line in addr.replace('\n', ',').split(',') if line.strip()]
-        parsed = {}
-
-        # Last line should contain "City ST ZIP" or just "ST ZIP"
-        if lines:
-            last = lines[-1].strip()
-            # Try to extract State ZIP from last line (e.g., "Rushville, IN 46173" or "IN 46173")
-            m = re.match(r'^([A-Za-z ]+)?\s*([A-Z]{2})\s+(\d{5})$', last)
-            if m:
-                city_from_last, state, zip_code = m.groups()
-                parsed['state'] = state
-                parsed['zip'] = zip_code
-                if city_from_last:
-                    parsed['city'] = city_from_last.strip()
-                lines = lines[:-1]  # Remove last line
-
-        # If we didn't get city from last line, try second-to-last
-        if 'city' not in parsed and lines:
-            parsed['city'] = lines[-1].strip()
-            lines = lines[:-1]
-
-        # Remaining lines are street address
-        if lines:
-            parsed['street'] = lines[0].strip()
-        if len(lines) > 1:
-            # Join additional lines as street2 (e.g., "PLANT ONE")
-            parsed['street2'] = ', '.join(lines[1:]).strip()
-
-        return parsed
-
-    # Enhance ship_to with parsed components
+    # Enhance ship_to with parsed components (using module-level function)
     if ship_to and ship_to.get('address'):
         parsed_addr = _parse_shipto_address(ship_to['address'])
         ship_to.update(parsed_addr)
