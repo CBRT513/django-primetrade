@@ -157,6 +157,7 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 
 # WhiteNoise configuration for serving static files with DEBUG=False
 # Storage configuration - Use S3 in production, local filesystem in development
+# S3 Storage Toggle - requires restart/redeploy when changed
 USE_S3 = config('USE_S3', default='False', cast=bool)
 
 if USE_S3:
