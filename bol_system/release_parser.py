@@ -397,7 +397,14 @@ def parse_release_pdf(file_obj, ai_mode: str | None = None) -> Dict[str, Any]:
 
             # Ship To
             ai_ship = ai.get("shipTo") if isinstance(ai.get("shipTo"), dict) else None
-            parsed["shipToRaw"] = ai_ship or regex_fallback.get("shipToRaw")
+            ship_to_final = ai_ship or regex_fallback.get("shipToRaw")
+
+            # Parse address components if address exists
+            if ship_to_final and ship_to_final.get('address'):
+                parsed_addr = _parse_shipto_address(ship_to_final['address'])
+                ship_to_final.update(parsed_addr)
+
+            parsed["shipToRaw"] = ship_to_final
 
             # Material
             if isinstance(ai.get("material"), dict):
