@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Product, Customer, Carrier, Truck, BOL, BOLCounter, CompanyBranding
+from .models import Product, Customer, Carrier, Truck, BOL, BOLCounter, CompanyBranding, RoleRedirectConfig
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
@@ -53,6 +53,26 @@ class BOLCounterAdmin(admin.ModelAdmin):
 class CompanyBrandingAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         return not CompanyBranding.objects.exists()
-    
+
     def has_delete_permission(self, request, obj=None):
         return False
+
+
+@admin.register(RoleRedirectConfig)
+class RoleRedirectConfigAdmin(admin.ModelAdmin):
+    """Admin interface for role-based landing page configuration"""
+    list_display = ['role_name', 'landing_page', 'is_active', 'updated_at']
+    list_filter = ['is_active']
+    search_fields = ['role_name', 'landing_page']
+    list_editable = ['landing_page', 'is_active']
+    readonly_fields = ['created_at', 'updated_at']
+
+    fieldsets = (
+        ('Role Configuration', {
+            'fields': ('role_name', 'landing_page', 'is_active')
+        }),
+        ('Metadata', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )

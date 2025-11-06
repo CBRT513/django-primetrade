@@ -383,3 +383,39 @@ class AuditLog(TimestampedModel):
 
     def __str__(self):
         return f"{self.action} {self.object_type} {self.object_id} by {self.user_email}";
+
+
+class RoleRedirectConfig(models.Model):
+    """
+    Configure landing page redirects by role.
+
+    Allows admins to set different landing pages for different user roles
+    without modifying code. For example:
+    - viewer/read-only users → Client dashboard with specific product
+    - user → Office interface
+    - admin → Admin dashboard
+    """
+    role_name = models.CharField(
+        max_length=20,
+        unique=True,
+        help_text="Role name: viewer, read-only, user, admin"
+    )
+    landing_page = models.CharField(
+        max_length=200,
+        help_text="URL to redirect to (e.g., /client.html?productId=9)"
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text="Disable to use default redirect"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = "Role Redirect Configuration"
+        verbose_name_plural = "Role Redirect Configurations"
+        ordering = ['role_name']
+
+    def __str__(self):
+        status = "✓" if self.is_active else "✗"
+        return f"{status} {self.role_name} → {self.landing_page}"

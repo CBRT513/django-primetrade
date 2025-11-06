@@ -365,8 +365,29 @@ def sso_callback(request):
     logger.error(f"[FLOW DEBUG 11.3]   - request.user.is_authenticated: {request.user.is_authenticated}")
     logger.error(f"[FLOW DEBUG 11.4]   - session key: {request.session.session_key}")
 
-    # Redirect to home/dashboard
-    redirect_url = 'home'
+    # Get user's role for role-based landing page redirect
+    role = request.session.get('primetrade_role', {}).get('role', 'user')
+    logger.error(f"[FLOW DEBUG 11.5] User role: {role}")
+
+    # Look up configured redirect for this role
+    redirect_url = 'home'  # Default fallback
+    try:
+        from bol_system.models import RoleRedirectConfig
+        config = RoleRedirectConfig.objects.filter(
+            role_name=role,
+            is_active=True
+        ).first()
+
+        if config:
+            redirect_url = config.landing_page
+            logger.error(f"[FLOW DEBUG 11.6] Using role-based redirect: {redirect_url}")
+        else:
+            logger.error(f"[FLOW DEBUG 11.6] No active redirect config for role '{role}', using default")
+
+    except Exception as e:
+        logger.error(f"[FLOW DEBUG 11.6] Error looking up role redirect: {e}")
+        # Safe fallback to default
+
     logger.error(f"[FLOW DEBUG 12] About to redirect to: {redirect_url}")
     logger.error(f"[FLOW DEBUG 12.1] Full auth flow completed successfully for user: {email}")
 
