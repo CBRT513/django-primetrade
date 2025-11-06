@@ -9,7 +9,7 @@ from .models import Product, Customer, Carrier, Truck, BOL, Release, ReleaseLoad
 from .serializers import ProductSerializer, CustomerSerializer, CarrierSerializer, TruckSerializer, ReleaseSerializer, ReleaseLoadSerializer, CustomerShipToSerializer, AuditLogSerializer
 from .pdf_generator import generate_bol_pdf
 from .release_parser import parse_release_pdf
-from primetrade_project.decorators import require_role
+from primetrade_project.decorators import require_role, require_role_for_writes
 import logging
 import os
 import base64
@@ -102,6 +102,26 @@ def health_check(request):
             'error': str(e)
         }, status=status.HTTP_503_SERVICE_UNAVAILABLE)
 
+# User context endpoint (returns role and permissions for frontend)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def user_context(request):
+    """Return user context including role and permissions for frontend"""
+    app_role = request.session.get('primetrade_role', {})
+    user_role = app_role.get('role', 'viewer')
+    permissions = app_role.get('permissions', ['read'])
+
+    return Response({
+        'user': {
+            'email': request.user.email if request.user.email else request.user.username,
+            'role': user_role,
+            'permissions': permissions,
+            'is_authenticated': True
+        },
+        'can_write': user_role in ['admin', 'user'],
+        'is_admin': user_role == 'admin'
+    })
+
 # Product endpoints
 class ProductListView(generics.ListCreateAPIView):
     serializer_class = ProductSerializer
@@ -112,6 +132,21 @@ class ProductListView(generics.ListCreateAPIView):
 
     # Support upsert via POST so the existing frontend can use one endpoint
     def post(self, request, *args, **kwargs):
+        # Check role for write operations
+        app_role = request.session.get('primetrade_role', {})
+        user_role = app_role.get('role')
+        if user_role not in ['admin', 'user']:
+            user_email = request.user.email if request.user.is_authenticated else 'unknown'
+            logger.warning(
+                f"Access denied: {user_email} (role={user_role or 'none'}) "
+                f"attempted ProductListView POST. Required roles: admin, user"
+            )
+            from django.http import HttpResponseForbidden
+            return HttpResponseForbidden(
+                f"Access denied. This action requires one of the following roles: admin, user. "
+                f"Your current role: {user_role or 'none'}."
+            )
+
         try:
             data = request.data if isinstance(request.data, dict) else {}
             pid = data.get('id')
@@ -166,6 +201,7 @@ class ProductListView(generics.ListCreateAPIView):
 # Customer endpoints
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
+@require_role_for_writes('admin', 'user')  # POST operations require admin or user role
 def customer_list(request):
     try:
         if request.method == 'GET':
@@ -227,6 +263,7 @@ def customer_list(request):
 # Ship-To endpoints (per-customer)
 @api_view(['GET','POST'])
 @permission_classes([IsAuthenticated])
+@require_role_for_writes('admin', 'user')  # POST operations require admin or user role
 def customer_shiptos(request, customer_id: int):
     try:
         try:
@@ -348,6 +385,7 @@ def customer_branding(request):
 # Carrier endpoints with trucks
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
+@require_role_for_writes('admin', 'user')  # POST operations require admin or user role
 def carrier_list(request):
     try:
         if request.method == 'POST':
@@ -428,6 +466,7 @@ def carrier_list(request):
 # BOL preview (no database save)
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@require_role('admin', 'user')  # Preview requires admin or user role (preparation for creating)
 def preview_bol(request):
     """
     Generate a preview PDF without saving to database
@@ -759,6 +798,7 @@ def _parse_date_any(s: str):
 @api_view(['POST'])
 @authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
+@require_role('admin', 'user')  # Approving releases requires admin or user role
 def approve_release(request):
     try:
         data = request.data if isinstance(request.data, dict) else {}
@@ -1123,6 +1163,7 @@ def load_detail_api(request, load_id):
 @api_view(['GET','PATCH'])
 @authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
+@require_role_for_writes('admin', 'user')  # PATCH operations require admin or user role
 def release_detail_api(request, release_id):
     try:
         rel = Release.objects.select_related('customer_ref', 'ship_to_ref', 'carrier_ref', 'lot_ref').prefetch_related('loads__bol').get(id=release_id)
@@ -1410,6 +1451,7 @@ def bol_detail(request, bol_id):
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@require_role('admin', 'user')  # Setting official weights requires admin or user role
 def set_official_weight(request, bol_id):
     """
     Set official certified scale weight for a BOL.
@@ -1479,6 +1521,7 @@ def set_official_weight(request, bol_id):
 @api_view(['POST'])
 @authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
+@require_role('admin')  # Regenerating PDFs requires admin role (sensitive operation)
 def regenerate_bol_pdf(request, bol_id):
     """
     Regenerate the PDF for a BOL using current data.
@@ -1594,6 +1637,7 @@ def download_bol_pdf(request, bol_id):
 @api_view(['POST'])
 @authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
+@require_role('admin', 'user')  # Uploading releases requires admin or user role
 def upload_release(request):
     """
     Accept a release PDF, parse header/material/schedule fields, and return JSON.

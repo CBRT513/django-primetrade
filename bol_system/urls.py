@@ -6,6 +6,7 @@ from . import auth_views
 
 urlpatterns = [
     path('health/', views.health_check, name='health_check'),
+    path('user/context/', views.user_context, name='user_context'),  # User role and permissions
     path('products/', views.ProductListView.as_view(), name='products'),
     path('customers/', views.customer_list, name='customers'),
     path('customers/<int:customer_id>/shiptos/', views.customer_shiptos, name='customer_shiptos'),

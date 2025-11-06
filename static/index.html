@@ -4,6 +4,7 @@
   <meta charset="utf-8" />
   <title>BOL Portal</title>
   <link rel="stylesheet" href="/static/css/cbrt-brand.css">
+  <script src="/static/js/rbac.js"></script>
   <style>
     /* Page-specific customizations */
     .balances-table {
@@ -34,22 +35,22 @@
     </div>
 
     <div class="tabs" role="tablist">
-      <button class="tab" role="tab" aria-selected="false" data-tab="admin">Admin</button>
+      <button class="tab admin-only" role="tab" aria-selected="false" data-tab="admin">Admin</button>
       <button class="tab active" role="tab" aria-selected="true" data-tab="office">Office</button>
       <button class="tab" role="tab" aria-selected="false" data-tab="client">Client</button>
     </div>
 
     <div id="tab-panels">
-      <div class="tab-panel" data-panel="admin" hidden>
+      <div class="tab-panel admin-only" data-panel="admin" hidden>
         <div class="card">
           <h3>Admin</h3>
           <div class="admin-grid">
-            <a class="btn" href="/products.html">Manage Products</a>
-            <a class="btn" href="/customers.html">Manage Customers</a>
-            <a class="btn" href="/carriers.html">Manage Carriers</a>
-            <a class="btn btn-accent" href="/releases.html">Upload Release PDF</a>
+            <a class="btn write-operation" href="/products.html" data-role="write">Manage Products</a>
+            <a class="btn write-operation" href="/customers.html" data-role="write">Manage Customers</a>
+            <a class="btn write-operation" href="/carriers.html" data-role="write">Manage Carriers</a>
+            <a class="btn btn-accent write-operation" href="/releases.html" data-role="write">Upload Release PDF</a>
             <a class="btn" href="/api/releases/open/view/">Open Releases</a>
-            <a class="btn btn-accent" href="/bol-weights.html">BOL Weight Management</a>
+            <a class="btn btn-accent write-operation" href="/bol-weights.html" data-role="write">BOL Weight Management</a>
           </div>
         </div>
       </div>
@@ -62,14 +63,14 @@
               <label>Product</label>
               <select id="product"></select>
             </div>
-            <a class="btn btn-accent" id="office" href="/office.html">Create BOL</a>
+            <a class="btn btn-accent write-operation" id="office" href="/office.html" data-role="write">Create BOL</a>
           </div>
           <div class="office-management">
-            <a class="btn" href="/customers.html">Manage Customers</a>
-            <a class="btn" href="/carriers.html">Manage Carriers</a>
-            <a class="btn btn-accent" href="/releases.html">Upload Release PDF</a>
+            <a class="btn write-operation" href="/customers.html" data-role="write">Manage Customers</a>
+            <a class="btn write-operation" href="/carriers.html" data-role="write">Manage Carriers</a>
+            <a class="btn btn-accent write-operation" href="/releases.html" data-role="write">Upload Release PDF</a>
             <a class="btn" href="/api/releases/open/view/">Open Releases</a>
-            <a class="btn btn-accent" href="/bol-weights.html">BOL Weight Management</a>
+            <a class="btn btn-accent write-operation" href="/bol-weights.html" data-role="write">BOL Weight Management</a>
           </div>
         </div>
       </div>
