@@ -9,6 +9,7 @@ from .models import Product, Customer, Carrier, Truck, BOL, Release, ReleaseLoad
 from .serializers import ProductSerializer, CustomerSerializer, CarrierSerializer, TruckSerializer, ReleaseSerializer, ReleaseLoadSerializer, CustomerShipToSerializer, AuditLogSerializer
 from .pdf_generator import generate_bol_pdf
 from .release_parser import parse_release_pdf
+from primetrade_project.decorators import require_role
 import logging
 import os
 import base64
@@ -532,6 +533,7 @@ def preview_bol(request):
 # BOL creation (confirm and save to database)
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
+@require_role('admin', 'user')  # Phase 2 RBAC: Block viewers from creating BOLs
 def confirm_bol(request):
     try:
         data = request.data
