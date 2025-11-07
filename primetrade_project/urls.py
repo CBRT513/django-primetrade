@@ -8,6 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import ensure_csrf_cookie
 from bol_system import auth_views
 from primetrade_project import auth_views as sso_auth_views
+from primetrade_project import api_views
 import os
 
 @ensure_csrf_cookie
@@ -19,6 +20,9 @@ def serve_static_html(request, file_name):
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('bol_system.urls')),
+
+    # User Context API for RBAC (frontend permission checking)
+    path('api/user/context/', api_views.user_context, name='user_context'),
 
     # SSO Authentication URLs (OAuth) - Primary authentication method
     path('login/', sso_auth_views.login_page, name='login'),  # Redirects to SSO automatically
