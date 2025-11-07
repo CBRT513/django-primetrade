@@ -27,8 +27,6 @@ set -e\n\
 echo "=== Running migrations ==="\n\
 python manage.py migrate --noinput || { echo "Migration failed!"; exit 1; }\n\
 echo "=== Migrations complete ==="\n\
-echo "=== Syncing official weights to ReleaseLoads ==="\n\
-python manage.py sync_official_weights\n\
 echo "=== Creating cache table ==="\n\
 python manage.py createcachetable\n\
 echo "=== Collecting static files ==="\n\
