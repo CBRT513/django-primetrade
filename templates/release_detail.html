@@ -179,8 +179,12 @@
         let actionCell = '';
         if (load.status === 'PENDING') {
           actionCell = `<button onclick="createBOLForLoad(${load.id})" style="background: #2563eb; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">Create BOL</button>`;
-        } else if (load.status === 'SHIPPED' && load.bol_pdf_url) {
-          actionCell = `<button onclick="window.open('${load.bol_pdf_url}', '_blank')" style="background: #059669; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">View BOL</button>`;
+        } else if (load.status === 'SHIPPED') {
+          // Use stamped PDF if available (when official weight entered), otherwise original
+          const pdfUrl = load.bol_stamped_pdf_url || load.bol_pdf_url;
+          if (pdfUrl) {
+            actionCell = `<button onclick="window.open('${pdfUrl}', '_blank')" style="background: #059669; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">View BOL</button>`;
+          }
         }
 
         // Determine weight display - official weight prominently, CBRT as estimate

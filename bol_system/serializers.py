@@ -29,26 +29,31 @@ class BOLSerializer(serializers.ModelSerializer):
     class Meta:
         model = BOL
         fields = ['id', 'bol_number', 'product_name', 'buyer_name', 'date',
-                 'truck_number', 'net_tons', 'pdf_url',
+                 'truck_number', 'net_tons', 'pdf_url', 'stamped_pdf_url',
                  'official_weight_tons', 'official_weight_entered_by', 'official_weight_entered_at',
                  'weight_variance_tons', 'weight_variance_percent', 'effective_weight_tons']
 
 class ReleaseLoadSerializer(serializers.ModelSerializer):
     bol_number = serializers.SerializerMethodField()
     bol_pdf_url = serializers.SerializerMethodField()
+    bol_stamped_pdf_url = serializers.SerializerMethodField()
     bol_created_at = serializers.SerializerMethodField()
     cbrt_tons = serializers.SerializerMethodField()
     official_weight_tons = serializers.SerializerMethodField()
 
     class Meta:
         model = ReleaseLoad
-        fields = ['id', 'seq', 'date', 'planned_tons', 'official_weight_tons', 'cbrt_tons', 'status', 'bol', 'bol_number', 'bol_pdf_url', 'bol_created_at']
+        fields = ['id', 'seq', 'date', 'planned_tons', 'official_weight_tons', 'cbrt_tons', 'status', 'bol', 'bol_number', 'bol_pdf_url', 'bol_stamped_pdf_url', 'bol_created_at']
 
     def get_bol_number(self, obj):
         return obj.bol.bol_number if obj.bol else None
 
     def get_bol_pdf_url(self, obj):
         return obj.bol.pdf_url if obj.bol else None
+
+    def get_bol_stamped_pdf_url(self, obj):
+        """Get watermarked PDF URL with official weight stamp"""
+        return obj.bol.stamped_pdf_url if obj.bol and obj.bol.stamped_pdf_url else None
 
     def get_bol_created_at(self, obj):
         return obj.bol.created_at.isoformat() if obj.bol else None

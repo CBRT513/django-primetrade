@@ -299,6 +299,7 @@
         let html = '';
         rows.forEach(row => {
           const hasOfficialWeight = row.officialWeightTons !== null && row.officialWeightTons !== undefined;
+          const hasStampedPdf = row.stampedPdfUrl && row.stampedPdfUrl !== '';
           const cbrtWeight = Number(row.netTons || 0).toFixed(2);
           const officialWeight = hasOfficialWeight ? Number(row.officialWeightTons).toFixed(2) : '-';
 
@@ -329,9 +330,12 @@
             ? '-'
             : `<button class="btn btn-sm" onclick='openWeightModal(${JSON.stringify(row)})'>Enter Weight</button>`;
 
+          // Always show stamped PDF if available (when official weight entered), otherwise original
+          const pdfUrl = hasStampedPdf ? row.stampedPdfUrl : (row.pdfUrl || '#');
+
           html += `
             <tr>
-              <td><a href="${row.pdfUrl || '#'}" target="_blank">${row.bolNo || '-'}</a></td>
+              <td><a href="${pdfUrl}" target="_blank">${row.bolNo || '-'}</a></td>
               <td>${row.date || '-'}</td>
               <td>${row.buyerName || '-'}</td>
               <td>${row.productName || '-'}</td>

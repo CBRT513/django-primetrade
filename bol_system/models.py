@@ -161,6 +161,7 @@ class BOL(TimestampedModel):
     official_weight_entered_at = models.DateTimeField(null=True, blank=True, help_text='When official weight was entered')
     weight_variance_tons = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text='Difference between official and CBRT scale')
     weight_variance_percent = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, help_text='Percentage variance')
+    stamped_pdf_url = models.URLField(max_length=1000, blank=True, help_text='Watermarked PDF with official weight stamp')
 
     class Meta:
         ordering = ['-created_at']
@@ -205,9 +206,10 @@ class BOL(TimestampedModel):
         return self.official_weight_tons if self.official_weight_tons is not None else self.net_tons
 
     def set_official_weight(self, weight_tons, entered_by_email):
-        """Set official weight and calculate variance"""
+        """Set official weight, calculate variance, and generate watermarked PDF"""
         from django.utils import timezone
         from decimal import Decimal
+        from .pdf_watermark import watermark_bol_pdf
 
         self.official_weight_tons = Decimal(str(weight_tons))
         self.official_weight_entered_by = entered_by_email
@@ -221,6 +223,18 @@ class BOL(TimestampedModel):
             self.weight_variance_percent = Decimal('0.00')
 
         self.save()
+
+        # Generate watermarked PDF with official weight stamp
+        try:
+            stamped_url = watermark_bol_pdf(self)
+            if stamped_url:
+                self.stamped_pdf_url = stamped_url
+                self.save(update_fields=['stamped_pdf_url'])
+                logger.info(f"Generated stamped PDF for BOL {self.bol_number}: {stamped_url}")
+            else:
+                logger.warning(f"Failed to generate stamped PDF for BOL {self.bol_number}")
+        except Exception as e:
+            logger.error(f"Error generating stamped PDF for BOL {self.bol_number}: {str(e)}", exc_info=True)
 
 class CompanyBranding(TimestampedModel):
     company_name = models.CharField(max_length=200, default="Cincinnati Barge & Rail Terminal, LLC")

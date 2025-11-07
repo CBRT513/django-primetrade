@@ -1408,6 +1408,7 @@ def bol_history(request):
                     'truckNo': bol.truck_number,
                     'netTons': float(bol.net_tons),
                     'pdfUrl': bol.pdf_url,
+                    'stampedPdfUrl': bol.stamped_pdf_url or None,
                     'productName': bol.product_name,
                     'buyerName': bol.buyer_name,
                     'officialWeightTons': float(bol.official_weight_tons) if bol.official_weight_tons else None,
@@ -1515,7 +1516,9 @@ def set_official_weight(request, bol_id):
             'varianceTons': float(bol.weight_variance_tons),
             'variancePercent': float(bol.weight_variance_percent),
             'enteredBy': bol.official_weight_entered_by,
-            'enteredAt': bol.official_weight_entered_at.isoformat() if bol.official_weight_entered_at else None
+            'enteredAt': bol.official_weight_entered_at.isoformat() if bol.official_weight_entered_at else None,
+            'pdfUrl': bol.pdf_url,
+            'stampedPdfUrl': bol.stamped_pdf_url or None
         })
 
     except BOL.DoesNotExist:
