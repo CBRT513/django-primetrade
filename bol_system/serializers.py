@@ -38,10 +38,11 @@ class ReleaseLoadSerializer(serializers.ModelSerializer):
     bol_pdf_url = serializers.SerializerMethodField()
     bol_created_at = serializers.SerializerMethodField()
     cbrt_tons = serializers.SerializerMethodField()
+    official_weight_tons = serializers.SerializerMethodField()
 
     class Meta:
         model = ReleaseLoad
-        fields = ['id', 'seq', 'date', 'planned_tons', 'actual_tons', 'cbrt_tons', 'status', 'bol', 'bol_number', 'bol_pdf_url', 'bol_created_at']
+        fields = ['id', 'seq', 'date', 'planned_tons', 'official_weight_tons', 'cbrt_tons', 'status', 'bol', 'bol_number', 'bol_pdf_url', 'bol_created_at']
 
     def get_bol_number(self, obj):
         return obj.bol.bol_number if obj.bol else None
@@ -55,6 +56,10 @@ class ReleaseLoadSerializer(serializers.ModelSerializer):
     def get_cbrt_tons(self, obj):
         """Get CBRT weight from BOL (loader's weight entered at creation)"""
         return float(obj.bol.net_tons) if obj.bol else None
+
+    def get_official_weight_tons(self, obj):
+        """Get official certified scale weight from BOL"""
+        return float(obj.bol.official_weight_tons) if obj.bol and obj.bol.official_weight_tons else None
 
 class CustomerShipToSerializer(serializers.ModelSerializer):
     class Meta:

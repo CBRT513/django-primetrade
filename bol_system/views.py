@@ -704,7 +704,6 @@ def confirm_bol(request):
         )
 
         # If load provided, mark shipped and attach
-        # Note: actual_tons stays NULL until official scale weight is entered
         if release_load:
             release_load.status = 'SHIPPED'
             release_load.bol = bol
@@ -1040,9 +1039,9 @@ def open_releases(request):
             shipped = r.loads.filter(status='SHIPPED').count()
             remaining = loads_total - shipped
             tons_total = float(r.quantity_net_tons or 0)
-            # Use actual_tons for SHIPPED loads, fallback to planned_tons for backward compatibility
+            # Use official weight from BOL, fallback to planned_tons if no official weight yet
             tons_shipped = float(r.loads.filter(status='SHIPPED').aggregate(
-                sum=models.Sum(Coalesce('actual_tons', 'planned_tons'))
+                sum=models.Sum(Coalesce('bol__official_weight_tons', 'planned_tons'))
             )['sum'] or 0)
             tons_remaining = max(0.0, tons_total - tons_shipped)
             next_date = r.loads.filter(status='PENDING').order_by('date').values_list('date', flat=True).first()
@@ -1179,10 +1178,10 @@ def release_detail_api(request, release_id):
         pending_loads = loads.filter(status='PENDING')
         cancelled_loads = loads.filter(status='CANCELLED')
 
-        # Calculate shipped tonnage using Coalesce(actual_tons, planned_tons)
+        # Calculate shipped tonnage using official weight from BOL, fallback to planned_tons
         from django.db.models import Sum
         shipped_tons = float(shipped_loads.aggregate(
-            sum=Sum(Coalesce('actual_tons', 'planned_tons'))
+            sum=Sum(Coalesce('bol__official_weight_tons', 'planned_tons'))
         )['sum'] or 0)
 
         data['loads_summary'] = {

@@ -111,8 +111,7 @@
           <thead>
             <tr style="background-color: #f5f5f5; text-align: left;">
               <th style="padding: 12px;">Load #</th>
-              <th style="padding: 12px;">CBRT Tons</th>
-              <th style="padding: 12px;">Actual Tons</th>
+              <th style="padding: 12px;">Weight (tons)</th>
               <th style="padding: 12px;">Status</th>
               <th style="padding: 12px;">BOL Number</th>
               <th style="padding: 12px;">Date Shipped</th>
@@ -184,10 +183,31 @@
           actionCell = `<button onclick="window.open('${load.bol_pdf_url}', '_blank')" style="background: #059669; color: white; border: none; padding: 6px 12px; border-radius: 4px; cursor: pointer; font-size: 0.9rem;">View BOL</button>`;
         }
 
+        // Determine weight display - official weight prominently, CBRT as estimate
+        // Color scheme: 🟢 Official = #059669 (green), 🟠 CBRT = #f59e0b (amber)
+        let weightCell = '-';
+        if (load.official_weight_tons) {
+          // Official weight exists - show prominently with CBRT as secondary
+          const official = parseFloat(load.official_weight_tons).toFixed(2);
+          const cbrt = parseFloat(load.cbrt_tons || 0).toFixed(2);
+          const variance = (load.official_weight_tons - (load.cbrt_tons || 0)).toFixed(2);
+          const varianceColor = Math.abs(variance) > 0.5 ? '#ef4444' : '#10b981';
+          weightCell = `
+            <div style="font-weight: 700; font-size: 1.1em; color: #059669;">${official} <span style="font-size: 0.75em; font-weight: 400;">tons</span></div>
+            <div style="font-size: 0.85em; color: #f59e0b;">Est: ${cbrt} <span style="color: ${varianceColor}; font-weight: 600;">(${variance >= 0 ? '+' : ''}${variance})</span></div>
+          `;
+        } else if (load.cbrt_tons) {
+          // Only CBRT estimate available
+          const cbrt = parseFloat(load.cbrt_tons).toFixed(2);
+          weightCell = `
+            <div style="font-weight: 700; font-size: 1.1em; color: #f59e0b;">${cbrt} <span style="font-size: 0.75em; font-weight: 400;">tons</span></div>
+            <div style="font-size: 0.85em; color: #f59e0b; font-style: italic;">Estimate</div>
+          `;
+        }
+
         row.innerHTML = `
           <td style="padding: 12px;">${load.seq}</td>
-          <td style="padding: 12px;">${load.cbrt_tons ? parseFloat(load.cbrt_tons).toFixed(2) : '-'}</td>
-          <td style="padding: 12px;">${load.actual_tons ? parseFloat(load.actual_tons).toFixed(2) : '-'}</td>
+          <td style="padding: 12px;">${weightCell}</td>
           <td style="padding: 12px;">${statusBadge}</td>
           <td style="padding: 12px;">${bolCell}</td>
           <td style="padding: 12px;">${dateCell}</td>

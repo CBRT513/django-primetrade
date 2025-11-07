@@ -120,7 +120,7 @@ class TestReleaseDetailAPI:
         assert 'id' in load
         assert 'seq' in load
         assert 'planned_tons' in load
-        assert 'actual_tons' in load
+        assert 'official_weight_tons' in load
         assert 'status' in load
         assert 'bol_number' in load
         assert 'bol_pdf_url' in load
@@ -152,9 +152,10 @@ class TestLoadsSummary:
             net_tons=Decimal('26.50'),  # Different from planned 25.0
             customer=test_customer
         )
+        # Set official weight
+        bol.set_official_weight(Decimal('26.50'), 'test@primetrade.com')
         load2.status = 'SHIPPED'
         load2.bol = bol
-        load2.actual_tons = bol.net_tons
         load2.save()
 
         # Get release detail
@@ -174,7 +175,7 @@ class TestLoadsSummary:
         assert summary['pending_loads'] == 1
         assert summary['cancelled_loads'] == 1
 
-        # Assert tonnage (actual_tons used for shipped, not planned)
+        # Assert tonnage (official_weight_tons from BOL used for shipped, not planned)
         assert summary['shipped_tons'] == 26.50
         assert summary['total_tons'] == 75.00
 
@@ -234,9 +235,10 @@ class TestFullWorkflow:
             net_tons=Decimal('25.75'),
             customer=test_customer
         )
+        # Set official weight
+        bol.set_official_weight(Decimal('25.75'), 'test@primetrade.com')
         load1.status = 'SHIPPED'
         load1.bol = bol
-        load1.actual_tons = bol.net_tons
         load1.save()
 
         # Verify load appears as shipped
@@ -253,7 +255,7 @@ class TestFullWorkflow:
         assert shipped_load is not None
         assert shipped_load['status'] == 'SHIPPED'
         assert shipped_load['bol_number'] == bol.bol_number
-        assert shipped_load['actual_tons'] == '25.75'
+        assert shipped_load['official_weight_tons'] == '25.75'
 
 
     def test_delete_bol_reverts_load_to_pending(
@@ -281,7 +283,6 @@ class TestFullWorkflow:
         )
         load1.status = 'SHIPPED'
         load1.bol = bol
-        load1.actual_tons = bol.net_tons
         load1.save()
 
         # Verify shipped
@@ -306,7 +307,7 @@ class TestFullWorkflow:
         assert reverted_load is not None
         assert reverted_load['status'] == 'PENDING'
         assert reverted_load['bol_number'] is None
-        assert reverted_load['actual_tons'] is None
+        assert reverted_load['official_weight_tons'] is None
 
 
 @pytest.mark.django_db

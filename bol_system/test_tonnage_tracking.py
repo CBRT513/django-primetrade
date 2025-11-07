@@ -87,21 +87,20 @@ def test_release(db, test_customer):
 
 
 @pytest.mark.django_db
-class TestBOLCreationUpdatesActualTons:
-    """Test that BOL creation updates actual_tons on ReleaseLoad."""
+class TestBOLWeightTracking:
+    """Test that load weight comes from BOL official_weight_tons."""
 
-    def test_bol_creation_populates_actual_tons(
+    def test_load_gets_weight_from_bol_official_weight(
         self, test_user, test_product, test_customer, test_carrier,
         test_truck, test_release
     ):
-        """When BOL created, actual_tons copied to ReleaseLoad."""
+        """Load weight should come from BOL.official_weight_tons."""
         # Get first load from release
         load = test_release.loads.first()
-        assert load.actual_tons is None
         assert load.status == 'PENDING'
         assert load.planned_tons == Decimal('23.000')
 
-        # Create BOL with actual weight of 24.5 tons
+        # Create BOL with CBRT estimate of 24.5 tons
         bol = BOL.objects.create(
             product=test_product,
             product_name=test_product.name,
@@ -121,14 +120,21 @@ class TestBOLCreationUpdatesActualTons:
         # Link BOL to load (simulating what confirm_bol does)
         load.status = 'SHIPPED'
         load.bol = bol
-        load.actual_tons = bol.net_tons
         load.save()
 
         # Reload from database
         load.refresh_from_db()
 
-        # Assert actual_tons populated
-        assert load.actual_tons == Decimal('24.50')
+        # Before official weight is set, load has no official weight
+        assert load.bol.official_weight_tons is None
+        assert load.bol.net_tons == Decimal('24.50')
+
+        # Set official weight (certified scale)
+        bol.set_official_weight(Decimal('25.00'), 'test@primetrade.com')
+        load.refresh_from_db()
+
+        # Now load can access official weight through BOL
+        assert load.bol.official_weight_tons == Decimal('25.00')
         assert load.status == 'SHIPPED'
         assert load.bol == bol
 
@@ -137,7 +143,7 @@ class TestBOLCreationUpdatesActualTons:
 class TestBOLDeletionRevertsToPending:
     """Test that BOL deletion reverts ReleaseLoad to PENDING."""
 
-    def test_bol_deletion_clears_actual_tons(
+    def test_bol_deletion_reverts_load_to_pending(
         self, test_user, test_product, test_customer, test_carrier,
         test_truck, test_release
     ):
@@ -163,13 +169,12 @@ class TestBOLDeletionRevertsToPending:
 
         load.status = 'SHIPPED'
         load.bol = bol
-        load.actual_tons = bol.net_tons
         load.save()
 
         # Verify setup
         load.refresh_from_db()
-        assert load.actual_tons == Decimal('24.50')
         assert load.status == 'SHIPPED'
+        assert load.bol == bol
 
         # Action: Delete BOL
         bol_id = bol.id
@@ -178,25 +183,24 @@ class TestBOLDeletionRevertsToPending:
         # Reload load
         load.refresh_from_db()
 
-        # Assert: Load reverted to PENDING
-        assert load.actual_tons is None
+        # Assert: Load reverted to PENDING, BOL cleared
         assert load.status == 'PENDING'
         assert load.bol is None
 
 
 @pytest.mark.django_db
-class TestOpenReleasesUsesActualTons:
-    """Test that open releases calculation uses actual_tons."""
+class TestOpenReleasesUsesOfficialWeight:
+    """Test that open releases calculation uses BOL official_weight_tons."""
 
-    def test_open_releases_calculation_with_actual_tons(
+    def test_open_releases_calculation_with_official_weights(
         self, test_user, test_product, test_customer, test_carrier,
         test_truck, test_release
     ):
-        """Open releases uses actual_tons for shipped loads."""
+        """Open releases uses official_weight_tons from BOL for shipped loads."""
         # Setup: Release 92 tons, 4 loads (23.0 planned each)
         loads = list(test_release.loads.all())
 
-        # Ship first load with 24.5 actual tons
+        # Ship first load - CBRT estimate 24.0, official weight 24.5 tons
         bol1 = BOL.objects.create(
             product=test_product,
             product_name=test_product.name,
@@ -208,15 +212,15 @@ class TestOpenReleasesUsesActualTons:
             truck=test_truck,
             truck_number=test_truck.truck_number,
             trailer_number=test_truck.trailer_number,
-            net_tons=Decimal('24.50'),
+            net_tons=Decimal('24.00'),
             customer=test_customer
         )
+        bol1.set_official_weight(Decimal('24.50'), 'test@primetrade.com')
         loads[0].status = 'SHIPPED'
         loads[0].bol = bol1
-        loads[0].actual_tons = Decimal('24.50')
         loads[0].save()
 
-        # Ship second load with 23.75 actual tons
+        # Ship second load - CBRT estimate 23.5, official weight 23.75 tons
         bol2 = BOL.objects.create(
             product=test_product,
             product_name=test_product.name,
@@ -228,12 +232,12 @@ class TestOpenReleasesUsesActualTons:
             truck=test_truck,
             truck_number=test_truck.truck_number,
             trailer_number=test_truck.trailer_number,
-            net_tons=Decimal('23.75'),
+            net_tons=Decimal('23.50'),
             customer=test_customer
         )
+        bol2.set_official_weight(Decimal('23.75'), 'test@primetrade.com')
         loads[1].status = 'SHIPPED'
         loads[1].bol = bol2
-        loads[1].actual_tons = Decimal('23.75')
         loads[1].save()
 
         # Calculate shipped/remaining (simulating open_releases view)
@@ -242,22 +246,22 @@ class TestOpenReleasesUsesActualTons:
 
         tons_total = float(test_release.quantity_net_tons or 0)
         tons_shipped = float(test_release.loads.filter(status='SHIPPED').aggregate(
-            sum=Sum(Coalesce('actual_tons', 'planned_tons'))
+            sum=Sum(Coalesce('bol__official_weight_tons', 'planned_tons'))
         )['sum'] or 0)
         tons_remaining = max(0.0, tons_total - tons_shipped)
 
-        # Assert: Correct calculation
+        # Assert: Correct calculation using official weights
         assert tons_total == 92.0
         assert tons_shipped == 48.25  # 24.50 + 23.75
         assert tons_remaining == 43.75  # 92.0 - 48.25
 
 
-    def test_open_releases_backward_compatibility(
+    def test_open_releases_fallback_to_planned_tons(
         self, test_user, test_product, test_customer, test_carrier,
         test_truck, test_release
     ):
-        """Open releases falls back to planned_tons if actual_tons is None."""
-        # Setup: Old shipped load without actual_tons (backward compatibility)
+        """Open releases falls back to planned_tons if official weight not entered yet."""
+        # Setup: Shipped load where official weight hasn't been entered yet
         load = test_release.loads.first()
 
         bol = BOL.objects.create(
@@ -275,10 +279,9 @@ class TestOpenReleasesUsesActualTons:
             customer=test_customer
         )
 
-        # Mark as shipped but DON'T set actual_tons (simulating old data)
+        # Mark as shipped but DON'T set official weight yet
         load.status = 'SHIPPED'
         load.bol = bol
-        # load.actual_tons = None (explicitly not setting)
         load.save()
 
         # Calculate shipped tonnage
@@ -286,10 +289,10 @@ class TestOpenReleasesUsesActualTons:
         from django.db.models.functions import Coalesce
 
         tons_shipped = float(test_release.loads.filter(status='SHIPPED').aggregate(
-            sum=Sum(Coalesce('actual_tons', 'planned_tons'))
+            sum=Sum(Coalesce('bol__official_weight_tons', 'planned_tons'))
         )['sum'] or 0)
 
-        # Assert: Falls back to planned_tons (23.0)
+        # Assert: Falls back to planned_tons (23.0) since no official weight yet
         assert tons_shipped == 23.0
 
 
@@ -297,7 +300,7 @@ class TestOpenReleasesUsesActualTons:
         self, test_user, test_product, test_customer, test_carrier,
         test_truck, test_release
     ):
-        """Actual tons displays with 2 decimal precision."""
+        """Official weight displays with 2 decimal precision."""
         load = test_release.loads.first()
 
         bol = BOL.objects.create(
@@ -317,14 +320,15 @@ class TestOpenReleasesUsesActualTons:
 
         load.status = 'SHIPPED'
         load.bol = bol
-        load.actual_tons = bol.net_tons
         load.save()
 
+        # Set official weight
+        bol.set_official_weight(Decimal('24.50'), 'test@primetrade.com')
         load.refresh_from_db()
 
-        # Assert: Decimal with 2 places
-        assert load.actual_tons == Decimal('24.50')
-        assert f"{load.actual_tons:.2f}" == "24.50"
+        # Assert: Official weight has 2 decimal places
+        assert load.bol.official_weight_tons == Decimal('24.50')
+        assert f"{load.bol.official_weight_tons:.2f}" == "24.50"
 
 
 @pytest.mark.django_db
@@ -354,9 +358,10 @@ class TestEdgeCases:
                 net_tons=Decimal('24.00') + Decimal(i),
                 customer=test_customer
             )
+            # Set official weight
+            bol.set_official_weight(Decimal('24.00') + Decimal(i), 'test@primetrade.com')
             loads[i].status = 'SHIPPED'
             loads[i].bol = bol
-            loads[i].actual_tons = bol.net_tons
             loads[i].save()
 
         # Calculate
@@ -366,7 +371,7 @@ class TestEdgeCases:
         shipped_count = test_release.loads.filter(status='SHIPPED').count()
         pending_count = test_release.loads.filter(status='PENDING').count()
         tons_shipped = float(test_release.loads.filter(status='SHIPPED').aggregate(
-            sum=Sum(Coalesce('actual_tons', 'planned_tons'))
+            sum=Sum(Coalesce('bol__official_weight_tons', 'planned_tons'))
         )['sum'] or 0)
 
         # Assert

@@ -175,8 +175,8 @@
           <th>Date</th>
           <th>Customer</th>
           <th>Product</th>
-          <th class="ta-r">CBRT Weight</th>
-          <th class="ta-r">Official Weight</th>
+          <th class="ta-r"><span style="color: #f59e0b;">🟠 CBRT Weight</span><br/><span style="font-size: 0.85em; font-weight: 400; color: #f59e0b;">(Estimate)</span></th>
+          <th class="ta-r"><span style="color: #059669;">🟢 Official Weight</span><br/><span style="font-size: 0.85em; font-weight: 400; color: #059669;">(Certified Scale)</span></th>
           <th class="ta-r">Variance</th>
           <th class="ta-c">Status</th>
           <th class="ta-c">Action</th>
@@ -295,6 +295,7 @@
           return;
         }
 
+        // Color scheme: 🟢 Official = #059669 (green), 🟠 CBRT = #f59e0b (amber)
         let html = '';
         rows.forEach(row => {
           const hasOfficialWeight = row.officialWeightTons !== null && row.officialWeightTons !== undefined;
@@ -334,8 +335,8 @@
               <td>${row.date || '-'}</td>
               <td>${row.buyerName || '-'}</td>
               <td>${row.productName || '-'}</td>
-              <td class="ta-r weight-cell">${cbrtWeight}</td>
-              <td class="ta-r weight-cell">${officialWeight}</td>
+              <td class="ta-r weight-cell" style="color: #f59e0b; font-weight: 600;">${cbrtWeight}</td>
+              <td class="ta-r weight-cell" style="color: #059669; font-weight: 700;">${officialWeight}</td>
               <td class="ta-r">${varianceHTML}</td>
               <td class="ta-c">${statusBadge}</td>
               <td class="ta-c">${actionButton}</td>

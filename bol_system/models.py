@@ -180,12 +180,11 @@ class BOL(TimestampedModel):
         # Get related release loads before deletion
         release_loads = ReleaseLoad.objects.filter(bol=self)
 
-        # Revert each load to PENDING and clear actual_tons
+        # Revert each load to PENDING
         for load in release_loads:
             load.status = 'PENDING'
             load.bol = None
-            load.actual_tons = None
-            load.save(update_fields=['status', 'bol', 'actual_tons', 'updated_at'])
+            load.save(update_fields=['status', 'bol', 'updated_at'])
             logger.info(f"Reverted ReleaseLoad {load.id} to PENDING (BOL {self.bol_number} deleted)")
 
         # Call parent delete
@@ -222,16 +221,6 @@ class BOL(TimestampedModel):
             self.weight_variance_percent = Decimal('0.00')
 
         self.save()
-
-        # Update any linked ReleaseLoad's actual_tons to reflect official weight
-        try:
-            release_load = self.releaseload_set.first()
-            if release_load:
-                release_load.actual_tons = self.official_weight_tons
-                release_load.save()
-                logger.info(f"Updated ReleaseLoad {release_load.id} actual_tons to {self.official_weight_tons}")
-        except Exception as e:
-            logger.warning(f"Could not update ReleaseLoad for BOL {self.bol_number}: {e}")
 
 class CompanyBranding(TimestampedModel):
     company_name = models.CharField(max_length=200, default="Cincinnati Barge & Rail Terminal, LLC")
@@ -348,13 +337,6 @@ class ReleaseLoad(TimestampedModel):
     seq = models.IntegerField()  # 1..N
     date = models.DateField(null=True, blank=True)
     planned_tons = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
-    actual_tons = models.DecimalField(
-        max_digits=10,
-        decimal_places=2,
-        null=True,
-        blank=True,
-        help_text="Actual tonnage from BOL (replaces planned_tons when shipped)"
-    )
     status = models.CharField(max_length=12, choices=STATUS_CHOICES, default="PENDING")
     bol = models.ForeignKey(BOL, on_delete=models.SET_NULL, null=True, blank=True)
 
