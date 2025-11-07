@@ -30,9 +30,12 @@
 
     <div class="card">
       <form id="editForm">
-        <div style="display:flex; gap:.5rem; justify-content:flex-end; margin-bottom:1rem;">
-          <a class="btn" href="/api/releases/open/view/">Cancel</a>
-          <button type="submit" class="btn btn-accent">Save Changes</button>
+        <div style="display:flex; gap:.5rem; justify-content:space-between; margin-bottom:1rem;">
+          <button type="button" id="cancelReleaseBtn" class="btn" style="background: #dc3545; color: white;">Cancel Release</button>
+          <div style="display:flex; gap:.5rem;">
+            <a class="btn" href="/api/releases/open/view/">Back</a>
+            <button type="submit" class="btn btn-accent">Save Changes</button>
+          </div>
         </div>
 
         <div class="grid">
@@ -276,23 +279,39 @@
       renderLoads(rel.loads || [], rel.loads_summary);
     }
 
+    // Cancel Release button handler
+    document.getElementById('cancelReleaseBtn').addEventListener('click', async () => {
+      const id = rid(); if(!id) return;
+
+      const confirmed = confirm(
+        'Are you sure you want to CANCEL this release?\n\n' +
+        'This will:\n' +
+        '• Cancel all pending loads\n' +
+        '• Block cancellation if any loads have been shipped\n\n' +
+        'This action cannot be undone.'
+      );
+      if (!confirmed) return;
+
+      // Set status to CANCELLED and save
+      const csrf = (window.Utils && Utils.getCSRFToken) ? Utils.getCSRFToken() : null;
+      const r = await fetch(`/api/releases/${id}/`, {
+        method: 'PATCH',
+        credentials: 'same-origin',
+        headers: { 'Content-Type': 'application/json', ...(csrf ? {'X-CSRFToken': csrf} : {}) },
+        body: JSON.stringify({ status: 'CANCELLED' })
+      });
+      const j = await r.json().catch(()=>null);
+      if (!r.ok){ show((j&&j.error)||`HTTP ${r.status}`,'error',8000); return; }
+      show('Release cancelled','success');
+      setTimeout(()=>{ window.location.href='/api/releases/open/view/'; }, 800);
+    });
+
+    // Save Changes form handler
     document.getElementById('editForm').addEventListener('submit', async (e) => {
       e.preventDefault();
       const id = rid(); if(!id) return;
 
-      // Check if status is being changed to CANCELLED
       const newStatus = document.getElementById('statusSelect').value;
-      if (newStatus === 'CANCELLED') {
-        const confirmed = confirm(
-          'Are you sure you want to cancel this release?\n\n' +
-          'This will:\n' +
-          '• Cancel all pending loads\n' +
-          '• Prevent cancellation if any loads have been shipped\n\n' +
-          'This action cannot be undone.'
-        );
-        if (!confirmed) return;
-      }
-
       const payload = {
         releaseDate: document.getElementById('releaseDate').value || undefined,
         status: newStatus || undefined,
