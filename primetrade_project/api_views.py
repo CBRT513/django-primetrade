@@ -5,12 +5,16 @@ This module provides API endpoints for frontend JavaScript to query
 user permissions and role information.
 """
 
+import logging
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
+from django.views.decorators.csrf import csrf_exempt
+
+logger = logging.getLogger(__name__)
 
 
-@login_required
+@csrf_exempt
 @require_http_methods(["GET"])
 def user_context(request):
     """
@@ -37,6 +41,12 @@ def user_context(request):
     Returns:
         JsonResponse: User context with permissions as booleans
     """
+    # Debug logging
+    logger.info(f"[USER_CONTEXT] Request from {request.META.get('REMOTE_ADDR')}")
+    logger.info(f"[USER_CONTEXT] Is authenticated: {request.user.is_authenticated}")
+    logger.info(f"[USER_CONTEXT] Session key: {request.session.session_key}")
+    logger.info(f"[USER_CONTEXT] Session data: {dict(request.session.items())}")
+
     if not request.user.is_authenticated:
         return JsonResponse(
             {
