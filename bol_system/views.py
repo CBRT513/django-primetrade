@@ -1241,6 +1241,19 @@ def release_detail_api(request, release_id):
         analysis = mat.get('analysis') or {}
 
         with transaction.atomic():
+            # Handle release cancellation
+            if status_val == 'CANCELLED':
+                # Check if any loads have been shipped
+                shipped_count = rel.loads.filter(status='SHIPPED').count()
+                if shipped_count > 0:
+                    return Response(
+                        {'error': f'Cannot cancel release: {shipped_count} load(s) have already been shipped'},
+                        status=status.HTTP_400_BAD_REQUEST
+                    )
+                # Cancel all pending loads
+                cancelled_loads = rel.loads.filter(status='PENDING').update(status='CANCELLED')
+                logger.info(f"Cancelled release {rel.release_number}: {cancelled_loads} pending loads cancelled by {request.user.username}")
+
             # Update simple fields
             if release_date: rel.release_date = release_date
             if customer_id_text: rel.customer_id_text = customer_id_text
