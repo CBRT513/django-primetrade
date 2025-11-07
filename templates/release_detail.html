@@ -162,10 +162,13 @@
           statusBadge = '<span style="background: #6b7280; color: white; padding: 4px 8px; border-radius: 4px; font-size: 0.85rem;">CANCELLED</span>';
         }
 
-        // BOL number (clickable if exists)
+        // BOL number (clickable if exists) - use stamped PDF if available
         let bolCell = '-';
-        if (load.bol_number && load.bol_pdf_url) {
-          bolCell = `<a href="${load.bol_pdf_url}" target="_blank" style="color: #2563eb; text-decoration: underline;">${load.bol_number}</a>`;
+        if (load.bol_number) {
+          const bolPdfUrl = load.bol_stamped_pdf_url || load.bol_pdf_url;
+          if (bolPdfUrl) {
+            bolCell = `<a href="${bolPdfUrl}" target="_blank" style="color: #2563eb; text-decoration: underline;">${load.bol_number}</a>`;
+          }
         }
 
         // Date shipped
