@@ -48,6 +48,7 @@ MIDDLEWARE = [
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'primetrade_project.middleware.RoleBasedAccessMiddleware',  # Role-based page access control
 ]
 
 ROOT_URLCONF = 'primetrade_project.urls'
