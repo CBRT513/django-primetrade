@@ -118,8 +118,8 @@ def user_context(request):
             'permissions': permissions,
             'is_authenticated': True
         },
-        'can_write': user_role in ['admin', 'user'],
-        'is_admin': user_role == 'admin'
+        'can_write': 'write' in permissions or 'full_access' in permissions,
+        'is_admin': 'full_access' in permissions
     })
 
 # Product endpoints
