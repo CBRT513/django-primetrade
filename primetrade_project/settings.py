@@ -166,14 +166,14 @@ if USE_S3:
     AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
     AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME', default='primetrade-documents')
     AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME', default='us-east-2')  # Ohio region
-    # Don't set AWS_S3_CUSTOM_DOMAIN - it prevents signed URL generation
+    # Use direct S3 URLs (public access) for BOL PDFs
+    AWS_S3_CUSTOM_DOMAIN = f"{config('AWS_STORAGE_BUCKET_NAME', default='primetrade-documents')}.s3.{config('AWS_S3_REGION_NAME', default='us-east-2')}.amazonaws.com"
     AWS_S3_OBJECT_PARAMETERS = {
         'CacheControl': 'max-age=86400',  # 24 hours
     }
-    AWS_DEFAULT_ACL = None  # Use bucket ACL
+    AWS_DEFAULT_ACL = 'public-read'  # Make BOL PDFs publicly readable
     AWS_S3_FILE_OVERWRITE = False  # Never overwrite existing files
-    AWS_QUERYSTRING_AUTH = True  # Use signed URLs
-    AWS_QUERYSTRING_EXPIRE = 86400  # Signed URLs expire after 24 hours
+    AWS_QUERYSTRING_AUTH = False  # Use direct URLs instead of signed URLs
 
     # Use S3 for media files (PDFs)
     STORAGES = {
