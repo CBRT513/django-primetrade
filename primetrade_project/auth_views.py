@@ -7,9 +7,10 @@ from django.shortcuts import redirect, render
 from django.contrib.auth import login, logout
 from django.contrib.auth.models import User
 from django.conf import settings
-from django.http import HttpResponseForbidden
+from django.http import HttpResponseForbidden, JsonResponse
 from django.core.cache import cache
 import jwt
+from jwt import PyJWKClient
 
 # Set up loggers
 logger = logging.getLogger('primetrade_project.auth_views')
@@ -251,18 +252,64 @@ def sso_callback(request):
         logger.error(f"[FLOW DEBUG 5.2]   - id_token (first 50 chars): {id_token[:50]}...")
 
     try:
-        # Decode id_token (the JWT), not access_token (opaque string)
-        decoded = jwt.decode(id_token, options={"verify_signature": False})
-        logger.info(f"JWT decoded successfully. Claims: {list(decoded.keys())}")
+        # Fetch JWKS from SSO and verify JWT signature
+        jwks_url = f"{settings.SSO_BASE_URL}/api/auth/.well-known/jwks.json"
+        logger.error(f"[FLOW DEBUG 5.3] Fetching JWKS from: {jwks_url}")
 
-        logger.error(f"[FLOW DEBUG 6] JWT decoded successfully:")
+        jwks_client = PyJWKClient(jwks_url, cache_keys=True)
+        signing_key = jwks_client.get_signing_key_from_jwt(id_token)
+
+        logger.error(f"[FLOW DEBUG 5.4] Retrieved signing key: {signing_key.key_id}")
+
+        # Decode and verify JWT with full validation
+        decoded = jwt.decode(
+            id_token,
+            signing_key.key,
+            algorithms=["RS256"],
+            audience=settings.SSO_CLIENT_ID,
+            issuer=f"{settings.SSO_BASE_URL}/o",
+            options={
+                "verify_signature": True,
+                "verify_aud": True,
+                "verify_iss": True,
+                "verify_exp": True,
+            }
+        )
+
+        logger.info(f"JWT verified and decoded successfully. Claims: {list(decoded.keys())}")
+        logger.error(f"[FLOW DEBUG 6] JWT verified and decoded successfully:")
         logger.error(f"[FLOW DEBUG 6.1]   - Available claims: {list(decoded.keys())}")
         logger.error(f"[FLOW DEBUG 6.2]   - Full decoded JWT: {decoded}")
 
+    except jwt.InvalidSignatureError as e:
+        security_logger.error(f"JWT signature verification failed: {str(e)}")
+        logger.error(f"[FLOW DEBUG 6.3] JWT SIGNATURE INVALID: {str(e)}")
+        return HttpResponseForbidden("Invalid token signature - authentication failed. Possible token forgery detected.")
+
+    except jwt.ExpiredSignatureError as e:
+        security_logger.warning(f"JWT token expired: {str(e)}")
+        logger.error(f"[FLOW DEBUG 6.4] JWT EXPIRED: {str(e)}")
+        return HttpResponseForbidden("Authentication token has expired. Please log in again.")
+
+    except jwt.InvalidAudienceError as e:
+        security_logger.error(f"JWT audience mismatch: {str(e)}")
+        logger.error(f"[FLOW DEBUG 6.5] JWT AUDIENCE MISMATCH: {str(e)}")
+        return HttpResponseForbidden("Invalid token audience - token not intended for this application.")
+
+    except jwt.InvalidIssuerError as e:
+        security_logger.error(f"JWT issuer mismatch: {str(e)}")
+        logger.error(f"[FLOW DEBUG 6.6] JWT ISSUER MISMATCH: {str(e)}")
+        return HttpResponseForbidden("Invalid token issuer - token from untrusted source.")
+
     except jwt.DecodeError as e:
         security_logger.error(f"JWT decode failed: {str(e)}")
-        logger.error(f"[FLOW DEBUG 6.3] JWT decode FAILED: {str(e)}")
-        return HttpResponseForbidden(f"Invalid JWT token: {str(e)}")
+        logger.error(f"[FLOW DEBUG 6.7] JWT DECODE FAILED: {str(e)}")
+        return HttpResponseForbidden(f"Invalid JWT token format: {str(e)}")
+
+    except Exception as e:
+        security_logger.error(f"JWT verification error: {str(e)}", exc_info=True)
+        logger.error(f"[FLOW DEBUG 6.8] JWT VERIFICATION ERROR: {str(e)}")
+        return HttpResponseForbidden("Authentication failed. Please try again or contact support.")
 
     # If application_roles missing, try OIDC userinfo endpoint (fallback)
     if not decoded.get('application_roles') and access_token:
