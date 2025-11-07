@@ -776,9 +776,9 @@ def balances(request):
             result.append({
                 'id': product.id,
                 'name': product.name,
-                'startTons': start_tons,
-                'shipped': shipped,
-                'remaining': start_tons - shipped
+                'startTons': round(start_tons, 2),
+                'shipped': round(shipped, 2),
+                'remaining': round(start_tons - shipped, 2)
             })
 
         return Response(result)
@@ -1421,11 +1421,12 @@ def bol_history(request):
                 except (TypeError, ValueError) as e:
                     logger.warning(f"Error processing BOL {bol.id} weight in history: {e}")
                     shipped += float(bol.net_tons)
-            remaining = float(product.start_tons) - shipped
+            start_tons = float(product.start_tons)
+            remaining = start_tons - shipped
             summary = {
-                'start': float(product.start_tons),
-                'shipped': shipped,
-                'remaining': remaining
+                'start': round(start_tons, 2),
+                'shipped': round(shipped, 2),
+                'remaining': round(remaining, 2)
             }
         else:
             # All BOLs (for weight management page)
@@ -1445,15 +1446,15 @@ def bol_history(request):
                     'bolNo': bol.bol_number,
                     'date': bol.date,
                     'truckNo': bol.truck_number,
-                    'netTons': display_weight,  # Best available weight
-                    'cbrtWeightTons': float(bol.net_tons),  # Always include CBRT weight for reference
+                    'netTons': round(display_weight, 2),  # Best available weight
+                    'cbrtWeightTons': round(float(bol.net_tons), 2),  # Always include CBRT weight for reference
                     'pdfUrl': bol.pdf_url,
                     'stampedPdfUrl': bol.stamped_pdf_url or None,
                     'productName': bol.product_name,
                     'buyerName': bol.buyer_name,
-                    'officialWeightTons': float(bol.official_weight_tons) if has_official else None,
-                    'varianceTons': float(bol.weight_variance_tons) if hasattr(bol, 'weight_variance_tons') and bol.weight_variance_tons else None,
-                    'variancePercent': float(bol.weight_variance_percent) if hasattr(bol, 'weight_variance_percent') and bol.weight_variance_percent else None,
+                    'officialWeightTons': round(float(bol.official_weight_tons), 2) if has_official else None,
+                    'varianceTons': round(float(bol.weight_variance_tons), 2) if hasattr(bol, 'weight_variance_tons') and bol.weight_variance_tons else None,
+                    'variancePercent': round(float(bol.weight_variance_percent), 2) if hasattr(bol, 'weight_variance_percent') and bol.weight_variance_percent else None,
                     'enteredBy': bol.official_weight_entered_by if hasattr(bol, 'official_weight_entered_by') else None,
                     'enteredAt': bol.official_weight_entered_at.isoformat() if hasattr(bol, 'official_weight_entered_at') and bol.official_weight_entered_at else None
                 })
