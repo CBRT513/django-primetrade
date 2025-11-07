@@ -33,6 +33,9 @@
         <button id="refresh" class="btn btn-secondary btn-sm">Refresh</button>
         <span id="count" class="badge">0 open</span>
       </div>
+      <div style="margin-top: 0.75rem; padding: 0.75rem; background: #f0f9ff; border-left: 4px solid #059669; border-radius: 4px; font-size: 0.9rem;">
+        <strong>Weight Calculation:</strong> Shipped tons uses <span style="color: #059669; font-weight: 600;">🟢 Official Weight</span> when available, otherwise uses <span style="color: #f59e0b; font-weight: 600;">🟠 Planned Weight</span> as estimate.
+      </div>
       <div class="table-container" style="margin-top:.75rem;">
         <table id="tbl">
           <thead>
@@ -40,7 +43,7 @@
               <th>Release #</th>
               <th>Customer</th>
               <th>Loads</th>
-              <th>Tons</th>
+              <th>Tons<br/><span style="font-size: 0.85em; font-weight: 400; color: #6b7280;">(Shipped / Total)</span></th>
               <th>Next Load</th>
               <th>Last Shipped</th>
             </tr>
