@@ -758,9 +758,13 @@ def balances(request):
         products = Product.objects.filter(is_active=True)
         result = []
         for product in products:
-            shipped = BOL.objects.filter(product=product).aggregate(
-                total=models.Sum('net_tons')
-            )['total'] or 0
+            # Use official weight if available, otherwise fall back to CBRT weight
+            bols = BOL.objects.filter(product=product)
+            shipped = sum(
+                float(bol.official_weight_tons) if bol.official_weight_tons is not None
+                else float(bol.net_tons)
+                for bol in bols
+            )
 
             result.append({
                 'id': product.id,
@@ -1399,7 +1403,12 @@ def bol_history(request):
                 return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
 
             bols = BOL.objects.filter(product=product).order_by('date')
-            shipped = sum(float(bol.net_tons) for bol in bols)
+            # Use official weight if available, otherwise CBRT weight
+            shipped = sum(
+                float(bol.official_weight_tons) if bol.official_weight_tons is not None
+                else float(bol.net_tons)
+                for bol in bols
+            )
             remaining = float(product.start_tons) - shipped
             summary = {
                 'start': float(product.start_tons),
@@ -1419,7 +1428,9 @@ def bol_history(request):
                     'bolNo': bol.bol_number,
                     'date': bol.date,
                     'truckNo': bol.truck_number,
-                    'netTons': float(bol.net_tons),
+                    # Use official weight if available, otherwise CBRT weight
+                    'netTons': float(bol.official_weight_tons) if bol.official_weight_tons is not None else float(bol.net_tons),
+                    'cbrtWeightTons': float(bol.net_tons),  # Always include CBRT weight for reference
                     'pdfUrl': bol.pdf_url,
                     'stampedPdfUrl': bol.stamped_pdf_url or None,
                     'productName': bol.product_name,
