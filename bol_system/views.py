@@ -760,23 +760,30 @@ def balances(request):
         for product in products:
             # Use official weight if available, otherwise fall back to CBRT weight
             bols = BOL.objects.filter(product=product)
-            shipped = sum(
-                float(bol.official_weight_tons) if bol.official_weight_tons is not None
-                else float(bol.net_tons)
-                for bol in bols
-            )
+            shipped = 0
+            for bol in bols:
+                try:
+                    # Use official weight if it exists and is not None
+                    if hasattr(bol, 'official_weight_tons') and bol.official_weight_tons is not None:
+                        shipped += float(bol.official_weight_tons)
+                    else:
+                        shipped += float(bol.net_tons)
+                except (TypeError, ValueError) as e:
+                    logger.warning(f"Error processing BOL {bol.id} weight: {e}, using net_tons")
+                    shipped += float(bol.net_tons)
 
+            start_tons = float(product.start_tons)
             result.append({
                 'id': product.id,
                 'name': product.name,
-                'startTons': float(product.start_tons),
-                'shipped': float(shipped),
-                'remaining': float(product.start_tons - shipped)
+                'startTons': start_tons,
+                'shipped': shipped,
+                'remaining': start_tons - shipped
             })
 
         return Response(result)
     except Exception as e:
-        logger.error(f"Error in balances: {str(e)}")
+        logger.error(f"Error in balances: {str(e)}", exc_info=True)
         return Response(
             {'error': 'An unexpected error occurred'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -1404,11 +1411,16 @@ def bol_history(request):
 
             bols = BOL.objects.filter(product=product).order_by('date')
             # Use official weight if available, otherwise CBRT weight
-            shipped = sum(
-                float(bol.official_weight_tons) if bol.official_weight_tons is not None
-                else float(bol.net_tons)
-                for bol in bols
-            )
+            shipped = 0
+            for bol in bols:
+                try:
+                    if hasattr(bol, 'official_weight_tons') and bol.official_weight_tons is not None:
+                        shipped += float(bol.official_weight_tons)
+                    else:
+                        shipped += float(bol.net_tons)
+                except (TypeError, ValueError) as e:
+                    logger.warning(f"Error processing BOL {bol.id} weight in history: {e}")
+                    shipped += float(bol.net_tons)
             remaining = float(product.start_tons) - shipped
             summary = {
                 'start': float(product.start_tons),
@@ -1420,29 +1432,39 @@ def bol_history(request):
             bols = BOL.objects.all().order_by('-created_at')
             summary = None
 
-        return Response({
-            'summary': summary,
-            'rows': [
-                {
+        # Build rows with safe weight handling
+        rows = []
+        for bol in bols:
+            try:
+                # Determine which weight to display
+                has_official = hasattr(bol, 'official_weight_tons') and bol.official_weight_tons is not None
+                display_weight = float(bol.official_weight_tons) if has_official else float(bol.net_tons)
+
+                rows.append({
                     'id': bol.id,
                     'bolNo': bol.bol_number,
                     'date': bol.date,
                     'truckNo': bol.truck_number,
-                    # Use official weight if available, otherwise CBRT weight
-                    'netTons': float(bol.official_weight_tons) if bol.official_weight_tons is not None else float(bol.net_tons),
+                    'netTons': display_weight,  # Best available weight
                     'cbrtWeightTons': float(bol.net_tons),  # Always include CBRT weight for reference
                     'pdfUrl': bol.pdf_url,
                     'stampedPdfUrl': bol.stamped_pdf_url or None,
                     'productName': bol.product_name,
                     'buyerName': bol.buyer_name,
-                    'officialWeightTons': float(bol.official_weight_tons) if bol.official_weight_tons else None,
-                    'varianceTons': float(bol.weight_variance_tons) if bol.weight_variance_tons else None,
-                    'variancePercent': float(bol.weight_variance_percent) if bol.weight_variance_percent else None,
-                    'enteredBy': bol.official_weight_entered_by or None,
-                    'enteredAt': bol.official_weight_entered_at.isoformat() if bol.official_weight_entered_at else None
-                }
-                for bol in bols
-            ]
+                    'officialWeightTons': float(bol.official_weight_tons) if has_official else None,
+                    'varianceTons': float(bol.weight_variance_tons) if hasattr(bol, 'weight_variance_tons') and bol.weight_variance_tons else None,
+                    'variancePercent': float(bol.weight_variance_percent) if hasattr(bol, 'weight_variance_percent') and bol.weight_variance_percent else None,
+                    'enteredBy': bol.official_weight_entered_by if hasattr(bol, 'official_weight_entered_by') else None,
+                    'enteredAt': bol.official_weight_entered_at.isoformat() if hasattr(bol, 'official_weight_entered_at') and bol.official_weight_entered_at else None
+                })
+            except Exception as e:
+                logger.error(f"Error serializing BOL {bol.id}: {e}", exc_info=True)
+                # Skip this BOL if it can't be serialized
+                continue
+
+        return Response({
+            'summary': summary,
+            'rows': rows
         })
 
     except Exception as e:
