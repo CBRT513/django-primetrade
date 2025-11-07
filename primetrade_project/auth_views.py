@@ -396,22 +396,23 @@ def sso_callback(request):
 
 def sso_logout(request):
     """Logout user and redirect to SSO logout with return path to PrimeTrade"""
-    from urllib.parse import urlencode
+    from urllib.parse import urlencode, urlparse
 
     # Clear Django session
     logout(request)
 
-    # Build OAuth authorize URL for returning to PrimeTrade after re-login
-    auth_params = {
-        'client_id': settings.SSO_CLIENT_ID,
-        'redirect_uri': settings.SSO_REDIRECT_URI,
-        'response_type': 'code',
-        'scope': settings.SSO_SCOPES or 'email openid profile roles',
+    # Build post-logout redirect URI (where SSO should send user after logout)
+    # This will be PrimeTrade's login page, which will initiate a new OAuth flow
+    current_host = request.get_host()
+    scheme = 'https' if request.is_secure() else 'http'
+    post_logout_uri = f"{scheme}://{current_host}/auth/login/"
+
+    # SSO logout with OIDC standard post_logout_redirect_uri parameter
+    logout_params = {
+        'post_logout_redirect_uri': post_logout_uri,
     }
-    authorize_query = urlencode(auth_params)
+    logout_query = urlencode(logout_params)
+    sso_logout_url = f"{settings.SSO_BASE_URL}/o/logout/?{logout_query}"
 
-    # SSO logout with 'next' parameter to return user to PrimeTrade OAuth flow
-    sso_logout_url = f"{settings.SSO_BASE_URL}/o/logout/?next=/o/authorize/?{authorize_query}"
-
-    logger.info(f"Logging out and redirecting to SSO with return path to PrimeTrade")
+    logger.info(f"Logging out and redirecting to SSO with post_logout_redirect_uri={post_logout_uri}")
     return redirect(sso_logout_url)
