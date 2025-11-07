@@ -506,16 +506,26 @@
         } else {
           // Show last 10 shipments
           const recentShipments = historyData.rows.slice(0, 10);
-          tbody.innerHTML = recentShipments.map(row => `
+          tbody.innerHTML = recentShipments.map(row => {
+            // Use stamped PDF if available, otherwise original
+            const pdfUrl = row.stampedPdfUrl || row.pdfUrl;
+
+            // Color-code weight: green for official, amber for estimate
+            const hasOfficial = row.officialWeightTons !== null && row.officialWeightTons !== undefined;
+            const weightColor = hasOfficial ? '#059669' : '#f59e0b';
+            const weightValue = hasOfficial ? Number(row.officialWeightTons).toFixed(2) : Number(row.netTons || 0).toFixed(2);
+
+            return `
             <tr>
               <td>${row.date || '-'}</td>
-              <td>${row.pdfUrl ? `<a href="${row.pdfUrl}" target="_blank" style="color: var(--primary); font-weight: 600;">${row.bolNo || '-'}</a>` : (row.bolNo || '-')}</td>
+              <td>${pdfUrl ? `<a href="${pdfUrl}" target="_blank" style="color: var(--primary); font-weight: 600;">${row.bolNo || '-'}</a>` : (row.bolNo || '-')}</td>
               <td>${row.productName || '-'}</td>
               <td>${row.truckNo || '-'}</td>
-              <td class="ta-r">${Number(row.netTons || 0).toFixed(2)}</td>
+              <td class="ta-r" style="color: ${weightColor}; font-weight: 600;">${weightValue}</td>
               <td class="ta-c"><span class="badge badge-success">Shipped</span></td>
             </tr>
-          `).join('');
+            `;
+          }).join('');
           shipmentCount.textContent = `${historyData.rows.length} shipments`;
         }
 
