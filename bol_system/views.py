@@ -1039,11 +1039,18 @@ def open_releases(request):
             shipped = r.loads.filter(status='SHIPPED').count()
             remaining = loads_total - shipped
             tons_total = float(r.quantity_net_tons or 0)
-            # Use official weight from BOL, fallback to planned_tons if no official weight yet
-            tons_shipped = float(r.loads.filter(status='SHIPPED').aggregate(
-                sum=models.Sum(Coalesce('bol__official_weight_tons', 'planned_tons'))
+
+            # Calculate weight breakdown: official vs planned
+            shipped_loads = r.loads.filter(status='SHIPPED')
+            tons_official = float(shipped_loads.filter(bol__official_weight_tons__isnull=False).aggregate(
+                sum=models.Sum('bol__official_weight_tons')
             )['sum'] or 0)
+            tons_planned = float(shipped_loads.filter(bol__official_weight_tons__isnull=True).aggregate(
+                sum=models.Sum('planned_tons')
+            )['sum'] or 0)
+            tons_shipped = tons_official + tons_planned
             tons_remaining = max(0.0, tons_total - tons_shipped)
+
             next_date = r.loads.filter(status='PENDING').order_by('date').values_list('date', flat=True).first()
             last_shipped = r.loads.filter(status='SHIPPED').order_by('-date').values_list('date', flat=True).first()
             result.append({
@@ -1055,6 +1062,8 @@ def open_releases(request):
                 'loadsRemaining': remaining,
                 'totalTons': tons_total,
                 'tonsShipped': tons_shipped,
+                'tonsOfficial': tons_official,
+                'tonsPlanned': tons_planned,
                 'tonsRemaining': tons_remaining,
                 'nextScheduledDate': next_date,
                 'lastShippedDate': last_shipped,

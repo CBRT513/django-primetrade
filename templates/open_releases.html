@@ -34,7 +34,10 @@
         <span id="count" class="badge">0 open</span>
       </div>
       <div style="margin-top: 0.75rem; padding: 0.75rem; background: #f0f9ff; border-left: 4px solid #059669; border-radius: 4px; font-size: 0.9rem;">
-        <strong>Weight Calculation:</strong> Shipped tons uses <span style="color: #059669; font-weight: 600;">🟢 Official Weight</span> when available, otherwise uses <span style="color: #f59e0b; font-weight: 600;">🟠 Planned Weight</span> as estimate.
+        <strong>Weight Display:</strong>
+        <span style="color: #059669; font-weight: 600;">🟢 Green</span> = Official (certified scale),
+        <span style="color: #f59e0b; font-weight: 600;">🟠 Amber</span> = Planned (estimate).
+        Mix shows: <span style="color: #059669;">Official</span>/<span style="color: #f59e0b;">Planned</span>/Total
       </div>
       <div class="table-container" style="margin-top:.75rem;">
         <table id="tbl">
@@ -71,12 +74,32 @@
       const tbody = document.querySelector('#tbl tbody');
       tbody.innerHTML = rows.map(r => {
         const loads = `${r.loadsShipped} / ${r.totalLoads}`;
-        const tons = `${Number(r.tonsShipped||0).toFixed(3)} / ${Number(r.totalTons||0).toFixed(3)}`;
+
+        // Build tons display with color coding
+        const official = Number(r.tonsOfficial || 0);
+        const planned = Number(r.tonsPlanned || 0);
+        const total = Number(r.totalTons || 0);
+
+        let tonsDisplay = '';
+        if (official > 0 && planned > 0) {
+          // Mix: show green/amber/total
+          tonsDisplay = `<span style="color: #059669; font-weight: 600;">${official.toFixed(3)}</span>/<span style="color: #f59e0b; font-weight: 600;">${planned.toFixed(3)}</span>/<span style="font-weight: 600;">${total.toFixed(3)}</span>`;
+        } else if (official > 0) {
+          // All official: show green
+          tonsDisplay = `<span style="color: #059669; font-weight: 700;">${official.toFixed(3)}</span> / ${total.toFixed(3)}`;
+        } else if (planned > 0) {
+          // All planned: show amber
+          tonsDisplay = `<span style="color: #f59e0b; font-weight: 700;">${planned.toFixed(3)}</span> / ${total.toFixed(3)}`;
+        } else {
+          // Nothing shipped
+          tonsDisplay = `0.000 / ${total.toFixed(3)}`;
+        }
+
 return `<tr>
           <td><a href="/api/releases/${r.id}/view/">${r.releaseNumber}</a></td>
           <td>${r.customer||''}</td>
           <td>${loads}</td>
-          <td>${tons}</td>
+          <td>${tonsDisplay}</td>
           <td>${fmtDate(r.nextScheduledDate)}</td>
           <td>${fmtDate(r.lastShippedDate)}</td>
         </tr>`;
