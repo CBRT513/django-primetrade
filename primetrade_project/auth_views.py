@@ -107,13 +107,6 @@ def login_page(request):
     return redirect('sso_login')
 
 
-def emergency_login_page(request):
-    """Emergency backdoor login - shows legacy login form only"""
-    if request.user.is_authenticated:
-        return redirect('home')
-    return render(request, 'emergency_login.html')
-
-
 def sso_login(request):
     """Initiate SSO login - redirect to SSO OAuth with cache-based state storage"""
 

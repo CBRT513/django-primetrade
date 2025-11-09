@@ -25,7 +25,6 @@ class RoleBasedAccessMiddleware:
             '/auth/login/',
             '/auth/callback/',
             '/auth/logout/',
-            '/emergency-local-login/',
             '/static/',
             '/media/',
             '/api/',
