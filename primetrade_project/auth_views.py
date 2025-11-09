@@ -10,6 +10,7 @@ from django.conf import settings
 from django.http import HttpResponseForbidden
 from django.core.cache import cache
 import jwt
+from jwt import PyJWKClient
 
 # Set up loggers
 logger = logging.getLogger('primetrade_project.auth_views')
@@ -251,18 +252,58 @@ def sso_callback(request):
         logger.error(f"[FLOW DEBUG 5.2]   - id_token (first 50 chars): {id_token[:50]}...")
 
     try:
-        # Decode id_token (the JWT), not access_token (opaque string)
-        decoded = jwt.decode(id_token, options={"verify_signature": False})
-        logger.info(f"JWT decoded successfully. Claims: {list(decoded.keys())}")
+        # Construct JWKS URL from SSO base URL
+        jwks_url = f"{settings.SSO_BASE_URL}/api/auth/.well-known/jwks.json"
+        logger.error(f"[FLOW DEBUG 5.3] Fetching JWKS from: {jwks_url}")
 
-        logger.error(f"[FLOW DEBUG 6] JWT decoded successfully:")
+        # Create PyJWKClient to fetch public keys from JWKS endpoint
+        jwks_client = PyJWKClient(jwks_url, cache_keys=True)
+
+        # Get signing key from JWT header
+        signing_key = jwks_client.get_signing_key_from_jwt(id_token)
+        logger.error(f"[FLOW DEBUG 5.4] Retrieved signing key: {signing_key.key_id}")
+
+        # Decode and verify JWT signature, expiration, and claims
+        # Verify signature, expiration (exp), not before (nbf), and issued at (iat)
+        decoded = jwt.decode(
+            id_token,
+            signing_key.key,
+            algorithms=["RS256"],
+            options={
+                "verify_signature": True,  # ✅ ENABLED - cryptographic verification
+                "verify_exp": True,        # Verify token not expired
+                "verify_iat": True,        # Verify issued-at time
+                "verify_nbf": True,        # Verify not-before time
+            },
+            # Optional: validate audience and issuer if configured
+            # audience=settings.SSO_CLIENT_ID,  # Uncomment if SSO includes 'aud' claim
+            # issuer=settings.SSO_BASE_URL,     # Uncomment if SSO includes 'iss' claim
+        )
+
+        logger.info(f"JWT verified and decoded successfully. Claims: {list(decoded.keys())}")
+        logger.error(f"[FLOW DEBUG 6] JWT verified and decoded successfully:")
         logger.error(f"[FLOW DEBUG 6.1]   - Available claims: {list(decoded.keys())}")
         logger.error(f"[FLOW DEBUG 6.2]   - Full decoded JWT: {decoded}")
 
-    except jwt.DecodeError as e:
-        security_logger.error(f"JWT decode failed: {str(e)}")
-        logger.error(f"[FLOW DEBUG 6.3] JWT decode FAILED: {str(e)}")
-        return HttpResponseForbidden(f"Invalid JWT token: {str(e)}")
+    except jwt.exceptions.InvalidSignatureError as e:
+        security_logger.error(f"JWT SIGNATURE INVALID - possible forgery attempt: {str(e)}")
+        logger.error(f"[FLOW DEBUG 6.3] JWT signature verification FAILED: {str(e)}")
+        return HttpResponseForbidden("Invalid token signature. Authentication failed.")
+
+    except jwt.exceptions.ExpiredSignatureError as e:
+        security_logger.warning(f"JWT EXPIRED - user needs to re-authenticate: {str(e)}")
+        logger.error(f"[FLOW DEBUG 6.3] JWT expired: {str(e)}")
+        return HttpResponseForbidden("Your session has expired. Please log in again.")
+
+    except jwt.exceptions.InvalidTokenError as e:
+        security_logger.error(f"JWT INVALID - malformed or tampered token: {str(e)}")
+        logger.error(f"[FLOW DEBUG 6.3] JWT validation failed: {str(e)}")
+        return HttpResponseForbidden(f"Invalid authentication token: {str(e)}")
+
+    except Exception as e:
+        security_logger.error(f"JWT verification error (JWKS fetch or key retrieval): {str(e)}")
+        logger.error(f"[FLOW DEBUG 6.3] JWT verification error: {str(e)}")
+        return HttpResponseForbidden("Authentication service temporarily unavailable. Please try again.")
 
     # If application_roles missing, try OIDC userinfo endpoint (fallback)
     if not decoded.get('application_roles') and access_token:
