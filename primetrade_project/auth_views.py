@@ -327,6 +327,7 @@ def sso_callback(request):
 
     # If application_roles missing, try OIDC userinfo endpoint (fallback)
     if not decoded.get('application_roles') and access_token:
+        logger.info("JWT missing application_roles claim - attempting userinfo fallback")
         try:
             ui_resp = requests.get(
                 f"{settings.SSO_BASE_URL}/o/userinfo/",
@@ -337,14 +338,21 @@ def sso_callback(request):
                 userinfo = ui_resp.json()
                 # Merge userinfo into decoded claims
                 decoded.update(userinfo)
+                logger.info(f"Userinfo fallback successful - merged claims: {list(userinfo.keys())}")
                 if settings.DEBUG_AUTH_FLOW:
                     logger.debug(f"[FLOW DEBUG 5.9] userinfo merged. Keys now: {list(decoded.keys())}")
             else:
+                logger.warning(f"Userinfo fallback failed: HTTP {ui_resp.status_code} - {ui_resp.text[:200]}")
                 if settings.DEBUG_AUTH_FLOW:
                     logger.debug(f"[FLOW DEBUG 5.9] userinfo fetch failed: {ui_resp.status_code} {ui_resp.text[:200]}")
-        except Exception as e:
+        except requests.RequestException as e:
+            logger.error(f"Userinfo fallback request failed: {str(e)}")
             if settings.DEBUG_AUTH_FLOW:
                 logger.debug(f"[FLOW DEBUG 5.9] userinfo request error: {e}")
+        except (ValueError, KeyError) as e:
+            logger.error(f"Userinfo fallback response parsing failed: {str(e)}")
+            if settings.DEBUG_AUTH_FLOW:
+                logger.debug(f"[FLOW DEBUG 5.9] userinfo parsing error: {e}")
 
     # Extract user information from claims
     email = decoded.get('email')
