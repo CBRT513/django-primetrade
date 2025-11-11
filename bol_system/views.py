@@ -1115,6 +1115,14 @@ def pending_release_loads(request):
         from datetime import date as date_class, timedelta
         today = date_class.today()
 
+        # Calculate current calendar week (Sunday-Saturday)
+        # Sunday is the start of the week
+        days_since_sunday = (today.weekday() + 1) % 7  # Monday=0, so Sunday=6 -> convert to Sunday=0
+        this_week_start = today - timedelta(days=days_since_sunday)
+        this_week_end = this_week_start + timedelta(days=6)
+        next_week_start = this_week_end + timedelta(days=1)
+        next_week_end = next_week_start + timedelta(days=6)
+
         loads = ReleaseLoad.objects.filter(status='PENDING').select_related(
             'release', 'release__customer_ref', 'release__ship_to_ref', 'release__carrier_ref', 'release__lot_ref', 'release__lot_ref__product'
         ).order_by('date','seq')
@@ -1127,14 +1135,14 @@ def pending_release_loads(request):
             sched_date = datetime.strptime(ld.date, '%Y-%m-%d').date() if isinstance(ld.date, str) else ld.date
             days_until = (sched_date - today).days
 
-            # Determine urgency level
+            # Determine urgency level using calendar weeks (Sunday-Saturday)
             if days_until < 0:
                 urgency = 'overdue'
             elif days_until == 0:
                 urgency = 'today'
-            elif days_until <= 7:
+            elif this_week_start <= sched_date <= this_week_end:
                 urgency = 'this-week'
-            elif days_until <= 14:
+            elif next_week_start <= sched_date <= next_week_end:
                 urgency = 'next-week'
             else:
                 urgency = 'later'
