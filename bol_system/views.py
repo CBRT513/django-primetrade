@@ -1441,9 +1441,9 @@ def bol_history(request):
                 has_official = hasattr(bol, 'official_weight_tons') and bol.official_weight_tons is not None
                 display_weight = float(bol.official_weight_tons) if has_official else float(bol.net_tons)
 
-                # Convert S3 paths to full URLs
-                pdf_url = default_storage.url(bol.pdf_url) if bol.pdf_url else None
-                stamped_pdf_url = default_storage.url(bol.stamped_pdf_url) if bol.stamped_pdf_url else None
+                # Convert S3 paths to full URLs (only if not already a URL)
+                pdf_url = bol.pdf_url if (bol.pdf_url and bol.pdf_url.startswith('http')) else (default_storage.url(bol.pdf_url) if bol.pdf_url else None)
+                stamped_pdf_url = bol.stamped_pdf_url if (bol.stamped_pdf_url and bol.stamped_pdf_url.startswith('http')) else (default_storage.url(bol.stamped_pdf_url) if bol.stamped_pdf_url else None)
 
                 rows.append({
                     'id': bol.id,
@@ -1485,8 +1485,8 @@ def bol_history(request):
 def bol_detail(request, bol_id):
     try:
         bol = BOL.objects.get(id=bol_id)
-        # Convert S3 path to full URL
-        pdf_url = default_storage.url(bol.pdf_url) if bol.pdf_url else None
+        # Convert S3 path to full URL (only if not already a URL)
+        pdf_url = bol.pdf_url if (bol.pdf_url and bol.pdf_url.startswith('http')) else (default_storage.url(bol.pdf_url) if bol.pdf_url else None)
 
         return Response({
             'id': bol.id,
@@ -1562,9 +1562,9 @@ def set_official_weight(request, bol_id):
 
         logger.info(f"Official weight set for BOL {bol.bol_number}: {weight_tons} tons by {entered_by}")
 
-        # Convert S3 paths to full URLs
-        pdf_url = default_storage.url(bol.pdf_url) if bol.pdf_url else None
-        stamped_pdf_url = default_storage.url(bol.stamped_pdf_url) if bol.stamped_pdf_url else None
+        # Convert S3 paths to full URLs (only if not already a URL)
+        pdf_url = bol.pdf_url if (bol.pdf_url and bol.pdf_url.startswith('http')) else (default_storage.url(bol.pdf_url) if bol.pdf_url else None)
+        stamped_pdf_url = bol.stamped_pdf_url if (bol.stamped_pdf_url and bol.stamped_pdf_url.startswith('http')) else (default_storage.url(bol.stamped_pdf_url) if bol.stamped_pdf_url else None)
 
         return Response({
             'ok': True,

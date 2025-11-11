@@ -51,6 +51,9 @@ class ReleaseLoadSerializer(serializers.ModelSerializer):
     def get_bol_pdf_url(self, obj):
         if not obj.bol or not obj.bol.pdf_url:
             return None
+        # If already a full URL, return as-is
+        if obj.bol.pdf_url.startswith('http'):
+            return obj.bol.pdf_url
         # Convert S3 path to full URL
         from django.core.files.storage import default_storage
         try:
@@ -62,6 +65,9 @@ class ReleaseLoadSerializer(serializers.ModelSerializer):
         """Get watermarked PDF URL with official weight stamp"""
         if not obj.bol or not obj.bol.stamped_pdf_url:
             return None
+        # If already a full URL, return as-is
+        if obj.bol.stamped_pdf_url.startswith('http'):
+            return obj.bol.stamped_pdf_url
         # Convert S3 path to full URL
         from django.core.files.storage import default_storage
         try:
