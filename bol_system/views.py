@@ -5,6 +5,7 @@ from rest_framework.response import Response
 from rest_framework.authentication import SessionAuthentication
 from django.db import models, connection, transaction, IntegrityError
 from django.db.models.functions import Coalesce
+from django.core.files.storage import default_storage
 from .models import Product, Customer, Carrier, Truck, BOL, Release, ReleaseLoad, CustomerShipTo, Lot, AuditLog
 from .serializers import ProductSerializer, CustomerSerializer, CarrierSerializer, TruckSerializer, ReleaseSerializer, ReleaseLoadSerializer, CustomerShipToSerializer, AuditLogSerializer
 from .pdf_generator import generate_bol_pdf
@@ -1492,8 +1493,10 @@ def bol_history(request):
 
         # Build rows with safe weight handling
         rows = []
+        logger.info(f"Serializing {bols.count()} BOLs for history endpoint")
         for bol in bols:
             try:
+                logger.debug(f"Serializing BOL {bol.bol_number} (ID: {bol.id})")
                 # Determine which weight to display
                 has_official = hasattr(bol, 'official_weight_tons') and bol.official_weight_tons is not None
                 display_weight = float(bol.official_weight_tons) if has_official else float(bol.net_tons)
@@ -1502,19 +1505,27 @@ def bol_history(request):
                 # Handle empty strings and None values safely
                 pdf_url = None
                 if bol.pdf_url and bol.pdf_url.strip():
-                    if bol.pdf_url.startswith('http'):
-                        pdf_url = bol.pdf_url
-                    else:
-                        pdf_url = default_storage.url(bol.pdf_url)
+                    try:
+                        if bol.pdf_url.startswith('http'):
+                            pdf_url = bol.pdf_url
+                        else:
+                            pdf_url = default_storage.url(bol.pdf_url)
+                    except Exception as url_err:
+                        logger.warning(f"Could not convert pdf_url for BOL {bol.id}: {url_err}")
+                        pdf_url = bol.pdf_url  # Fallback to original value
 
                 stamped_pdf_url = None
                 if bol.stamped_pdf_url and bol.stamped_pdf_url.strip():
-                    if bol.stamped_pdf_url.startswith('http'):
-                        stamped_pdf_url = bol.stamped_pdf_url
-                    else:
-                        stamped_pdf_url = default_storage.url(bol.stamped_pdf_url)
+                    try:
+                        if bol.stamped_pdf_url.startswith('http'):
+                            stamped_pdf_url = bol.stamped_pdf_url
+                        else:
+                            stamped_pdf_url = default_storage.url(bol.stamped_pdf_url)
+                    except Exception as url_err:
+                        logger.warning(f"Could not convert stamped_pdf_url for BOL {bol.id}: {url_err}")
+                        stamped_pdf_url = bol.stamped_pdf_url  # Fallback to original value
 
-                rows.append({
+                row_data = {
                     'id': bol.id,
                     'bolNo': bol.bol_number,
                     'date': bol.date,
@@ -1530,9 +1541,11 @@ def bol_history(request):
                     'variancePercent': round(float(bol.weight_variance_percent), 2) if hasattr(bol, 'weight_variance_percent') and bol.weight_variance_percent else None,
                     'enteredBy': bol.official_weight_entered_by if hasattr(bol, 'official_weight_entered_by') else None,
                     'enteredAt': bol.official_weight_entered_at.isoformat() if hasattr(bol, 'official_weight_entered_at') and bol.official_weight_entered_at else None
-                })
+                }
+                rows.append(row_data)
+                logger.debug(f"Successfully serialized BOL {bol.bol_number}")
             except Exception as e:
-                logger.error(f"Error serializing BOL {bol.id}: {e}", exc_info=True)
+                logger.error(f"Error serializing BOL {bol.bol_number} (ID: {bol.id}): {e}", exc_info=True)
                 # Skip this BOL if it can't be serialized
                 continue
 
