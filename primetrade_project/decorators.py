@@ -85,8 +85,8 @@ def require_role(*allowed_roles):
                     "Session expired or missing role data. Please log out and log in again."
                 )
 
-            # Check if user has one of the allowed roles
-            if user_role in allowed_roles:
+            # Check if user has one of the allowed roles (case-insensitive)
+            if user_role and user_role.lower() in [r.lower() for r in allowed_roles]:
                 # Access granted - execute view
                 return view_func(request, *args, **kwargs)
 
@@ -152,8 +152,8 @@ def require_role_for_writes(*allowed_roles):
                     "Session expired or missing role data. Please log out and log in again."
                 )
 
-            # Check if user has one of the allowed roles
-            if user_role in allowed_roles:
+            # Check if user has one of the allowed roles (case-insensitive)
+            if user_role and user_role.lower() in [r.lower() for r in allowed_roles]:
                 # Access granted
                 return view_func(request, *args, **kwargs)
 
