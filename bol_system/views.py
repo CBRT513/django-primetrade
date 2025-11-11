@@ -1499,8 +1499,20 @@ def bol_history(request):
                 display_weight = float(bol.official_weight_tons) if has_official else float(bol.net_tons)
 
                 # Convert S3 paths to full URLs (only if not already a URL)
-                pdf_url = bol.pdf_url if (bol.pdf_url and bol.pdf_url.startswith('http')) else (default_storage.url(bol.pdf_url) if bol.pdf_url else None)
-                stamped_pdf_url = bol.stamped_pdf_url if (bol.stamped_pdf_url and bol.stamped_pdf_url.startswith('http')) else (default_storage.url(bol.stamped_pdf_url) if bol.stamped_pdf_url else None)
+                # Handle empty strings and None values safely
+                pdf_url = None
+                if bol.pdf_url and bol.pdf_url.strip():
+                    if bol.pdf_url.startswith('http'):
+                        pdf_url = bol.pdf_url
+                    else:
+                        pdf_url = default_storage.url(bol.pdf_url)
+
+                stamped_pdf_url = None
+                if bol.stamped_pdf_url and bol.stamped_pdf_url.strip():
+                    if bol.stamped_pdf_url.startswith('http'):
+                        stamped_pdf_url = bol.stamped_pdf_url
+                    else:
+                        stamped_pdf_url = default_storage.url(bol.stamped_pdf_url)
 
                 rows.append({
                     'id': bol.id,
