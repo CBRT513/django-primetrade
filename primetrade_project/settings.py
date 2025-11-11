@@ -16,6 +16,11 @@ SSO_CLIENT_SECRET = config('SSO_CLIENT_SECRET', default=None)
 SSO_REDIRECT_URI = config('SSO_REDIRECT_URI', default='http://localhost:8001/auth/callback/')
 SSO_SCOPES = config('SSO_SCOPES', default='openid email profile roles')
 
+# Debug logging control for authentication flow
+# Set to True to enable detailed [FLOW DEBUG] logging for troubleshooting auth issues
+# Default: False (production - clean logs)
+DEBUG_AUTH_FLOW = config('DEBUG_AUTH_FLOW', default=False, cast=bool)
+
 # Temporary admin bypass for authorization during rollout (comma-separated emails)
 ADMIN_BYPASS_EMAILS = [e.strip() for e in config('ADMIN_BYPASS_EMAILS', default='').split(',') if e.strip()]
 

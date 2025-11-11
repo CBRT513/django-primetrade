@@ -1,9 +1,29 @@
 # SSO Direct Login - No Choice Screen
 
+## ⚠️ DEPRECATION NOTICE
+
+**Date**: November 9, 2025
+**Status**: Emergency login endpoint REMOVED
+
+The emergency login endpoint (`/emergency-local-login/`) has been removed from the codebase:
+- **Reason**: No production usage since Oct 12, 2025; security gap (no rate limiting, audit logging, IP restrictions)
+- **Alternative**: If SSO fails completely, use Render shell + `python manage.py createsuperuser` + Django admin `/admin/`
+- **Restore if needed**: `git show b10f412:templates/emergency_login.html` (restore from commit before removal)
+
+**Files Removed:**
+- `/templates/emergency_login.html`
+- `emergency_login_page()` view from `auth_views.py`
+- Emergency URL routes from `urls.py`
+- Middleware exemption for `/emergency-local-login/`
+
+**Architecture**: SSO-only authentication (cleaner, more secure)
+
+---
+
 ## Implementation Summary
 
 **Date**: October 12, 2025
-**Status**: ✅ COMPLETE
+**Status**: ✅ COMPLETE (Emergency login later removed Nov 9, 2025)
 
 ---
 

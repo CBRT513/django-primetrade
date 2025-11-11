@@ -30,9 +30,7 @@ urlpatterns = [
     path('auth/callback/', sso_auth_views.sso_callback, name='sso_callback'),
     path('auth/logout/', sso_auth_views.sso_logout, name='sso_logout'),
 
-    # Emergency backdoor login (hidden, legacy local auth only)
-    path('emergency-local-login/', sso_auth_views.emergency_login_page, name='emergency_login'),
-    path('auth/legacy/login/', auth_views.login_view, name='legacy_login'),
+    # Legacy logout endpoint (preserved for backward compatibility)
     path('logout/', auth_views.logout_view, name='logout'),
 
     path('', login_required(lambda request: serve_static_html(request, 'index.html')), name='home'),

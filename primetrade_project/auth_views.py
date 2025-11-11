@@ -107,13 +107,6 @@ def login_page(request):
     return redirect('sso_login')
 
 
-def emergency_login_page(request):
-    """Emergency backdoor login - shows legacy login form only"""
-    if request.user.is_authenticated:
-        return redirect('home')
-    return render(request, 'emergency_login.html')
-
-
 def sso_login(request):
     """Initiate SSO login - redirect to SSO OAuth with cache-based state storage"""
 
@@ -161,16 +154,19 @@ def sso_callback(request):
     # Validate state using cache (primary method)
     is_valid, error_msg = validate_and_consume_oauth_state(state, max_age=600)
 
-    logger.error(f"[FLOW DEBUG 1] State validation result: is_valid={is_valid}, error_msg={error_msg}")
+    if settings.DEBUG_AUTH_FLOW:
+        logger.debug(f"[FLOW DEBUG 1] State validation result: is_valid={is_valid}, error_msg={error_msg}")
 
     if not is_valid:
         # Try session as fallback for backward compatibility
         stored_state = request.session.get('oauth_state')
-        logger.error(f"[FLOW DEBUG 1.1] State validation failed, trying session fallback. stored_state={'present' if stored_state else 'missing'}, matches={state == stored_state if state and stored_state else 'N/A'}")
+        if settings.DEBUG_AUTH_FLOW:
+            logger.debug(f"[FLOW DEBUG 1.1] State validation failed, trying session fallback. stored_state={'present' if stored_state else 'missing'}, matches={state == stored_state if state and stored_state else 'N/A'}")
 
         if state and stored_state and state == stored_state:
             logger.warning(f"State validated using session fallback: {state[:20]}...")
-            logger.error(f"[FLOW DEBUG 1.2] Session fallback SUCCESS - proceeding with auth")
+            if settings.DEBUG_AUTH_FLOW:
+                logger.debug(f"[FLOW DEBUG 1.2] Session fallback SUCCESS - proceeding with auth")
             # Clear session state
             if 'oauth_state' in request.session:
                 del request.session['oauth_state']
@@ -180,14 +176,16 @@ def sso_callback(request):
                 f"OAuth state validation failed - IP: {request.META.get('REMOTE_ADDR')}, "
                 f"State: {state[:20] if state else 'None'}..., Error: {error_msg}"
             )
-            logger.error(f"[FLOW DEBUG 1.3] State validation FAILED completely - returning 403")
+            if settings.DEBUG_AUTH_FLOW:
+                logger.debug(f"[FLOW DEBUG 1.3] State validation FAILED completely - returning 403")
             return HttpResponseForbidden(
                 f"Invalid state parameter - {error_msg}. "
                 f"This may indicate a CSRF attack or an expired session. "
                 f"Please try logging in again."
             )
     else:
-        logger.error(f"[FLOW DEBUG 1.4] State validation SUCCESS via cache")
+        if settings.DEBUG_AUTH_FLOW:
+            logger.debug(f"[FLOW DEBUG 1.4] State validation SUCCESS via cache")
         # Clear session state if present
         if 'oauth_state' in request.session:
             del request.session['oauth_state']
@@ -196,10 +194,12 @@ def sso_callback(request):
     # Get authorization code
     if not code:
         security_logger.warning("No authorization code received in SSO callback")
-        logger.error(f"[FLOW DEBUG 2] MISSING authorization code - returning 403")
+        if settings.DEBUG_AUTH_FLOW:
+            logger.debug(f"[FLOW DEBUG 2] MISSING authorization code - returning 403")
         return HttpResponseForbidden("No authorization code received")
 
-    logger.error(f"[FLOW DEBUG 2] Authorization code received: {code[:20]}...")
+    if settings.DEBUG_AUTH_FLOW:
+        logger.debug(f"[FLOW DEBUG 2] Authorization code received: {code[:20]}...")
 
     # Exchange code for tokens
     token_url = f"{settings.SSO_BASE_URL}/o/token/"
@@ -211,34 +211,38 @@ def sso_callback(request):
         'grant_type': 'authorization_code',
     }
 
-    logger.error(f"[FLOW DEBUG 3] About to exchange token:")
-    logger.error(f"[FLOW DEBUG 3.1]   - token_url: {token_url}")
-    logger.error(f"[FLOW DEBUG 3.2]   - client_id: {settings.SSO_CLIENT_ID[:20] if settings.SSO_CLIENT_ID else 'MISSING'}...")
-    logger.error(f"[FLOW DEBUG 3.3]   - client_secret: {'SET (len=' + str(len(settings.SSO_CLIENT_SECRET)) + ')' if settings.SSO_CLIENT_SECRET else 'MISSING'}")
-    logger.error(f"[FLOW DEBUG 3.4]   - redirect_uri: {settings.SSO_REDIRECT_URI}")
-    logger.error(f"[FLOW DEBUG 3.5]   - grant_type: {token_data.get('grant_type')}")
-    logger.error(f"[FLOW DEBUG 3.6]   - code (first 20 chars): {code[:20]}...")
+    if settings.DEBUG_AUTH_FLOW:
+        logger.debug(f"[FLOW DEBUG 3] About to exchange token:")
+        logger.debug(f"[FLOW DEBUG 3.1]   - token_url: {token_url}")
+        logger.debug(f"[FLOW DEBUG 3.2]   - client_id: {settings.SSO_CLIENT_ID[:20] if settings.SSO_CLIENT_ID else 'MISSING'}...")
+        logger.debug(f"[FLOW DEBUG 3.3]   - client_secret: {'SET (len=' + str(len(settings.SSO_CLIENT_SECRET)) + ')' if settings.SSO_CLIENT_SECRET else 'MISSING'}")
+        logger.debug(f"[FLOW DEBUG 3.4]   - redirect_uri: {settings.SSO_REDIRECT_URI}")
+        logger.debug(f"[FLOW DEBUG 3.5]   - grant_type: {token_data.get('grant_type')}")
+        logger.debug(f"[FLOW DEBUG 3.6]   - code (first 20 chars): {code[:20]}...")
 
     try:
         response = requests.post(token_url, data=token_data, timeout=10)
 
-        logger.error(f"[FLOW DEBUG 4] Token exchange response received:")
-        logger.error(f"[FLOW DEBUG 4.1]   - Status code: {response.status_code}")
-        logger.error(f"[FLOW DEBUG 4.2]   - Headers: {dict(response.headers)}")
-        logger.error(f"[FLOW DEBUG 4.3]   - Body (first 500 chars): {response.text[:500]}")
+        if settings.DEBUG_AUTH_FLOW:
+            logger.debug(f"[FLOW DEBUG 4] Token exchange response received:")
+            logger.debug(f"[FLOW DEBUG 4.1]   - Status code: {response.status_code}")
+            logger.debug(f"[FLOW DEBUG 4.2]   - Headers: {dict(response.headers)}")
+            logger.debug(f"[FLOW DEBUG 4.3]   - Body (first 500 chars): {response.text[:500]}")
 
         response.raise_for_status()
         tokens = response.json()
 
-        logger.error(f"[FLOW DEBUG 4.4] Token exchange SUCCESS - received keys: {list(tokens.keys())}")
+        if settings.DEBUG_AUTH_FLOW:
+            logger.debug(f"[FLOW DEBUG 4.4] Token exchange SUCCESS - received keys: {list(tokens.keys())}")
 
     except requests.RequestException as e:
-        logger.error(f"[FLOW DEBUG 4.5] Token exchange FAILED:")
-        logger.error(f"[FLOW DEBUG 4.5.1]   - Exception type: {type(e).__name__}")
-        logger.error(f"[FLOW DEBUG 4.5.2]   - Exception message: {str(e)}")
-        if hasattr(e, 'response') and e.response is not None:
-            logger.error(f"[FLOW DEBUG 4.5.3]   - Response status: {e.response.status_code}")
-            logger.error(f"[FLOW DEBUG 4.5.4]   - Response body: {e.response.text}")
+        if settings.DEBUG_AUTH_FLOW:
+            logger.debug(f"[FLOW DEBUG 4.5] Token exchange FAILED:")
+            logger.debug(f"[FLOW DEBUG 4.5.1]   - Exception type: {type(e).__name__}")
+            logger.debug(f"[FLOW DEBUG 4.5.2]   - Exception message: {str(e)}")
+            if hasattr(e, 'response') and e.response is not None:
+                logger.debug(f"[FLOW DEBUG 4.5.3]   - Response status: {e.response.status_code}")
+                logger.debug(f"[FLOW DEBUG 4.5.4]   - Response body: {e.response.text}")
         return HttpResponseForbidden(f"Token exchange failed: {str(e)}")
 
     # Decode JWT token to get user info
@@ -246,20 +250,23 @@ def sso_callback(request):
     access_token = tokens.get('access_token')  # Keep for session storage
     id_token = tokens.get('id_token')  # This is the JWT to decode
 
-    logger.error(f"[FLOW DEBUG 5] Attempting to decode JWT:")
-    logger.error(f"[FLOW DEBUG 5.1]   - id_token present: {'YES' if id_token else 'NO'}")
-    if id_token:
-        logger.error(f"[FLOW DEBUG 5.2]   - id_token (first 50 chars): {id_token[:50]}...")
+    if settings.DEBUG_AUTH_FLOW:
+        logger.debug(f"[FLOW DEBUG 5] Attempting to decode JWT:")
+        logger.debug(f"[FLOW DEBUG 5.1]   - id_token present: {'YES' if id_token else 'NO'}")
+        if id_token:
+            logger.debug(f"[FLOW DEBUG 5.2]   - id_token (first 50 chars): {id_token[:50]}...")
 
     try:
         # Fetch JWKS from SSO and verify JWT signature
         jwks_url = f"{settings.SSO_BASE_URL}/api/auth/.well-known/jwks.json"
-        logger.error(f"[FLOW DEBUG 5.3] Fetching JWKS from: {jwks_url}")
+        if settings.DEBUG_AUTH_FLOW:
+            logger.debug(f"[FLOW DEBUG 5.3] Fetching JWKS from: {jwks_url}")
 
         jwks_client = PyJWKClient(jwks_url, cache_keys=True)
         signing_key = jwks_client.get_signing_key_from_jwt(id_token)
 
-        logger.error(f"[FLOW DEBUG 5.4] Retrieved signing key: {signing_key.key_id}")
+        if settings.DEBUG_AUTH_FLOW:
+            logger.debug(f"[FLOW DEBUG 5.4] Retrieved signing key: {signing_key.key_id}")
 
         # Decode and verify JWT with full validation
         decoded = jwt.decode(
@@ -277,38 +284,45 @@ def sso_callback(request):
         )
 
         logger.info(f"JWT verified and decoded successfully. Claims: {list(decoded.keys())}")
-        logger.error(f"[FLOW DEBUG 6] JWT verified and decoded successfully:")
-        logger.error(f"[FLOW DEBUG 6.1]   - Available claims: {list(decoded.keys())}")
-        logger.error(f"[FLOW DEBUG 6.2]   - Full decoded JWT: {decoded}")
+        if settings.DEBUG_AUTH_FLOW:
+            logger.debug(f"[FLOW DEBUG 6] JWT verified and decoded successfully:")
+            logger.debug(f"[FLOW DEBUG 6.1]   - Available claims: {list(decoded.keys())}")
+            logger.debug(f"[FLOW DEBUG 6.2]   - Full decoded JWT: {decoded}")
 
     except jwt.InvalidSignatureError as e:
         security_logger.error(f"JWT signature verification failed: {str(e)}")
-        logger.error(f"[FLOW DEBUG 6.3] JWT SIGNATURE INVALID: {str(e)}")
+        if settings.DEBUG_AUTH_FLOW:
+            logger.debug(f"[FLOW DEBUG 6.3] JWT SIGNATURE INVALID: {str(e)}")
         return HttpResponseForbidden("Invalid token signature - authentication failed. Possible token forgery detected.")
 
     except jwt.ExpiredSignatureError as e:
         security_logger.warning(f"JWT token expired: {str(e)}")
-        logger.error(f"[FLOW DEBUG 6.4] JWT EXPIRED: {str(e)}")
+        if settings.DEBUG_AUTH_FLOW:
+            logger.debug(f"[FLOW DEBUG 6.4] JWT EXPIRED: {str(e)}")
         return HttpResponseForbidden("Authentication token has expired. Please log in again.")
 
     except jwt.InvalidAudienceError as e:
         security_logger.error(f"JWT audience mismatch: {str(e)}")
-        logger.error(f"[FLOW DEBUG 6.5] JWT AUDIENCE MISMATCH: {str(e)}")
+        if settings.DEBUG_AUTH_FLOW:
+            logger.debug(f"[FLOW DEBUG 6.5] JWT AUDIENCE MISMATCH: {str(e)}")
         return HttpResponseForbidden("Invalid token audience - token not intended for this application.")
 
     except jwt.InvalidIssuerError as e:
         security_logger.error(f"JWT issuer mismatch: {str(e)}")
-        logger.error(f"[FLOW DEBUG 6.6] JWT ISSUER MISMATCH: {str(e)}")
+        if settings.DEBUG_AUTH_FLOW:
+            logger.debug(f"[FLOW DEBUG 6.6] JWT ISSUER MISMATCH: {str(e)}")
         return HttpResponseForbidden("Invalid token issuer - token from untrusted source.")
 
     except jwt.DecodeError as e:
         security_logger.error(f"JWT decode failed: {str(e)}")
-        logger.error(f"[FLOW DEBUG 6.7] JWT DECODE FAILED: {str(e)}")
+        if settings.DEBUG_AUTH_FLOW:
+            logger.debug(f"[FLOW DEBUG 6.7] JWT DECODE FAILED: {str(e)}")
         return HttpResponseForbidden(f"Invalid JWT token format: {str(e)}")
 
     except Exception as e:
         security_logger.error(f"JWT verification error: {str(e)}", exc_info=True)
-        logger.error(f"[FLOW DEBUG 6.8] JWT VERIFICATION ERROR: {str(e)}")
+        if settings.DEBUG_AUTH_FLOW:
+            logger.debug(f"[FLOW DEBUG 6.8] JWT VERIFICATION ERROR: {str(e)}")
         return HttpResponseForbidden("Authentication failed. Please try again or contact support.")
 
     # If application_roles missing, try OIDC userinfo endpoint (fallback)
@@ -323,11 +337,14 @@ def sso_callback(request):
                 userinfo = ui_resp.json()
                 # Merge userinfo into decoded claims
                 decoded.update(userinfo)
-                logger.error(f"[FLOW DEBUG 5.9] userinfo merged. Keys now: {list(decoded.keys())}")
+                if settings.DEBUG_AUTH_FLOW:
+                    logger.debug(f"[FLOW DEBUG 5.9] userinfo merged. Keys now: {list(decoded.keys())}")
             else:
-                logger.error(f"[FLOW DEBUG 5.9] userinfo fetch failed: {ui_resp.status_code} {ui_resp.text[:200]}")
+                if settings.DEBUG_AUTH_FLOW:
+                    logger.debug(f"[FLOW DEBUG 5.9] userinfo fetch failed: {ui_resp.status_code} {ui_resp.text[:200]}")
         except Exception as e:
-            logger.error(f"[FLOW DEBUG 5.9] userinfo request error: {e}")
+            if settings.DEBUG_AUTH_FLOW:
+                logger.debug(f"[FLOW DEBUG 5.9] userinfo request error: {e}")
 
     # Extract user information from claims
     email = decoded.get('email')
@@ -335,15 +352,17 @@ def sso_callback(request):
 
     logger.info(f"Extracted email: {email}, roles: {list(user_roles.keys()) if user_roles else 'none'}")
 
-    logger.error(f"[FLOW DEBUG 7] User info extracted from JWT:")
-    logger.error(f"[FLOW DEBUG 7.1]   - email: {email}")
-    logger.error(f"[FLOW DEBUG 7.2]   - user_roles: {user_roles}")
-    logger.error(f"[FLOW DEBUG 7.3]   - is_sso_admin: {decoded.get('is_sso_admin', False)}")
+    if settings.DEBUG_AUTH_FLOW:
+        logger.debug(f"[FLOW DEBUG 7] User info extracted from JWT:")
+        logger.debug(f"[FLOW DEBUG 7.1]   - email: {email}")
+        logger.debug(f"[FLOW DEBUG 7.2]   - user_roles: {user_roles}")
+        logger.debug(f"[FLOW DEBUG 7.3]   - is_sso_admin: {decoded.get('is_sso_admin', False)}")
 
     # Validate email is present
     if not email:
         security_logger.warning(f"No email claim in JWT. Available claims: {list(decoded.keys())}")
-        logger.error(f"[FLOW DEBUG 7.4] MISSING email claim - returning 403")
+        if settings.DEBUG_AUTH_FLOW:
+            logger.debug(f"[FLOW DEBUG 7.4] MISSING email claim - returning 403")
         return HttpResponseForbidden("No email claim in authentication token. Contact admin.")
 
     # Check for primetrade role in application_roles claim
@@ -351,18 +370,21 @@ def sso_callback(request):
     primetrade_role = application_roles.get("primetrade")
 
     # Log full application_roles for diagnostics
-    logger.error(f"[FLOW DEBUG 7.4] application_roles: {application_roles}")
+    if settings.DEBUG_AUTH_FLOW:
+        logger.debug(f"[FLOW DEBUG 7.4] application_roles: {application_roles}")
 
     if not primetrade_role:
         logger.warning(f"User {email} does not have PrimeTrade role. Available apps: {list(application_roles.keys())}")
-        logger.error(f"[FLOW DEBUG 7.5] User lacks PrimeTrade role - evaluating bypass")
+        if settings.DEBUG_AUTH_FLOW:
+            logger.debug(f"[FLOW DEBUG 7.5] User lacks PrimeTrade role - evaluating bypass")
         # Temporary controlled bypass for admin/testing during rollout
         try:
             bypass_list = getattr(settings, 'ADMIN_BYPASS_EMAILS', [])
         except Exception:
             bypass_list = []
         if email and bypass_list and email.lower() in [x.lower() for x in bypass_list]:
-            logger.error(f"[FLOW DEBUG 7.5.1] BYPASS engaged for {email} - proceeding as admin")
+            if settings.DEBUG_AUTH_FLOW:
+                logger.debug(f"[FLOW DEBUG 7.5.1] BYPASS engaged for {email} - proceeding as admin")
             primetrade_role = {"role": "admin", "permissions": ["full_access"]}
         else:
             return HttpResponseForbidden("You don't have access to PrimeTrade. Contact admin.")
@@ -372,7 +394,8 @@ def sso_callback(request):
     permissions = primetrade_role.get("permissions", [])
 
     logger.info(f"User {email} authenticated with PrimeTrade role: {role_name}")
-    logger.error(f"[FLOW DEBUG 8] Role check PASSED - role: {role_name}, permissions: {permissions}")
+    if settings.DEBUG_AUTH_FLOW:
+        logger.debug(f"[FLOW DEBUG 8] Role check PASSED - role: {role_name}, permissions: {permissions}")
 
     # Get or create Django user
     user, created = User.objects.get_or_create(
@@ -385,10 +408,12 @@ def sso_callback(request):
 
     if created:
         logger.info(f"Created new user: {email}")
-        logger.error(f"[FLOW DEBUG 9] Created NEW Django user: {email} (ID: {user.id})")
+        if settings.DEBUG_AUTH_FLOW:
+            logger.debug(f"[FLOW DEBUG 9] Created NEW Django user: {email} (ID: {user.id})")
     else:
         logger.info(f"Using existing user: {email}")
-        logger.error(f"[FLOW DEBUG 9] Using EXISTING Django user: {email} (ID: {user.id})")
+        if settings.DEBUG_AUTH_FLOW:
+            logger.debug(f"[FLOW DEBUG 9] Using EXISTING Django user: {email} (ID: {user.id})")
 
     # Store SSO role and tokens in session (for now)
     request.session['primetrade_role'] = {
@@ -398,23 +423,26 @@ def sso_callback(request):
     request.session['sso_access_token'] = access_token
     request.session['sso_refresh_token'] = tokens.get('refresh_token')
 
-    logger.error(f"[FLOW DEBUG 10] Session data stored:")
-    logger.error(f"[FLOW DEBUG 10.1]   - primetrade_role: {role_name} with permissions: {permissions}")
-    logger.error(f"[FLOW DEBUG 10.2]   - sso_access_token: {'SET' if access_token else 'MISSING'}")
-    logger.error(f"[FLOW DEBUG 10.3]   - sso_refresh_token: {'SET' if tokens.get('refresh_token') else 'MISSING'}")
+    if settings.DEBUG_AUTH_FLOW:
+        logger.debug(f"[FLOW DEBUG 10] Session data stored:")
+        logger.debug(f"[FLOW DEBUG 10.1]   - primetrade_role: {role_name} with permissions: {permissions}")
+        logger.debug(f"[FLOW DEBUG 10.2]   - sso_access_token: {'SET' if access_token else 'MISSING'}")
+        logger.debug(f"[FLOW DEBUG 10.3]   - sso_refresh_token: {'SET' if tokens.get('refresh_token') else 'MISSING'}")
 
     # Log user into Django
     login(request, user, backend='django.contrib.auth.backends.ModelBackend')
 
-    logger.error(f"[FLOW DEBUG 11] Django login() called:")
-    logger.error(f"[FLOW DEBUG 11.1]   - user authenticated: {user.is_authenticated}")
-    logger.error(f"[FLOW DEBUG 11.2]   - request.user: {request.user}")
-    logger.error(f"[FLOW DEBUG 11.3]   - request.user.is_authenticated: {request.user.is_authenticated}")
-    logger.error(f"[FLOW DEBUG 11.4]   - session key: {request.session.session_key}")
+    if settings.DEBUG_AUTH_FLOW:
+        logger.debug(f"[FLOW DEBUG 11] Django login() called:")
+        logger.debug(f"[FLOW DEBUG 11.1]   - user authenticated: {user.is_authenticated}")
+        logger.debug(f"[FLOW DEBUG 11.2]   - request.user: {request.user}")
+        logger.debug(f"[FLOW DEBUG 11.3]   - request.user.is_authenticated: {request.user.is_authenticated}")
+        logger.debug(f"[FLOW DEBUG 11.4]   - session key: {request.session.session_key}")
 
     # Get user's role for role-based landing page redirect
     role = request.session.get('primetrade_role', {}).get('role', 'user')
-    logger.error(f"[FLOW DEBUG 11.5] User role: {role}")
+    if settings.DEBUG_AUTH_FLOW:
+        logger.debug(f"[FLOW DEBUG 11.5] User role: {role}")
 
     # Look up configured redirect for this role
     redirect_url = 'home'  # Default fallback
@@ -427,16 +455,20 @@ def sso_callback(request):
 
         if config:
             redirect_url = config.landing_page
-            logger.error(f"[FLOW DEBUG 11.6] Using role-based redirect: {redirect_url}")
+            if settings.DEBUG_AUTH_FLOW:
+                logger.debug(f"[FLOW DEBUG 11.6] Using role-based redirect: {redirect_url}")
         else:
-            logger.error(f"[FLOW DEBUG 11.6] No active redirect config for role '{role}', using default")
+            if settings.DEBUG_AUTH_FLOW:
+                logger.debug(f"[FLOW DEBUG 11.6] No active redirect config for role '{role}', using default")
 
     except Exception as e:
-        logger.error(f"[FLOW DEBUG 11.6] Error looking up role redirect: {e}")
+        if settings.DEBUG_AUTH_FLOW:
+            logger.debug(f"[FLOW DEBUG 11.6] Error looking up role redirect: {e}")
         # Safe fallback to default
 
-    logger.error(f"[FLOW DEBUG 12] About to redirect to: {redirect_url}")
-    logger.error(f"[FLOW DEBUG 12.1] Full auth flow completed successfully for user: {email}")
+    if settings.DEBUG_AUTH_FLOW:
+        logger.debug(f"[FLOW DEBUG 12] About to redirect to: {redirect_url}")
+        logger.debug(f"[FLOW DEBUG 12.1] Full auth flow completed successfully for user: {email}")
 
     return redirect(redirect_url)
 
