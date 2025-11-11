@@ -1043,6 +1043,9 @@ def approve_release(request):
 @permission_classes([IsAuthenticated])
 def open_releases(request):
     try:
+        from datetime import date as date_class
+        today = date_class.today()
+
         rels = Release.objects.filter(status='OPEN').order_by('-created_at')
         result = []
         for r in rels:
@@ -1064,6 +1067,22 @@ def open_releases(request):
 
             next_date = r.loads.filter(status='PENDING').order_by('date').values_list('date', flat=True).first()
             last_shipped = r.loads.filter(status='SHIPPED').order_by('-date').values_list('date', flat=True).first()
+
+            # Urgency calculations
+            days_until_next = None
+            is_overdue = False
+            urgency_level = 'upcoming'
+            if next_date:
+                next_date_obj = datetime.strptime(next_date, '%Y-%m-%d').date() if isinstance(next_date, str) else next_date
+                days_until_next = (next_date_obj - today).days
+                is_overdue = days_until_next < 0
+                if days_until_next < 0:
+                    urgency_level = 'overdue'
+                elif days_until_next <= 2:
+                    urgency_level = 'due-soon'
+
+            days_open = (today - r.created_at.date()).days if r.created_at else None
+
             result.append({
                 'id': r.id,
                 'releaseNumber': r.release_number,
@@ -1078,6 +1097,10 @@ def open_releases(request):
                 'tonsRemaining': tons_remaining,
                 'nextScheduledDate': next_date,
                 'lastShippedDate': last_shipped,
+                'daysUntilNextLoad': days_until_next,
+                'isOverdue': is_overdue,
+                'urgencyLevel': urgency_level,
+                'daysOpen': days_open,
             })
         return Response(result)
     except Exception as e:
@@ -1089,6 +1112,9 @@ def open_releases(request):
 @permission_classes([IsAuthenticated])
 def pending_release_loads(request):
     try:
+        from datetime import date as date_class, timedelta
+        today = date_class.today()
+
         loads = ReleaseLoad.objects.filter(status='PENDING').select_related(
             'release', 'release__customer_ref', 'release__ship_to_ref', 'release__carrier_ref', 'release__lot_ref', 'release__lot_ref__product'
         ).order_by('date','seq')
@@ -1096,6 +1122,26 @@ def pending_release_loads(request):
         for ld in loads:
             r = ld.release
             prod = getattr(getattr(r, 'lot_ref', None), 'product', None)
+
+            # Parse scheduled date and calculate urgency
+            sched_date = datetime.strptime(ld.date, '%Y-%m-%d').date() if isinstance(ld.date, str) else ld.date
+            days_until = (sched_date - today).days
+
+            # Determine urgency level
+            if days_until < 0:
+                urgency = 'overdue'
+            elif days_until == 0:
+                urgency = 'today'
+            elif days_until <= 7:
+                urgency = 'this-week'
+            elif days_until <= 14:
+                urgency = 'next-week'
+            else:
+                urgency = 'later'
+
+            # Calculate ISO week number for grouping
+            week_num = sched_date.isocalendar()[1]
+
             result.append({
                 'loadId': ld.id,
                 'releaseId': r.id,
@@ -1104,6 +1150,9 @@ def pending_release_loads(request):
                 'seq': ld.seq,
                 'scheduledDate': ld.date,
                 'plannedTons': float(ld.planned_tons or 0),
+                'daysUntil': days_until,
+                'urgency': urgency,
+                'weekGroup': week_num,
                 'customer': {
                     'id': getattr(r.customer_ref, 'id', None),
                     'name': getattr(r.customer_ref, 'customer', r.customer_id_text)

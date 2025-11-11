@@ -9,6 +9,32 @@
     .summary .badge { background: var(--surface-elevated); border:1px solid var(--border); padding: .35rem .6rem; border-radius: 8px; }
     table { width:100%; }
     th, td { white-space: nowrap; }
+    .progress-bar {
+      width: 100px;
+      height: 20px;
+      background: #e5e7eb;
+      border-radius: 10px;
+      overflow: hidden;
+      display: inline-block;
+      vertical-align: middle;
+      margin-right: .5rem;
+    }
+    .progress-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #10b981, #059669);
+      transition: width 0.3s;
+    }
+    .urgency-badge {
+      display: inline-block;
+      padding: .2rem .5rem;
+      border-radius: 4px;
+      font-size: .75rem;
+      font-weight: 600;
+      margin-left: .5rem;
+    }
+    .urgency-badge.overdue { background: #dc2626; color: white; }
+    .urgency-badge.due-soon { background: #f59e0b; color: white; }
+    .urgency-badge.upcoming { background: #10b981; color: white; }
   </style>
 </head>
 <body>
@@ -23,6 +49,7 @@
       </div>
       <div class="user-actions" style="position: absolute; top: 20px; right: 20px; display:flex; gap:.5rem;">
         <a href="/" class="btn">Home</a>
+        <a href="/loading-schedule.html" class="btn">Loading Schedule</a>
         <a href="/releases.html" class="btn">Upload Release</a>
         <a href="/auth/logout/" class="btn" style="background: #dc3545; color: white; padding: 8px 20px;">Logout</a>
       </div>
@@ -71,9 +98,25 @@
       if (!res.ok) throw new Error(await res.text());
       const rows = await res.json();
       document.getElementById('count').textContent = `${rows.length} open`;
+      // Sort by urgency and next scheduled date
+      rows.sort((a, b) => {
+        const urgencyOrder = { 'overdue': 0, 'due-soon': 1, 'upcoming': 2 };
+        const aUrgency = urgencyOrder[a.urgencyLevel] ?? 3;
+        const bUrgency = urgencyOrder[b.urgencyLevel] ?? 3;
+        if (aUrgency !== bUrgency) return aUrgency - bUrgency;
+        if (!a.nextScheduledDate) return 1;
+        if (!b.nextScheduledDate) return -1;
+        return a.nextScheduledDate.localeCompare(b.nextScheduledDate);
+      });
+
       const tbody = document.querySelector('#tbl tbody');
       tbody.innerHTML = rows.map(r => {
-        const loads = `${r.loadsShipped} / ${r.totalLoads}`;
+        // Progress bar for loads
+        const progress = r.totalLoads > 0 ? (r.loadsShipped / r.totalLoads * 100) : 0;
+        const loadsDisplay = `
+          <div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div></div>
+          ${r.loadsShipped} / ${r.totalLoads}
+        `;
 
         // Build tons display with color coding
         const official = Number(r.tonsOfficial || 0);
@@ -95,12 +138,23 @@
           tonsDisplay = `0.000 / ${total.toFixed(3)}`;
         }
 
+        // Urgency badge for next load
+        let urgencyBadge = '';
+        if (r.isOverdue) {
+          const daysOverdue = Math.abs(r.daysUntilNextLoad);
+          urgencyBadge = `<span class="urgency-badge overdue">${daysOverdue}d overdue</span>`;
+        } else if (r.daysUntilNextLoad !== null && r.daysUntilNextLoad <= 2) {
+          urgencyBadge = `<span class="urgency-badge due-soon">${r.daysUntilNextLoad === 0 ? 'Today' : r.daysUntilNextLoad === 1 ? 'Tomorrow' : 'Soon'}</span>`;
+        } else if (r.daysUntilNextLoad !== null) {
+          urgencyBadge = `<span class="urgency-badge upcoming">In ${r.daysUntilNextLoad}d</span>`;
+        }
+
 return `<tr>
           <td><a href="/api/releases/${r.id}/view/">${r.releaseNumber}</a></td>
           <td>${r.customer||''}</td>
-          <td>${loads}</td>
+          <td>${loadsDisplay}</td>
           <td>${tonsDisplay}</td>
-          <td>${fmtDate(r.nextScheduledDate)}</td>
+          <td>${fmtDate(r.nextScheduledDate)}${urgencyBadge}</td>
           <td>${fmtDate(r.lastShippedDate)}</td>
         </tr>`;
       }).join('');
