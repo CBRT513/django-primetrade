@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Loading Schedule</title>
+  <link rel="stylesheet" href="/static/css/cbrt-brand.css">
+  <style>
+    .summary { display:flex; gap: 1rem; align-items:center; margin-bottom: 1rem; }
+    .summary .badge { background: var(--surface-elevated); border:1px solid var(--border); padding: .35rem .6rem; border-radius: 8px; }
+    .filter-btn { padding: .35rem .8rem; border-radius: 6px; border: 1px solid var(--border); background: white; cursor: pointer; }
+    .filter-btn.active { background: var(--primary-color); color: white; }
+    .section { margin-bottom: 2rem; }
+    .section-header {
+      background: var(--surface-elevated);
+      padding: .75rem 1rem;
+      border-radius: 8px;
+      margin-bottom: .5rem;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: 600;
+    }
+    .section-header.overdue { background: #fee2e2; border-left: 4px solid #dc2626; }
+    .section-header.today { background: #fef3c7; border-left: 4px solid #f59e0b; }
+    .section-header.this-week { background: #dbeafe; border-left: 4px solid #2563eb; }
+    .section-header.next-week { background: #f3f4f6; border-left: 4px solid #6b7280; }
+
+    table { width:100%; }
+    th, td { white-space: nowrap; text-align: left; padding: .5rem; }
+    th { background: var(--surface-elevated); font-weight: 600; }
+
+    tr.overdue { background: #fef2f2; }
+    tr.today { background: #fffbeb; }
+    tr.this-week { background: #eff6ff; }
+
+    .urgency-badge {
+      display: inline-block;
+      padding: .2rem .5rem;
+      border-radius: 4px;
+      font-size: .75rem;
+      font-weight: 600;
+    }
+    .urgency-badge.overdue { background: #dc2626; color: white; }
+    .urgency-badge.today { background: #f59e0b; color: white; }
+    .urgency-badge.this-week { background: #2563eb; color: white; }
+    .urgency-badge.next-week { background: #6b7280; color: white; }
+    .urgency-badge.later { background: #e5e7eb; color: #374151; }
+
+    .progress-text { font-size: .85rem; color: #6b7280; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="cbrt-header" id="brandingHeader" style="position: relative;">
+      <img id="brandingLogo" class="cbrt-logo" style="display:none;" />
+      <div class="cbrt-company">
+        <div class="cbrt-company-name" id="brandingName">Loading Schedule</div>
+        <div class="cbrt-company-info" id="brandingInfo">Pending shipments by week</div>
+      </div>
+      <div class="user-actions" style="position: absolute; top: 20px; right: 20px; display:flex; gap:.5rem;">
+        <span id="usernameDisplay" style="margin-right: 15px; color: #fff; font-weight: 500;">Loading...</span>
+        <a href="/" class="btn">Home</a>
+        <a href="/auth/logout/" class="btn" style="background: #dc3545; color: white; padding: 8px 20px;">Logout</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="summary">
+        <button id="refresh" class="btn btn-secondary btn-sm">Refresh</button>
+        <span id="count" class="badge">0 pending loads</span>
+        <div style="flex: 1;"></div>
+        <button class="filter-btn active" data-filter="all">All</button>
+        <button class="filter-btn" data-filter="overdue">Overdue Only</button>
+        <button class="filter-btn" data-filter="this-week">This Week</button>
+      </div>
+
+      <div id="overdue-section" class="section" style="display:none;">
+        <div class="section-header overdue">
+          <span>⚠️ Overdue</span>
+          <span class="progress-text" id="overdue-count"></span>
+        </div>
+        <table><thead><tr>
+          <th>Release #</th><th>Load #</th><th>Date</th><th>Days</th><th>Customer</th><th>Tons</th><th>Carrier</th>
+        </tr></thead><tbody id="overdue-tbody"></tbody></table>
+      </div>
+
+      <div id="today-section" class="section" style="display:none;">
+        <div class="section-header today">
+          <span>📅 Today</span>
+          <span class="progress-text" id="today-count"></span>
+        </div>
+        <table><thead><tr>
+          <th>Release #</th><th>Load #</th><th>Date</th><th>Days</th><th>Customer</th><th>Tons</th><th>Carrier</th>
+        </tr></thead><tbody id="today-tbody"></tbody></table>
+      </div>
+
+      <div id="this-week-section" class="section" style="display:none;">
+        <div class="section-header this-week">
+          <span>📆 This Week</span>
+          <span class="progress-text" id="this-week-count"></span>
+        </div>
+        <table><thead><tr>
+          <th>Release #</th><th>Load #</th><th>Date</th><th>Days</th><th>Customer</th><th>Tons</th><th>Carrier</th>
+        </tr></thead><tbody id="this-week-tbody"></tbody></table>
+      </div>
+
+      <div id="next-week-section" class="section" style="display:none;">
+        <div class="section-header next-week">
+          <span>📋 Next Week</span>
+          <span class="progress-text" id="next-week-count"></span>
+        </div>
+        <table><thead><tr>
+          <th>Release #</th><th>Load #</th><th>Date</th><th>Days</th><th>Customer</th><th>Tons</th><th>Carrier</th>
+        </tr></thead><tbody id="next-week-tbody"></tbody></table>
+      </div>
+
+      <div id="later-section" class="section" style="display:none;">
+        <div class="section-header">
+          <span>📅 Later</span>
+          <span class="progress-text" id="later-count"></span>
+        </div>
+        <table><thead><tr>
+          <th>Release #</th><th>Load #</th><th>Date</th><th>Days</th><th>Customer</th><th>Tons</th><th>Carrier</th>
+        </tr></thead><tbody id="later-tbody"></tbody></table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let allLoads = [];
+    let currentFilter = 'all';
+
+    async function getJSON(u){
+      const r=await fetch(u, { credentials: 'same-origin' });
+      if(!r.ok) throw new Error(await r.text());
+      return r.json();
+    }
+
+    function fmtDate(d) {
+      if (!d) return '';
+      try {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+          const [y,m,dd] = d.split('-');
+          return `${m}/${dd}/${y}`;
+        }
+      } catch(e) {}
+      return String(d);
+    }
+
+    function formatDaysUntil(days) {
+      if (days < 0) return `${Math.abs(days)}d overdue`;
+      if (days === 0) return 'TODAY';
+      if (days === 1) return 'Tomorrow';
+      return `In ${days}d`;
+    }
+
+    function renderLoadRow(load) {
+      const daysText = formatDaysUntil(load.daysUntil);
+      // Client view: No "Create BOL" action button
+      return `<tr class="${load.urgency}">
+        <td><a href="/api/releases/${load.releaseId}/view/">${load.releaseNumber}</a></td>
+        <td>${load.seq}</td>
+        <td>${fmtDate(load.scheduledDate)}</td>
+        <td><span class="urgency-badge ${load.urgency}">${daysText}</span></td>
+        <td>${load.customer.name || ''}</td>
+        <td>${load.plannedTons.toFixed(2)}</td>
+        <td>${load.carrier.name || ''}</td>
+      </tr>`;
+    }
+
+    function render() {
+      const groups = {
+        overdue: [],
+        today: [],
+        'this-week': [],
+        'next-week': [],
+        later: []
+      };
+
+      allLoads.forEach(load => {
+        if (groups[load.urgency]) {
+          groups[load.urgency].push(load);
+        }
+      });
+
+      // Apply filter
+      const visibleGroups = currentFilter === 'all' ?
+        ['overdue', 'today', 'this-week', 'next-week', 'later'] :
+        currentFilter === 'overdue' ? ['overdue'] :
+        currentFilter === 'this-week' ? ['overdue', 'today', 'this-week'] :
+        [];
+
+      // Render each section
+      Object.keys(groups).forEach(urgency => {
+        const section = document.getElementById(`${urgency}-section`);
+        const tbody = document.getElementById(`${urgency}-tbody`);
+        const count = document.getElementById(`${urgency}-count`);
+
+        const loads = groups[urgency];
+        const visible = visibleGroups.includes(urgency);
+
+        section.style.display = (visible && loads.length > 0) ? 'block' : 'none';
+        if (count) count.textContent = `${loads.length} load${loads.length !== 1 ? 's' : ''}`;
+        if (tbody) tbody.innerHTML = loads.map(renderLoadRow).join('');
+      });
+
+      const totalCount = allLoads.length;
+      document.getElementById('count').textContent = `${totalCount} pending load${totalCount !== 1 ? 's' : ''}`;
+    }
+
+    async function load() {
+      const res = await fetch('/api/releases/pending-loads/', { credentials: 'same-origin' });
+      if (!res.ok) throw new Error(await res.text());
+      allLoads = await res.json();
+      render();
+    }
+
+    // Filter buttons
+    document.querySelectorAll('.filter-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = btn.dataset.filter;
+        render();
+      });
+    });
+
+    // Load user info and branding on page load
+    (async () => {
+      // Load current user info
+      try {
+        const user = await getJSON("/api/auth/me/");
+        if (user && user.username) {
+          document.getElementById("usernameDisplay").textContent = `Welcome, ${user.username}`;
+        }
+      } catch (e) {
+        console.log("Could not load user info:", e);
+        document.getElementById("usernameDisplay").textContent = "Welcome";
+      }
+
+      // Load custom branding if available
+      // NOTE: /api/branding endpoint removed - using static defaults
+      // Uncomment if endpoint is re-implemented
+      /*
+      try {
+        const branding = await getJSON("/api/branding");
+        if (branding) {
+          if (branding.logoUrl) {
+            document.getElementById("brandingLogo").src = branding.logoUrl;
+            document.getElementById("brandingLogo").style.display = "block";
+          }
+          if (branding.companyName) {
+            document.getElementById("brandingName").textContent = branding.companyName + " - Loading Schedule";
+          }
+          if (branding.addressLine1 || branding.addressLine2 || branding.phone || branding.website) {
+            const info = [];
+            if (branding.addressLine1) info.push(branding.addressLine1);
+            if (branding.addressLine2) info.push(branding.addressLine2);
+            if (branding.phone) info.push(branding.phone);
+            if (branding.website) info.push(branding.website);
+            document.getElementById("brandingInfo").textContent = info.join(" • ");
+          }
+        }
+      } catch (e) {
+        console.log("Could not load custom branding, using defaults:", e);
+      }
+      */
+
+      // Load schedule data
+      await load();
+    })().catch(err => alert(err.message || String(err)));
+
+    document.getElementById('refresh').addEventListener('click', () => load().catch(err=>alert(err.message||String(err))));
+  </script>
+</body>
+</html>
