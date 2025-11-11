@@ -172,7 +172,7 @@ if USE_S3:
     AWS_S3_OBJECT_PARAMETERS = {
         'CacheControl': 'max-age=86400',  # 24 hours
     }
-    AWS_DEFAULT_ACL = 'public-read'  # Make BOL PDFs publicly readable
+    AWS_DEFAULT_ACL = None  # Modern S3 buckets use bucket policies instead of ACLs
     AWS_S3_FILE_OVERWRITE = False  # Never overwrite existing files
     AWS_QUERYSTRING_AUTH = False  # Use direct URLs instead of signed URLs
 
