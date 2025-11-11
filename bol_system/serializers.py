@@ -49,11 +49,25 @@ class ReleaseLoadSerializer(serializers.ModelSerializer):
         return obj.bol.bol_number if obj.bol else None
 
     def get_bol_pdf_url(self, obj):
-        return obj.bol.pdf_url if obj.bol else None
+        if not obj.bol or not obj.bol.pdf_url:
+            return None
+        # Convert S3 path to full URL
+        from django.core.files.storage import default_storage
+        try:
+            return default_storage.url(obj.bol.pdf_url)
+        except:
+            return obj.bol.pdf_url  # Fallback to stored value
 
     def get_bol_stamped_pdf_url(self, obj):
         """Get watermarked PDF URL with official weight stamp"""
-        return obj.bol.stamped_pdf_url if obj.bol and obj.bol.stamped_pdf_url else None
+        if not obj.bol or not obj.bol.stamped_pdf_url:
+            return None
+        # Convert S3 path to full URL
+        from django.core.files.storage import default_storage
+        try:
+            return default_storage.url(obj.bol.stamped_pdf_url)
+        except:
+            return obj.bol.stamped_pdf_url  # Fallback to stored value
 
     def get_bol_created_at(self, obj):
         return obj.bol.created_at.isoformat() if obj.bol else None

@@ -1441,6 +1441,10 @@ def bol_history(request):
                 has_official = hasattr(bol, 'official_weight_tons') and bol.official_weight_tons is not None
                 display_weight = float(bol.official_weight_tons) if has_official else float(bol.net_tons)
 
+                # Convert S3 paths to full URLs
+                pdf_url = default_storage.url(bol.pdf_url) if bol.pdf_url else None
+                stamped_pdf_url = default_storage.url(bol.stamped_pdf_url) if bol.stamped_pdf_url else None
+
                 rows.append({
                     'id': bol.id,
                     'bolNo': bol.bol_number,
@@ -1448,8 +1452,8 @@ def bol_history(request):
                     'truckNo': bol.truck_number,
                     'netTons': round(display_weight, 2),  # Best available weight
                     'cbrtWeightTons': round(float(bol.net_tons), 2),  # Always include CBRT weight for reference
-                    'pdfUrl': bol.pdf_url,
-                    'stampedPdfUrl': bol.stamped_pdf_url or None,
+                    'pdfUrl': pdf_url,
+                    'stampedPdfUrl': stamped_pdf_url,
                     'productName': bol.product_name,
                     'buyerName': bol.buyer_name,
                     'officialWeightTons': round(float(bol.official_weight_tons), 2) if has_official else None,
@@ -1481,6 +1485,9 @@ def bol_history(request):
 def bol_detail(request, bol_id):
     try:
         bol = BOL.objects.get(id=bol_id)
+        # Convert S3 path to full URL
+        pdf_url = default_storage.url(bol.pdf_url) if bol.pdf_url else None
+
         return Response({
             'id': bol.id,
             'bolNo': bol.bol_number,
@@ -1493,7 +1500,7 @@ def bol_detail(request, bol_id):
             'date': bol.date,
             'netTons': float(bol.net_tons),
             'notes': bol.notes,
-            'pdfUrl': bol.pdf_url
+            'pdfUrl': pdf_url
         })
     except BOL.DoesNotExist:
         logger.error(f"BOL {bol_id} not found")
@@ -1555,6 +1562,10 @@ def set_official_weight(request, bol_id):
 
         logger.info(f"Official weight set for BOL {bol.bol_number}: {weight_tons} tons by {entered_by}")
 
+        # Convert S3 paths to full URLs
+        pdf_url = default_storage.url(bol.pdf_url) if bol.pdf_url else None
+        stamped_pdf_url = default_storage.url(bol.stamped_pdf_url) if bol.stamped_pdf_url else None
+
         return Response({
             'ok': True,
             'bolNumber': bol.bol_number,
@@ -1564,8 +1575,8 @@ def set_official_weight(request, bol_id):
             'variancePercent': float(bol.weight_variance_percent),
             'enteredBy': bol.official_weight_entered_by,
             'enteredAt': bol.official_weight_entered_at.isoformat() if bol.official_weight_entered_at else None,
-            'pdfUrl': bol.pdf_url,
-            'stampedPdfUrl': bol.stamped_pdf_url or None
+            'pdfUrl': pdf_url,
+            'stampedPdfUrl': stamped_pdf_url
         })
 
     except BOL.DoesNotExist:
