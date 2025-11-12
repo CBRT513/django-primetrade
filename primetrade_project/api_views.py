@@ -60,7 +60,7 @@ def user_context(request):
 
     # Get role info from session (stored during OAuth callback)
     role_info = request.session.get("primetrade_role", {})
-    role = role_info.get("role", "viewer")
+    role = role_info.get("role", "Client")  # Default to Client
     permissions = role_info.get("permissions", [])
 
     # Convert permissions array to boolean flags for frontend
