@@ -323,33 +323,39 @@
         document.getElementById("usernameDisplay").textContent = "Welcome";
       }
 
-      // Load custom branding if available
-      // NOTE: /api/branding endpoint removed - using static defaults
-      // Uncomment if endpoint is re-implemented
-      /*
+      // Load customer branding (logo and colors)
       try {
-        const branding = await getJSON("/api/branding");
-        if (branding) {
-          if (branding.logoUrl) {
-            document.getElementById("brandingLogo").src = branding.logoUrl;
-            document.getElementById("brandingLogo").style.display = "block";
-          }
-          if (branding.companyName) {
-            document.getElementById("brandingName").textContent = branding.companyName + " - Loading Schedule";
-          }
-          if (branding.addressLine1 || branding.addressLine2 || branding.phone || branding.website) {
-            const info = [];
-            if (branding.addressLine1) info.push(branding.addressLine1);
-            if (branding.addressLine2) info.push(branding.addressLine2);
-            if (branding.phone) info.push(branding.phone);
-            if (branding.website) info.push(branding.website);
-            document.getElementById("brandingInfo").textContent = info.join(" • ");
-          }
+        const urlParams = new URLSearchParams(window.location.search);
+        const customerName = urlParams.get('customer_name');
+        const customerId = urlParams.get('customer_id');
+
+        let brandingUrl = '/api/customers/branding/';
+        if (customerName) {
+          brandingUrl += `?customer_name=${encodeURIComponent(customerName)}`;
+        } else if (customerId) {
+          brandingUrl += `?customer_id=${encodeURIComponent(customerId)}`;
+        }
+
+        const branding = await getJSON(brandingUrl);
+
+        // Apply customer logo
+        if (branding.logo_url) {
+          const customerLogo = document.getElementById('customerLogo');
+          customerLogo.src = branding.logo_url;
+          customerLogo.style.display = 'block';
+        }
+        // Apply custom colors if provided
+        if (branding.primary_color) {
+          document.documentElement.style.setProperty('--primary', branding.primary_color);
+        }
+        if (branding.secondary_color) {
+          document.documentElement.style.setProperty('--secondary', branding.secondary_color);
+          document.body.style.background = `linear-gradient(135deg, ${branding.secondary_color} 0%, ${branding.primary_color} 100%)`;
         }
       } catch (e) {
-        console.log("Could not load custom branding, using defaults:", e);
+        console.log('Could not load customer branding:', e);
+        // Continue with default branding
       }
-      */
 
       // Load schedule data
       await load();
