@@ -300,7 +300,7 @@
         rows.forEach(row => {
           const hasOfficialWeight = row.officialWeightTons !== null && row.officialWeightTons !== undefined;
           const hasStampedPdf = row.stampedPdfUrl && row.stampedPdfUrl !== '';
-          const cbrtWeight = Number(row.netTons || 0).toFixed(2);
+          const cbrtWeight = Number(row.cbrtWeightTons || 0).toFixed(2);
           const officialWeight = hasOfficialWeight ? Number(row.officialWeightTons).toFixed(2) : '-';
 
           let varianceHTML = '-';
@@ -360,7 +360,7 @@
       currentBOL = bol;
       document.getElementById('modalBOLNumber').textContent = bol.bolNo || '-';
       document.getElementById('modalCustomer').textContent = bol.buyerName || '-';
-      document.getElementById('modalCBRTWeight').textContent = Number(bol.netTons || 0).toFixed(2) + ' tons';
+      document.getElementById('modalCBRTWeight').textContent = Number(bol.cbrtWeightTons || 0).toFixed(2) + ' tons';
       document.getElementById('officialWeightInput').value = '';
       document.getElementById('weightModal').classList.add('active');
 
