@@ -10,6 +10,7 @@ from .models import Product, Customer, Carrier, Truck, BOL, Release, ReleaseLoad
 from .serializers import ProductSerializer, CustomerSerializer, CarrierSerializer, TruckSerializer, ReleaseSerializer, ReleaseLoadSerializer, CustomerShipToSerializer, AuditLogSerializer
 from .pdf_generator import generate_bol_pdf
 from .release_parser import parse_release_pdf
+from .email_utils import send_bol_notification
 from primetrade_project.decorators import require_role, require_role_for_writes
 import logging
 import os
@@ -732,6 +733,13 @@ def confirm_bol(request):
             pdf_url = f"/media/bol_pdfs/{bol.bol_number}.pdf"
             bol.pdf_url = pdf_url
             bol.save()
+
+        # Send email notification
+        try:
+            send_bol_notification(bol, pdf_url)
+        except Exception as e:
+            logger.error(f"Failed to send email notification for BOL {bol.bol_number}: {str(e)}")
+            # Don't fail BOL creation if email fails
 
         return Response({
             'ok': True,
