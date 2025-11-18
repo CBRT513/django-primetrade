@@ -232,6 +232,7 @@
 
   <script>
     let currentBOL = null;
+    let bolCache = {}; // Cache BOLs by ID for modal access
 
     // Get CSRF token from cookie
     function getCookie(name) {
@@ -297,7 +298,11 @@
 
         // Color scheme: 🟢 Official = #059669 (green), 🟠 CBRT = #f59e0b (amber)
         let html = '';
+        bolCache = {}; // Clear cache
         rows.forEach(row => {
+          // Cache the BOL for modal access
+          bolCache[row.id] = row;
+
           const hasOfficialWeight = row.officialWeightTons !== null && row.officialWeightTons !== undefined;
           const hasStampedPdf = row.stampedPdfUrl && row.stampedPdfUrl !== '';
           const cbrtWeight = Number(row.cbrtWeightTons || 0).toFixed(2);
@@ -328,7 +333,7 @@
 
           const actionButton = hasOfficialWeight
             ? '-'
-            : `<button class="btn btn-sm" onclick='openWeightModal(${JSON.stringify(row)})'>Enter Weight</button>`;
+            : `<button class="btn btn-sm" onclick="openWeightModal(${row.id})">Enter Weight</button>`;
 
           // Always show stamped PDF if available (when official weight entered), otherwise original
           const pdfUrl = hasStampedPdf ? row.stampedPdfUrl : (row.pdfUrl || '#');
@@ -356,7 +361,13 @@
       }
     }
 
-    function openWeightModal(bol) {
+    function openWeightModal(bolId) {
+      const bol = bolCache[bolId];
+      if (!bol) {
+        console.error('BOL not found in cache:', bolId);
+        return;
+      }
+
       currentBOL = bol;
       document.getElementById('modalBOLNumber').textContent = bol.bolNo || '-';
       document.getElementById('modalCustomer').textContent = bol.buyerName || '-';
