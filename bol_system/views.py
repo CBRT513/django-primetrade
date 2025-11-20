@@ -844,18 +844,26 @@ def approve_release(request):
         if not release_number:
             return Response({'error': 'releaseNumber required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Reject duplicates (but allow re-creating cancelled releases)
-        if Release.objects.filter(release_number=release_number).exclude(status='CANCELLED').exists():
-            existing = Release.objects.filter(release_number=release_number).exclude(status='CANCELLED').first()
-            audit(request, 'RELEASE_APPROVE_DUPLICATE', existing, f"Duplicate attempt: {release_number}", {'releaseNumber': release_number})
+        # Handle duplicate release numbers
+        existing_active = Release.objects.filter(release_number=release_number).exclude(status='CANCELLED').first()
+        if existing_active:
+            # Block duplicates for active (non-cancelled) releases
+            audit(request, 'RELEASE_APPROVE_DUPLICATE', existing_active, f"Duplicate attempt: {release_number}", {'releaseNumber': release_number})
             return Response(
                 {
                     'error': 'Duplicate release_number',
                     'releaseNumber': release_number,
-                    'id': existing.id if existing else None,
+                    'id': existing_active.id,
                 },
                 status=status.HTTP_409_CONFLICT
             )
+
+        # If there's a cancelled release with this number, delete it to allow re-creation
+        cancelled_release = Release.objects.filter(release_number=release_number, status='CANCELLED').first()
+        if cancelled_release:
+            logger.info(f"Deleting cancelled release {release_number} (ID: {cancelled_release.id}) to allow re-creation by {request.user.username}")
+            audit(request, 'RELEASE_DELETED', cancelled_release, f"Deleted cancelled release {release_number} for re-creation")
+            cancelled_release.delete()  # This will cascade delete associated loads
 
         # Chemistry tolerance (configurable)
         try:
