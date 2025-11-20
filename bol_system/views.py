@@ -844,9 +844,9 @@ def approve_release(request):
         if not release_number:
             return Response({'error': 'releaseNumber required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Reject duplicates
-        if Release.objects.filter(release_number=release_number).exists():
-            existing = Release.objects.filter(release_number=release_number).first()
+        # Reject duplicates (but allow re-creating cancelled releases)
+        if Release.objects.filter(release_number=release_number).exclude(status='CANCELLED').exists():
+            existing = Release.objects.filter(release_number=release_number).exclude(status='CANCELLED').first()
             audit(request, 'RELEASE_APPROVE_DUPLICATE', existing, f"Duplicate attempt: {release_number}", {'releaseNumber': release_number})
             return Response(
                 {
