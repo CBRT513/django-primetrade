@@ -512,6 +512,20 @@ def preview_bol(request):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
+        # Check if creating from a release load to pull additional data
+        release_load = None
+        release_obj = None
+        load_id = data.get('loadId') or data.get('load_id')
+        if load_id:
+            try:
+                release_load = ReleaseLoad.objects.select_related(
+                    'release',
+                    'release__lot_ref'
+                ).get(id=load_id)
+                release_obj = release_load.release
+            except ReleaseLoad.DoesNotExist:
+                pass  # Continue without release data
+
         # Get related objects for display names
         try:
             product = Product.objects.get(id=data['productId'])
@@ -531,6 +545,7 @@ def preview_bol(request):
                 return Response({'error': 'Truck not found'}, status=status.HTTP_404_NOT_FOUND)
 
         # Build preview data dictionary (matching actual BOL structure)
+        # If from release, pull care_of_co, lot_ref, and release_number from release
         preview_data = {
             'bolNumber': 'PREVIEW',
             'productName': product.name,
@@ -543,9 +558,9 @@ def preview_bol(request):
             'netTons': net_tons,
             'customerPO': data.get('customerPO', ''),
             'specialInstructions': data.get('specialInstructions', ''),
-            'releaseNumber': data.get('releaseNumber', ''),
-            'care_of_co': data.get('careOfCo', 'PrimeTrade, LLC'),  # For Ship From section
-            'lot_ref': None,  # Preview doesn't have lot chemistry
+            'releaseNumber': f'{release_obj.release_number}-{release_load.seq}' if release_load else data.get('releaseNumber', ''),
+            'care_of_co': release_obj.care_of_co if release_obj else data.get('careOfCo', 'PrimeTrade, LLC'),
+            'lot_ref': release_obj.lot_ref if release_obj else None,
         }
 
         # Generate temporary PDF
