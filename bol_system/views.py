@@ -702,7 +702,8 @@ def confirm_bol(request):
             created_by_email=f'{request.user.username}@primetrade.com',
             lot_ref=release_obj.lot_ref if release_load else None,
             release_number=f'{release_obj.release_number}-{release_load.seq}' if release_load else '',
-            special_instructions=release_obj.special_instructions if release_load else ''
+            special_instructions=release_obj.special_instructions if release_load else '',
+            care_of_co=release_obj.care_of_co if release_load else 'PrimeTrade, LLC'
         )
 
         # If load provided, mark shipped and attach
@@ -906,6 +907,7 @@ def approve_release(request):
                 material_description=(mat.get('description') or ''),
                 quantity_net_tons=data.get('quantityNetTons', None),
                 special_instructions=data.get('specialInstructions', ''),
+                care_of_co=data.get('careOfCo', 'PrimeTrade, LLC'),
                 updated_by=request.user.username,
             )
 
@@ -1295,6 +1297,8 @@ def release_detail_api(request, release_id):
         qty = data.get('quantityNetTons') or data.get('quantity_net_tons')
         status_val = data.get('status')
         carrier_name = (data.get('carrier') or data.get('carrierName') or data.get('shipVia') or '').strip()
+        special_instructions = data.get('specialInstructions')
+        care_of_co = data.get('careOfCo')
 
         ship = data.get('shipTo') or {}
         street = ship.get('street') or rel.ship_to_street or ''
@@ -1339,6 +1343,8 @@ def release_detail_api(request, release_id):
             if fob is not None: rel.fob = fob
             if qty is not None: rel.quantity_net_tons = qty
             if status_val: rel.status = status_val
+            if special_instructions is not None: rel.special_instructions = special_instructions
+            if care_of_co is not None: rel.care_of_co = care_of_co
 
             # Upsert relateds
             customer_obj = None

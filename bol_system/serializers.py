@@ -108,7 +108,7 @@ class ReleaseSerializer(serializers.ModelSerializer):
         fields = [
             'id','release_number','release_date','customer_id_text','customer_po',
             'ship_via','fob','ship_to_name','ship_to_street','ship_to_street2','ship_to_city','ship_to_state','ship_to_zip',
-            'lot','material_description','quantity_net_tons','status','special_instructions','loads',
+            'lot','material_description','quantity_net_tons','status','special_instructions','care_of_co','loads',
             'customer_ref','ship_to_ref','carrier_ref','lot_ref'
         ]
 

@@ -179,9 +179,12 @@ def generate_bol_pdf(bol_data, output_path=None):
     net_tons = float(data.net_tons) if data.net_tons else 0
 
     # Left column: Ship From + Consignee
+    # Get c/o company from BOL data (defaults to PrimeTrade, LLC for backward compatibility)
+    co_company = getattr(data, 'care_of_co', None) or 'PrimeTrade, LLC'
+
     left_col_data = [
         [Paragraph('<b>SHIP FROM:</b>', header_style)],
-        [Paragraph('<b>Cincinnati Barge & Rail Terminal, LLC</b><br/>c/o PrimeTrade, LLC<br/>1707 Riverside Drive<br/>Cincinnati, Ohio 45202<br/>Phone: (513) 721-1707', normal_style)],
+        [Paragraph(f'<b>Cincinnati Barge & Rail Terminal, LLC</b><br/>c/o {co_company}<br/>1707 Riverside Drive<br/>Cincinnati, Ohio 45202<br/>Phone: (513) 721-1707', normal_style)],
         [Spacer(1, 0.05*inch)],
         [Paragraph('<b>CONSIGNEE (SHIP TO):</b>', header_style)],
         [Paragraph(f'<b>{data.buyer_name}</b><br/><font size="7">{data.ship_to.replace(chr(10), "<br/>")}</font>', normal_style)]

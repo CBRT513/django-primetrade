@@ -155,6 +155,13 @@ class BOL(TimestampedModel):
     release_number = models.CharField(max_length=20, blank=True, help_text='Release number for reference')
     special_instructions = models.TextField(blank=True, help_text='Special warehouse/BOL requirements from release')
 
+    care_of_co = models.CharField(
+        max_length=200,
+        blank=True,
+        default='PrimeTrade, LLC',
+        help_text="Company name for 'c/o' line in BOL Ship From section (copied from release)"
+    )
+
     # Official weight tracking (certified scale)
     official_weight_tons = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text='Certified scale weight (official)')
     official_weight_entered_by = models.CharField(max_length=200, blank=True, help_text='User who entered official weight')
@@ -319,6 +326,13 @@ class Release(TimestampedModel):
     special_instructions = models.TextField(
         blank=True,
         help_text="Special warehouse/BOL requirements (e.g., Material #, delivery instructions, tarping, etc.)"
+    )
+
+    care_of_co = models.CharField(
+        max_length=200,
+        blank=True,
+        default='PrimeTrade, LLC',
+        help_text="Company name for 'c/o' line in BOL Ship From section (for blind shipping)"
     )
 
     class Meta:

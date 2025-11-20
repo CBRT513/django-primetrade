@@ -104,6 +104,19 @@
           <div class="form-group"><label>P</label><input id="chemP" type="number" step="0.001"></div>
           <div class="form-group"><label>Mn</label><input id="chemMn" type="number" step="0.001"></div>
         </div>
+
+        <div class="form-group" style="margin-top: .75rem;">
+          <label>Critical Delivery Instructions</label>
+          <textarea id="specialInstructions" rows="3" placeholder="Special warehouse/BOL requirements"></textarea>
+        </div>
+
+        <div class="form-group" style="margin-top: .75rem;">
+          <label>c/o Company (for Blind Shipping)</label>
+          <input id="careOfCo" type="text" placeholder="PrimeTrade, LLC">
+          <p style="font-size: 0.85rem; color: #6b7280; margin-top: 0.25rem;">
+            This company name appears on the BOL "Ship From" section. Leave as PrimeTrade unless customer requires blind shipping.
+          </p>
+        </div>
       </form>
 
       <!-- Loads/Shipments Section -->
@@ -274,6 +287,8 @@
       document.getElementById('chemS').value = lot.s ?? '';
       document.getElementById('chemP').value = lot.p ?? '';
       document.getElementById('chemMn').value = lot.mn ?? '';
+      document.getElementById('specialInstructions').value = rel.special_instructions || '';
+      document.getElementById('careOfCo').value = rel.care_of_co || 'PrimeTrade, LLC';
 
       // Render loads table
       renderLoads(rel.loads || [], rel.loads_summary);
@@ -337,6 +352,8 @@
           }
         },
         quantityNetTons: toNum(document.getElementById('qtyTons').value),
+        specialInstructions: document.getElementById('specialInstructions').value || '',
+        careOfCo: document.getElementById('careOfCo').value || 'PrimeTrade, LLC',
       };
       const csrf = (window.Utils && Utils.getCSRFToken) ? Utils.getCSRFToken() : null;
       const r = await fetch(`/api/releases/${id}/`, {
