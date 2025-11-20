@@ -530,7 +530,7 @@ def preview_bol(request):
             except Truck.DoesNotExist:
                 return Response({'error': 'Truck not found'}, status=status.HTTP_404_NOT_FOUND)
 
-        # Build preview data dictionary
+        # Build preview data dictionary (matching actual BOL structure)
         preview_data = {
             'bolNumber': 'PREVIEW',
             'productName': product.name,
@@ -544,6 +544,8 @@ def preview_bol(request):
             'customerPO': data.get('customerPO', ''),
             'specialInstructions': data.get('specialInstructions', ''),
             'releaseNumber': data.get('releaseNumber', ''),
+            'care_of_co': data.get('careOfCo', 'PrimeTrade, LLC'),  # For Ship From section
+            'lot_ref': None,  # Preview doesn't have lot chemistry
         }
 
         # Generate temporary PDF
