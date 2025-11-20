@@ -294,6 +294,41 @@ async function loadCarriers() {
   }
 }
 
+// Show all suggestions when clicking on combobox inputs
+function showAllSuggestions(input) {
+  // Save current value
+  const currentValue = input.value;
+  // Temporarily clear and restore to trigger datalist
+  input.value = '';
+  input.dispatchEvent(new Event('input', { bubbles: true }));
+  // Small delay to allow datalist to open, then restore value
+  setTimeout(() => {
+    input.value = currentValue;
+    input.dispatchEvent(new Event('input', { bubbles: true }));
+  }, 0);
+}
+
+// Add click handlers to show all suggestions
+customerIdInput.addEventListener('click', function() {
+  showAllSuggestions(this);
+});
+
+customerIdInput.addEventListener('focus', function() {
+  if (!this.value) {
+    showAllSuggestions(this);
+  }
+});
+
+carrierInput.addEventListener('click', function() {
+  showAllSuggestions(this);
+});
+
+carrierInput.addEventListener('focus', function() {
+  if (!this.value) {
+    showAllSuggestions(this);
+  }
+});
+
 // Auto-populate Ship-To address when customer is selected
 customerIdInput.addEventListener('change', async function() {
   const customerName = this.value.trim();
