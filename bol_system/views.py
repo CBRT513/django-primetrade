@@ -262,6 +262,20 @@ def customer_list(request):
         logger.error(f"customer upsert error: {e}", exc_info=True)
         return Response({'error': 'Failed to save customer', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
+# Customer detail endpoint (single customer by ID)
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+def customer_detail(request, customer_id: int):
+    """Get details for a single customer by ID"""
+    try:
+        customer = Customer.objects.get(id=customer_id)
+        return Response(CustomerSerializer(customer).data)
+    except Customer.DoesNotExist:
+        return Response({'error': 'Customer not found'}, status=status.HTTP_404_NOT_FOUND)
+    except Exception as e:
+        logger.error(f"customer_detail error: {e}", exc_info=True)
+        return Response({'error': 'Failed to fetch customer', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 # Ship-To endpoints (per-customer)
 @api_view(['GET','POST'])
 @permission_classes([IsAuthenticated])

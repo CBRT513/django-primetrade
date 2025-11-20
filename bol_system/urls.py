@@ -9,6 +9,7 @@ urlpatterns = [
     path('user/context/', views.user_context, name='user_context'),  # User role and permissions
     path('products/', views.ProductListView.as_view(), name='products'),
     path('customers/', views.customer_list, name='customers'),
+    path('customers/<int:customer_id>/', views.customer_detail, name='customer_detail'),
     path('customers/<int:customer_id>/shiptos/', views.customer_shiptos, name='customer_shiptos'),
     path('customers/branding/', views.customer_branding, name='customer_branding'),
     path('carriers/', views.carrier_list, name='carriers'),

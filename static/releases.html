@@ -56,7 +56,11 @@
             </div>
             <div class="form-group">
               <label>Customer ID</label>
-              <input id="customerId" type="text">
+              <div style="display: flex; gap: 0.5rem;">
+                <input id="customerId" type="text" list="customerSuggestions" style="flex: 1;">
+                <datalist id="customerSuggestions"></datalist>
+                <button id="addCustomerBtn" class="btn btn-sm" type="button" style="padding: 0.5rem 0.75rem;">Add</button>
+              </div>
             </div>
             <div class="form-group">
               <label>Customer PO</label>
@@ -64,7 +68,11 @@
             </div>
             <div class="form-group">
               <label>Carrier</label>
-              <input id="carrier" type="text">
+              <div style="display: flex; gap: 0.5rem;">
+                <input id="carrier" type="text" list="carrierSuggestions" style="flex: 1;">
+                <datalist id="carrierSuggestions"></datalist>
+                <button id="addCarrierBtn" class="btn btn-sm" type="button" style="padding: 0.5rem 0.75rem;">Add</button>
+              </div>
             </div>
             <div class="form-group">
               <label>Quantity (Net Tons)</label>
@@ -154,6 +162,84 @@
     </div>
   </div>
 
+  <!-- Add Customer Modal -->
+  <div id="addCustomerModal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 1001;">
+    <div style="background: var(--surface, #fff); border-radius: 12px; width: min(600px, 95vw); max-height: 90vh; overflow: auto; box-shadow: var(--shadow-xl); border: 1px solid var(--border);">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);">
+        <h3 style="margin: 0;">Add New Customer</h3>
+        <button id="closeAddCustomer" class="btn btn-danger btn-sm" type="button">Close</button>
+      </div>
+      <div style="padding: 1rem 1.25rem;">
+        <div id="addCustomerStatus" class="status" style="margin-bottom:.5rem;"></div>
+        <form id="addCustomerForm" onsubmit="return false;">
+          <div class="form-group">
+            <label>Customer Name *</label>
+            <input id="newCustomerName" type="text" required>
+          </div>
+          <div class="form-group">
+            <label>Address *</label>
+            <input id="newCustomerAddress" type="text" required>
+          </div>
+          <div class="form-group">
+            <label>Address Line 2</label>
+            <input id="newCustomerAddress2" type="text">
+          </div>
+          <div class="dashboard-grid" style="grid-template-columns: 1.5fr 0.5fr 0.5fr;">
+            <div class="form-group">
+              <label>City *</label>
+              <input id="newCustomerCity" type="text" required>
+            </div>
+            <div class="form-group">
+              <label>State *</label>
+              <input id="newCustomerState" type="text" maxlength="2" required>
+            </div>
+            <div class="form-group">
+              <label>Zip *</label>
+              <input id="newCustomerZip" type="text" pattern="\d{5}" required>
+            </div>
+          </div>
+          <div style="display:flex; gap: 0.5rem; justify-content:flex-end; margin-top: 0.75rem;">
+            <button id="saveCustomerBtn" class="btn btn-accent btn-sm" type="submit">Save Customer</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Carrier Modal -->
+  <div id="addCarrierModal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 1001;">
+    <div style="background: var(--surface, #fff); border-radius: 12px; width: min(500px, 95vw); max-height: 90vh; overflow: auto; box-shadow: var(--shadow-xl); border: 1px solid var(--border);">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);">
+        <h3 style="margin: 0;">Add New Carrier</h3>
+        <button id="closeAddCarrier" class="btn btn-danger btn-sm" type="button">Close</button>
+      </div>
+      <div style="padding: 1rem 1.25rem;">
+        <div id="addCarrierStatus" class="status" style="margin-bottom:.5rem;"></div>
+        <form id="addCarrierForm" onsubmit="return false;">
+          <div class="form-group">
+            <label>Carrier Name *</label>
+            <input id="newCarrierName" type="text" required>
+          </div>
+          <div class="form-group">
+            <label>Contact Name</label>
+            <input id="newCarrierContact" type="text">
+          </div>
+          <div class="form-group">
+            <label>Phone</label>
+            <input id="newCarrierPhone" type="tel">
+          </div>
+          <div class="form-group">
+            <label>Email</label>
+            <input id="newCarrierEmail" type="email">
+          </div>
+          <div style="display:flex; gap: 0.5rem; justify-content:flex-end; margin-top: 0.75rem;">
+            <button id="saveCarrierBtn" class="btn btn-accent btn-sm" type="submit">Save Carrier</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <script src="/static/js/utils.js?v=2"></script>
   <script>
 const out = document.getElementById('out');
@@ -161,6 +247,219 @@ const form = document.getElementById('uploadForm');
 const modal = document.getElementById('reviewModal');
 const closeBtn = document.getElementById('closeReview');
 const copyBtn = document.getElementById('copyJson');
+
+// Combobox functionality for Customer and Carrier
+const addCustomerModal = document.getElementById('addCustomerModal');
+const addCarrierModal = document.getElementById('addCarrierModal');
+const addCustomerBtn = document.getElementById('addCustomerBtn');
+const addCarrierBtn = document.getElementById('addCarrierBtn');
+const closeAddCustomer = document.getElementById('closeAddCustomer');
+const closeAddCarrier = document.getElementById('closeAddCarrier');
+const customerIdInput = document.getElementById('customerId');
+const carrierInput = document.getElementById('carrier');
+
+// Store loaded data
+let customersCache = [];
+let carriersCache = [];
+
+// Load customers from API
+async function loadCustomers() {
+  try {
+    const resp = await fetch('/api/customers/', { credentials: 'same-origin' });
+    if (resp.ok) {
+      customersCache = await resp.json();
+      const datalist = document.getElementById('customerSuggestions');
+      datalist.innerHTML = customersCache.map(c =>
+        `<option value="${c.customer}" data-id="${c.id}">${c.customer}</option>`
+      ).join('');
+    }
+  } catch (e) {
+    console.error('Failed to load customers:', e);
+  }
+}
+
+// Load carriers from API
+async function loadCarriers() {
+  try {
+    const resp = await fetch('/api/carriers/', { credentials: 'same-origin' });
+    if (resp.ok) {
+      carriersCache = await resp.json();
+      const datalist = document.getElementById('carrierSuggestions');
+      datalist.innerHTML = carriersCache.map(c =>
+        `<option value="${c.carrier_name}" data-id="${c.id}">${c.carrier_name}</option>`
+      ).join('');
+    }
+  } catch (e) {
+    console.error('Failed to load carriers:', e);
+  }
+}
+
+// Auto-populate Ship-To address when customer is selected
+customerIdInput.addEventListener('change', async function() {
+  const customerName = this.value.trim();
+  if (!customerName) return;
+
+  // Find customer in cache
+  const customer = customersCache.find(c => c.customer === customerName);
+  if (customer) {
+    // Populate Ship-To fields with customer's primary address
+    document.getElementById('shipToName').value = customer.customer;
+    document.getElementById('shipToStreet').value = customer.address || '';
+    document.getElementById('shipToStreet2').value = customer.address2 || '';
+    document.getElementById('shipToCity').value = customer.city || '';
+    document.getElementById('shipToState').value = customer.state || '';
+    document.getElementById('shipToZip').value = customer.zip || '';
+  }
+});
+
+// Open Add Customer modal
+addCustomerBtn.addEventListener('click', () => {
+  // Pre-fill with parsed value if it exists
+  const parsedValue = customerIdInput.value.trim();
+  if (parsedValue) {
+    document.getElementById('newCustomerName').value = parsedValue;
+  }
+  addCustomerModal.style.display = 'flex';
+});
+
+// Open Add Carrier modal
+addCarrierBtn.addEventListener('click', () => {
+  // Pre-fill with parsed value if it exists
+  const parsedValue = carrierInput.value.trim();
+  if (parsedValue) {
+    document.getElementById('newCarrierName').value = parsedValue;
+  }
+  addCarrierModal.style.display = 'flex';
+});
+
+// Close modals
+closeAddCustomer.addEventListener('click', () => { addCustomerModal.style.display = 'none'; });
+closeAddCarrier.addEventListener('click', () => { addCarrierModal.style.display = 'none'; });
+addCustomerModal.addEventListener('click', (e) => { if (e.target === addCustomerModal) addCustomerModal.style.display = 'none'; });
+addCarrierModal.addEventListener('click', (e) => { if (e.target === addCarrierModal) addCarrierModal.style.display = 'none'; });
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') {
+    if (addCustomerModal.style.display === 'flex') addCustomerModal.style.display = 'none';
+    if (addCarrierModal.style.display === 'flex') addCarrierModal.style.display = 'none';
+  }
+});
+
+// Save new customer
+document.getElementById('addCustomerForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const statusEl = document.getElementById('addCustomerStatus');
+  const saveBtn = document.getElementById('saveCustomerBtn');
+
+  const payload = {
+    customer: document.getElementById('newCustomerName').value.trim(),
+    address: document.getElementById('newCustomerAddress').value.trim(),
+    address2: document.getElementById('newCustomerAddress2').value.trim(),
+    city: document.getElementById('newCustomerCity').value.trim(),
+    state: document.getElementById('newCustomerState').value.trim().toUpperCase(),
+    zip: document.getElementById('newCustomerZip').value.trim(),
+    is_active: true
+  };
+
+  try {
+    saveBtn.disabled = true;
+    const csrf = (window.Utils && Utils.getCSRFToken) ? Utils.getCSRFToken() : null;
+    const resp = await fetch('/api/customers/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(csrf ? {'X-CSRFToken': csrf} : {}) },
+      credentials: 'same-origin',
+      body: JSON.stringify(payload)
+    });
+
+    const json = await resp.json();
+    if (!resp.ok) {
+      statusEl.textContent = json.error || json.detail || 'Failed to save customer';
+      statusEl.className = 'status error';
+      return;
+    }
+
+    // Success: reload customers and close modal
+    statusEl.textContent = 'Customer saved!';
+    statusEl.className = 'status success';
+    await loadCustomers();
+
+    // Set the new customer as selected
+    customerIdInput.value = payload.customer;
+    customerIdInput.dispatchEvent(new Event('change'));
+
+    // Close modal after short delay
+    setTimeout(() => {
+      addCustomerModal.style.display = 'none';
+      document.getElementById('addCustomerForm').reset();
+      statusEl.textContent = '';
+    }, 1000);
+
+    if (window.Utils && Utils.showStatus) Utils.showStatus('Customer added successfully', 'success');
+  } catch (e) {
+    statusEl.textContent = e.message || 'Failed to save customer';
+    statusEl.className = 'status error';
+  } finally {
+    saveBtn.disabled = false;
+  }
+});
+
+// Save new carrier
+document.getElementById('addCarrierForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const statusEl = document.getElementById('addCarrierStatus');
+  const saveBtn = document.getElementById('saveCarrierBtn');
+
+  const payload = {
+    carrier_name: document.getElementById('newCarrierName').value.trim(),
+    contact_name: document.getElementById('newCarrierContact').value.trim(),
+    phone: document.getElementById('newCarrierPhone').value.trim(),
+    email: document.getElementById('newCarrierEmail').value.trim(),
+    is_active: true
+  };
+
+  try {
+    saveBtn.disabled = true;
+    const csrf = (window.Utils && Utils.getCSRFToken) ? Utils.getCSRFToken() : null;
+    const resp = await fetch('/api/carriers/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(csrf ? {'X-CSRFToken': csrf} : {}) },
+      credentials: 'same-origin',
+      body: JSON.stringify(payload)
+    });
+
+    const json = await resp.json();
+    if (!resp.ok) {
+      statusEl.textContent = json.error || json.detail || 'Failed to save carrier';
+      statusEl.className = 'status error';
+      return;
+    }
+
+    // Success: reload carriers and close modal
+    statusEl.textContent = 'Carrier saved!';
+    statusEl.className = 'status success';
+    await loadCarriers();
+
+    // Set the new carrier as selected
+    carrierInput.value = payload.carrier_name;
+
+    // Close modal after short delay
+    setTimeout(() => {
+      addCarrierModal.style.display = 'none';
+      document.getElementById('addCarrierForm').reset();
+      statusEl.textContent = '';
+    }, 1000);
+
+    if (window.Utils && Utils.showStatus) Utils.showStatus('Carrier added successfully', 'success');
+  } catch (e) {
+    statusEl.textContent = e.message || 'Failed to save carrier';
+    statusEl.className = 'status error';
+  } finally {
+    saveBtn.disabled = false;
+  }
+});
+
+// Load customers and carriers on page load
+loadCustomers();
+loadCarriers();
 
 function toISODate(d) {
   if (!d) return '';
