@@ -18,12 +18,14 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import csrf_exempt
+from primetrade_project.decorators import require_role
 
 logger = logging.getLogger(__name__)
 
 
 @csrf_exempt
 @require_http_methods(["GET"])
+@require_role('Admin', 'Office', 'Client')  # All authenticated users - Phase 2 fix
 def user_context(request):
     """
     Return user context for RBAC frontend.
@@ -45,6 +47,10 @@ def user_context(request):
     - Admin: ['full_access'] -> can_write=true, is_admin=true
     - Office: ['read', 'write', 'delete'] -> can_write=true, is_admin=false
     - Client: ['read'] -> can_write=false, is_admin=false
+
+    Security (Phase 2 Fix):
+    - All authenticated users (Admin, Office, Client) can access
+    - Required for client dashboard initialization
 
     Returns:
         JsonResponse: User context with permissions as booleans

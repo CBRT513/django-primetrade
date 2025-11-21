@@ -108,8 +108,15 @@ def health_check(request):
 # User context endpoint (returns role and permissions for frontend)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@require_role('Admin', 'Office', 'Client')  # All authenticated users need this for dashboard
 def user_context(request):
-    """Return user context including role and permissions for frontend"""
+    """
+    Return user context including role and permissions for frontend.
+
+    Security (Phase 2 Fix):
+    - All authenticated users (Admin, Office, Client) can access
+    - Required for client dashboard to load
+    """
     app_role = request.session.get('primetrade_role', {})
     user_role = app_role.get('role', 'viewer')
     permissions = app_role.get('permissions', ['read'])
