@@ -1,10 +1,12 @@
 """
-Middleware for PrimeTrade role-based page access control.
+Middleware for PrimeTrade role-based PAGE access control.
 
 Security Notes (Phase 2 - Nov 2025):
-- /api/ is NOT in public_paths - API endpoints must use @require_role decorators
-- Client users are restricted to specific pages via this middleware
-- API access control is enforced by decorators on each endpoint
+- Middleware controls PAGE access (HTML pages), NOT API access
+- Client users can access /api/* endpoints (decorators enforce permissions)
+- Client users restricted to /client.html?productId=9 for pages
+- Admin/Office users can access all pages
+- API access control is enforced by @require_role decorators on each endpoint
 """
 from django.shortcuts import redirect
 from django.urls import resolve
@@ -17,8 +19,12 @@ class RoleBasedAccessMiddleware:
     """
     Middleware to enforce page-level access control based on user role.
 
-    Client users can only access /client.html?productId=9
-    Office and Admin users can access all pages
+    Client users:
+    - Can access /api/* endpoints (permission checked by decorators)
+    - Can only access /client.html?productId=9 page
+
+    Office and Admin users:
+    - Can access all pages and API endpoints
     """
 
     def __init__(self, get_response):
@@ -66,6 +72,11 @@ class RoleBasedAccessMiddleware:
 
         # Client role restrictions
         if user_role == 'Client':
+            # Allow API access - decorators handle permission checking
+            if path.startswith('/api/'):
+                logger.info(f"[RBAC MIDDLEWARE] Client API access - will be checked by @require_role decorator: {path}")
+                return self.get_response(request)
+
             # Check if accessing the allowed client page with correct product ID
             if path == self.client_allowed_path:
                 product_id = request.GET.get('productId')
