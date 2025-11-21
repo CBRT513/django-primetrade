@@ -1,5 +1,10 @@
 """
 Middleware for PrimeTrade role-based page access control.
+
+Security Notes (Phase 2 - Nov 2025):
+- /api/ is NOT in public_paths - API endpoints must use @require_role decorators
+- Client users are restricted to specific pages via this middleware
+- API access control is enforced by decorators on each endpoint
 """
 from django.shortcuts import redirect
 from django.urls import resolve
@@ -26,8 +31,13 @@ class RoleBasedAccessMiddleware:
             '/auth/callback/',
             '/auth/logout/',
             '/static/',
-            '/media/',
-            '/api/',
+            '/media/',  # TODO Phase 3: Secure media/PDF access
+            # /api/ REMOVED - All API endpoints now use @require_role decorators
+        ]
+
+        # Specific public API paths (rare - most APIs require auth)
+        self.public_api_paths = [
+            '/api/health/',  # Health check endpoint can stay public
         ]
 
         # Client-only allowed path
@@ -38,6 +48,10 @@ class RoleBasedAccessMiddleware:
         # Skip check for public paths
         path = request.path
         if any(path.startswith(public_path) for public_path in self.public_paths):
+            return self.get_response(request)
+
+        # Check specific public API paths
+        if path in self.public_api_paths:
             return self.get_response(request)
 
         # Skip check for unauthenticated users (will be handled by @login_required)

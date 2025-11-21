@@ -12,6 +12,7 @@ from .pdf_generator import generate_bol_pdf
 from .release_parser import parse_release_pdf
 from .email_utils import send_bol_notification
 from primetrade_project.decorators import require_role, require_role_for_writes
+from .utils import get_customer_for_user, is_internal_staff
 import logging
 import os
 import base64
@@ -203,7 +204,7 @@ class ProductListView(generics.ListCreateAPIView):
 # Customer endpoints
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
-@require_role_for_writes('admin', 'office')  # POST operations require Admin or Office role (both have write permission)
+@require_role('Admin', 'Office')  # Internal staff only - customer management is internal
 def customer_list(request):
     try:
         if request.method == 'GET':
@@ -265,8 +266,15 @@ def customer_list(request):
 # Customer detail endpoint (single customer by ID)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@require_role('Admin', 'Office')  # Internal staff only
 def customer_detail(request, customer_id: int):
-    """Get details for a single customer by ID"""
+    """
+    Get details for a single customer by ID.
+
+    Security (Phase 2 - Nov 2025):
+    - Admin/Office only (internal customer management)
+    - Client users cannot access customer details
+    """
     try:
         customer = Customer.objects.get(id=customer_id)
         return Response(CustomerSerializer(customer).data)
@@ -1497,7 +1505,16 @@ def release_detail_api(request, release_id):
 # Audit log list (simple)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@require_role('Admin', 'Office')  # Internal staff only - Client cannot access
 def audit_logs(request):
+    """
+    Return audit logs - INTERNAL STAFF ONLY.
+
+    Security (Phase 2 - Nov 2025):
+    - Admin/Office roles only (internal operations data)
+    - Client users get 403 Forbidden
+    - All audit logs visible to internal staff
+    """
     try:
         limit = int(request.GET.get('limit', '200'))
         rows = AuditLog.objects.all().order_by('-created_at')[:max(1, min(limit, 1000))]
@@ -1509,8 +1526,32 @@ def audit_logs(request):
 # BOL history
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@require_role('Admin', 'Office', 'Client')  # All roles, but Client sees filtered data
 def bol_history(request):
+    """
+    Return BOL history with role-based filtering.
+
+    Security (Phase 2 - Nov 2025):
+    - Admin/Office: See ALL BOLs (internal staff)
+    - Client: See only THEIR customer's BOLs (external customer)
+    - Filtering applied to base queryset before product filter
+    """
     try:
+        # Phase 2 Security: Apply customer filtering for Client users
+        if is_internal_staff(request):
+            # Internal staff - no filtering
+            base_queryset = BOL.objects.all()
+        else:
+            # Client user - filter by their customer
+            customer = get_customer_for_user(request.user)
+            if customer:
+                base_queryset = BOL.objects.filter(customer=customer)
+                logger.info(f"BOL history filtered for Client user {request.user.email}: customer={customer.customer}")
+            else:
+                # No customer association - return empty queryset (secure default)
+                base_queryset = BOL.objects.none()
+                logger.warning(f"Client user {request.user.email} has no customer association - returning no BOLs")
+
         product_id = request.GET.get('productId')
 
         if product_id:
@@ -1520,7 +1561,7 @@ def bol_history(request):
             except Product.DoesNotExist:
                 return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
 
-            bols = BOL.objects.filter(product=product).order_by('date')
+            bols = base_queryset.filter(product=product).order_by('date')
             # Use official weight if available, otherwise CBRT weight
             shipped = 0
             for bol in bols:
@@ -1541,7 +1582,8 @@ def bol_history(request):
             }
         else:
             # All BOLs (for weight management page)
-            bols = BOL.objects.all().order_by('-created_at')
+            # Phase 2 Security: Uses filtered base_queryset
+            bols = base_queryset.order_by('-created_at')
             summary = None
 
         # Build rows with safe weight handling
