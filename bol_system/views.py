@@ -809,6 +809,7 @@ def confirm_bol(request):
 # Inventory balances
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@require_role('Admin', 'Office', 'Client')  # All authenticated users - Phase 2 audit fix
 def balances(request):
     try:
         products = Product.objects.filter(is_active=True)
@@ -1106,6 +1107,7 @@ def approve_release(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@require_role('Admin', 'Office', 'Client')  # All authenticated users - Phase 2 audit fix
 def open_releases(request):
     try:
         from datetime import date as date_class
@@ -1175,6 +1177,7 @@ def open_releases(request):
 # Pending loads for BOL creation (only unshipped loads)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@require_role('Admin', 'Office', 'Client')  # All authenticated users - Phase 2 audit fix
 def pending_release_loads(request):
     try:
         from datetime import date as date_class, timedelta
@@ -1266,6 +1269,7 @@ def pending_release_loads(request):
 @api_view(['GET'])
 @authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
+@require_role('Admin', 'Office', 'Client')  # All authenticated users - Phase 2 audit fix
 def load_detail_api(request, load_id):
     try:
         load = ReleaseLoad.objects.select_related('release__customer_ref', 'release__ship_to_ref', 'release__carrier_ref', 'release__lot_ref').get(id=load_id)
@@ -1666,6 +1670,7 @@ def bol_history(request):
 # BOL detail view
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@require_role('Admin', 'Office', 'Client')  # All authenticated users - Phase 2 audit fix
 def bol_detail(request, bol_id):
     try:
         bol = BOL.objects.get(id=bol_id)
@@ -1819,6 +1824,7 @@ def regenerate_bol_pdf(request, bol_id):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@require_role('Admin', 'Office', 'Client')  # All authenticated users - Phase 2 audit fix
 def download_bol_pdf(request, bol_id):
     """
     Generate a fresh download link for a BOL PDF.

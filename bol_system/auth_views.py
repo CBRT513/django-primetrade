@@ -6,6 +6,7 @@ from django.contrib.auth.decorators import login_required
 from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
+from primetrade_project.decorators import require_role
 
 @csrf_protect
 def login_view(request):
@@ -31,10 +32,16 @@ def index_view(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+@require_role('Admin', 'Office', 'Client')  # All authenticated users - Phase 2 audit fix
 def current_user(request):
-    """Return current authenticated user information.
+    """
+    Return current authenticated user information.
 
     Includes SSO role information stored in session when available.
+
+    Security (Phase 2 Audit Fix):
+    - All authenticated users (Admin, Office, Client) can access
+    - Required for /api/auth/me/ endpoint
     """
     primetrade_role = request.session.get('primetrade_role', {})
     return Response({
