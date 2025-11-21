@@ -1549,12 +1549,17 @@ def bol_history(request):
     """
     try:
         # Phase 2 Security: Apply customer filtering for Client users
+        role_info = request.session.get('primetrade_role', {})
+        user_role = role_info.get('role', 'Unknown')
+        filtered_customer = None  # For debug response
+
         if is_internal_staff(request):
             # Internal staff - no filtering
             base_queryset = BOL.objects.all()
         else:
             # Client user - filter by their customer
             customer = get_customer_for_user(request.user)
+            filtered_customer = customer  # Capture for debug response
             if customer:
                 base_queryset = BOL.objects.filter(customer=customer)
                 logger.info(f"BOL history filtered for Client user {request.user.email}: customer={customer.customer}")
@@ -1657,7 +1662,12 @@ def bol_history(request):
 
         return Response({
             'summary': summary,
-            'rows': rows
+            'rows': rows,
+            # Debug info for Phase 2 troubleshooting
+            'filtered_by_role': user_role,
+            'filtered_customer': filtered_customer.customer if filtered_customer else None,
+            'total_bols_found': len(rows),
+            'user_email': request.user.email if request.user.is_authenticated else None
         })
 
     except Exception as e:
