@@ -12,7 +12,7 @@ from .pdf_generator import generate_bol_pdf
 from .release_parser import parse_release_pdf
 from .email_utils import send_bol_notification
 from primetrade_project.decorators import require_role, require_role_for_writes
-from .utils import get_customer_for_user, is_internal_staff
+# Customer filtering utilities removed - all authenticated users see all data
 import logging
 import os
 import base64
@@ -1537,36 +1537,25 @@ def audit_logs(request):
 # BOL history
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-@require_role('Admin', 'Office', 'Client')  # All roles, but Client sees filtered data
+@require_role('Admin', 'Office', 'Client')  # All authenticated users
 def bol_history(request):
     """
-    Return BOL history with role-based filtering.
+    Return BOL history for all authenticated users.
 
     Security (Phase 2 - Nov 2025):
-    - Admin/Office: See ALL BOLs (internal staff)
-    - Client: See only THEIR customer's BOLs (external customer)
-    - Filtering applied to base queryset before product filter
+    - All authenticated users (Admin, Office, Client) see ALL BOLs
+    - Access control is at the authentication level (must be logged in)
+    - Write operations restricted by @require_role decorators on other endpoints
+    - Client role is read-only (no create/update/delete permissions)
     """
     try:
-        # Phase 2 Security: Apply customer filtering for Client users
+        # Phase 2 Security: All authenticated users (Admin, Office, Client) see all BOLs
+        # Role-based access control limits WHO can access (authentication)
+        # Write operations are restricted by @require_role decorators elsewhere
+        base_queryset = BOL.objects.all()
+
         role_info = request.session.get('primetrade_role', {})
         user_role = role_info.get('role', 'Unknown')
-        filtered_customer = None  # For debug response
-
-        if is_internal_staff(request):
-            # Internal staff - no filtering
-            base_queryset = BOL.objects.all()
-        else:
-            # Client user - filter by their customer
-            customer = get_customer_for_user(request.user)
-            filtered_customer = customer  # Capture for debug response
-            if customer:
-                base_queryset = BOL.objects.filter(customer=customer)
-                logger.info(f"BOL history filtered for Client user {request.user.email}: customer={customer.customer}")
-            else:
-                # No customer association - return empty queryset (secure default)
-                base_queryset = BOL.objects.none()
-                logger.warning(f"Client user {request.user.email} has no customer association - returning no BOLs")
 
         product_id = request.GET.get('productId')
 
@@ -1662,12 +1651,7 @@ def bol_history(request):
 
         return Response({
             'summary': summary,
-            'rows': rows,
-            # Debug info for Phase 2 troubleshooting
-            'filtered_by_role': user_role,
-            'filtered_customer': filtered_customer.customer if filtered_customer else None,
-            'total_bols_found': len(rows),
-            'user_email': request.user.email if request.user.is_authenticated else None
+            'rows': rows
         })
 
     except Exception as e:
