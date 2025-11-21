@@ -497,7 +497,7 @@
         }
 
         // Load recent shipments (all BOLs)
-        const historyData = await getJSON('/api/history');
+        const historyData = await getJSON('/api/history/');
         const tbody = document.querySelector('#shipmentsTable tbody');
         const shipmentCount = document.getElementById('shipmentCount');
 
