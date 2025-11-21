@@ -21,7 +21,8 @@ class RoleBasedAccessMiddleware:
 
     Client users:
     - Can access /api/* endpoints (permission checked by decorators)
-    - Can only access /client.html?productId=9 page
+    - Can access /client.html?productId=9 (dashboard)
+    - Can access /client-schedule.html (loading schedule)
 
     Office and Admin users:
     - Can access all pages and API endpoints
@@ -77,17 +78,21 @@ class RoleBasedAccessMiddleware:
                 logger.info(f"[RBAC MIDDLEWARE] Client API access - will be checked by @require_role decorator: {path}")
                 return self.get_response(request)
 
-            # Check if accessing the allowed client page with correct product ID
-            if path == self.client_allowed_path:
-                product_id = request.GET.get('productId')
-                if product_id == self.client_required_product_id:
-                    # Allowed access
-                    logger.info(f"[RBAC MIDDLEWARE] Client access ALLOWED to {path}?productId={product_id}")
-                    return self.get_response(request)
+            # Allow client pages (dashboard and schedule)
+            if path in ['/client.html', '/client-schedule.html']:
+                # For /client.html, require productId=9
+                if path == '/client.html':
+                    product_id = request.GET.get('productId')
+                    if product_id == self.client_required_product_id:
+                        logger.info(f"[RBAC MIDDLEWARE] Client access ALLOWED to {path}?productId={product_id}")
+                        return self.get_response(request)
+                    else:
+                        logger.warning(f"[RBAC MIDDLEWARE] Client access DENIED to {path} (wrong/missing productId)")
+                        return redirect(f'{self.client_allowed_path}?productId={self.client_required_product_id}')
                 else:
-                    # Wrong or missing product ID - redirect to correct page
-                    logger.warning(f"[RBAC MIDDLEWARE] Client access DENIED to {path} (wrong/missing productId)")
-                    return redirect(f'{self.client_allowed_path}?productId={self.client_required_product_id}')
+                    # /client-schedule.html - no productId required
+                    logger.info(f"[RBAC MIDDLEWARE] Client access ALLOWED to {path}")
+                    return self.get_response(request)
             else:
                 # Trying to access unauthorized page - redirect to client page
                 logger.warning(f"[RBAC MIDDLEWARE] Client access DENIED to {path}, redirecting to client page")
