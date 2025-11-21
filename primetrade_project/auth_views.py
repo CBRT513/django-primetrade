@@ -1,3 +1,18 @@
+"""
+OAuth/SSO authentication views for PrimeTrade.
+
+Handles OAuth flow with barge2rail-auth SSO system.
+
+SECURITY NOTES:
+- Never log OAuth tokens (access_token, refresh_token, id_token) at any level
+- Never log partial token values (even first N characters can be risky)
+- Token presence ('SET' vs 'MISSING') is safe to log for debugging
+- State tokens are single-use CSRF protection - don't log values
+- User email and role info are safe to log (no credentials)
+
+See: PrimeTrade Security Audit (Nov 2025) - Credential Logging Vulnerability
+"""
+
 import secrets
 import requests
 import time
@@ -29,7 +44,8 @@ def generate_oauth_state():
     token = secrets.token_urlsafe(32)
     timestamp = str(int(time.time()))
     state = f"{token}:{timestamp}"
-    logger.info(f"Generated OAuth state token: {token[:10]}... (timestamp: {timestamp})")
+    # Security: Never log token values (even partial) - log only that token was generated
+    logger.info(f"Generated OAuth state token (timestamp: {timestamp})")
     return state
 
 
@@ -252,9 +268,8 @@ def sso_callback(request):
 
     if settings.DEBUG_AUTH_FLOW:
         logger.debug(f"[FLOW DEBUG 5] Attempting to decode JWT:")
+        # Security: Never log token values (even partial) - log only presence
         logger.debug(f"[FLOW DEBUG 5.1]   - id_token present: {'YES' if id_token else 'NO'}")
-        if id_token:
-            logger.debug(f"[FLOW DEBUG 5.2]   - id_token (first 50 chars): {id_token[:50]}...")
 
     try:
         # Fetch JWKS from SSO and verify JWT signature

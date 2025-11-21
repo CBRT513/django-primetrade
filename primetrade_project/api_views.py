@@ -3,6 +3,14 @@ API views for PrimeTrade user context and RBAC.
 
 This module provides API endpoints for frontend JavaScript to query
 user permissions and role information.
+
+SECURITY NOTES:
+- Never log OAuth tokens (access_token, refresh_token) at any level
+- Never log full session contents with dict(request.session) or dict(request.session.items())
+- Session keys (not values) can be logged at DEBUG level for troubleshooting
+- User email and role info are safe to log (no credentials)
+
+See: PrimeTrade Security Audit (Nov 2025) - Credential Logging Vulnerability
 """
 
 import logging
@@ -41,11 +49,13 @@ def user_context(request):
     Returns:
         JsonResponse: User context with permissions as booleans
     """
-    # Debug logging
+    # Security: Never log tokens, session contents, or sensitive credentials
+    # Log only non-sensitive operational info for debugging
     logger.info(f"[USER_CONTEXT] Request from {request.META.get('REMOTE_ADDR')}")
-    logger.info(f"[USER_CONTEXT] Is authenticated: {request.user.is_authenticated}")
-    logger.info(f"[USER_CONTEXT] Session key: {request.session.session_key}")
-    logger.info(f"[USER_CONTEXT] Session data: {dict(request.session.items())}")
+    logger.info(f"[USER_CONTEXT] User: {request.user.email if request.user.is_authenticated else 'anonymous'}")
+
+    # Optional: Log session keys only (not values) for debugging
+    logger.debug(f"[USER_CONTEXT] Session keys present: {list(request.session.keys())}")
 
     if not request.user.is_authenticated:
         return JsonResponse(

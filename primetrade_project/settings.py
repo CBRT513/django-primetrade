@@ -242,7 +242,7 @@ LOGGING = {
         },
         'primetrade_project.auth_views': {
             'handlers': ['console', 'file'],
-            'level': 'INFO',
+            'level': 'WARNING',  # Changed to WARNING for production safety (no debug/info OAuth logs)
         },
         'oauth.security': {
             'handlers': ['console', 'file'],
