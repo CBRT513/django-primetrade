@@ -298,3 +298,11 @@ DEFAULT_FROM_EMAIL = config('DEFAULT_FROM_EMAIL', default='traffic@barge2rail.co
 DEFAULT_REPLY_TO_EMAIL = config('DEFAULT_REPLY_TO_EMAIL', default='traffic@barge2rail.com')
 
 # Production CSRF Origins are built dynamically above from ALLOWED_HOSTS and SSO_BASE_URL
+
+# Production HTTPS Security Settings
+# These activate only when DEBUG=False (production mode)
+if not DEBUG:
+    SECURE_HSTS_SECONDS = 31536000  # 1 year - HTTP Strict Transport Security
+    SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+    SECURE_HSTS_PRELOAD = True
+    SECURE_SSL_REDIRECT = True  # Redirect all HTTP to HTTPS

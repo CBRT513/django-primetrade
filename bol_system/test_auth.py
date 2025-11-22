@@ -28,6 +28,16 @@ class AuthenticationTests(TestCase):
     def test_current_user_endpoint(self):
         """Verify /api/auth/me/ returns user info including role keys."""
         self.client.force_login(self.user)
+
+        # Set up session with primetrade_role (populated by SSO OAuth callback)
+        session = self.client.session
+        session['primetrade_role'] = {
+            'role': 'Admin',
+            'permissions': ['view_bol', 'edit_bol'],
+            'app_slug': 'primetrade'
+        }
+        session.save()
+
         response = self.client.get('/api/auth/me/')
         self.assertEqual(response.status_code, 200)
         data = response.json()
