@@ -302,6 +302,8 @@ DEFAULT_REPLY_TO_EMAIL = config('DEFAULT_REPLY_TO_EMAIL', default='traffic@barge
 # Production HTTPS Security Settings
 # These activate only when DEBUG=False (production mode)
 if not DEBUG:
+    # Trust Render's proxy for HTTPS detection
+    SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
     SECURE_HSTS_SECONDS = 31536000  # 1 year - HTTP Strict Transport Security
     SECURE_HSTS_INCLUDE_SUBDOMAINS = True
     SECURE_HSTS_PRELOAD = True
