@@ -1,5 +1,4 @@
 from django.contrib import admin
-from django.http import HttpResponse
 from django.urls import path, include, re_path
 from django.conf import settings
 from django.conf.urls.static import static
@@ -11,15 +10,6 @@ from bol_system import auth_views
 from primetrade_project import auth_views as sso_auth_views
 from primetrade_project import api_views
 import os
-
-
-def sentry_test_error(request):
-    """
-    Temporary test endpoint - DELETE after Sentry verification.
-    Triggers a ZeroDivisionError to test Sentry integration.
-    """
-    division_by_zero = 1 / 0
-    return HttpResponse("This line will never execute")
 
 @ensure_csrf_cookie
 def serve_static_html(request, file_name):
@@ -42,9 +32,6 @@ urlpatterns = [
 
     # Legacy logout endpoint (preserved for backward compatibility)
     path('logout/', auth_views.logout_view, name='logout'),
-
-    # TEMPORARY: Remove after Sentry verification
-    path('sentry-test/', sentry_test_error, name='sentry_test'),
 
     path('', login_required(lambda request: serve_static_html(request, 'index.html')), name='home'),
 
