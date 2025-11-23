@@ -823,7 +823,7 @@ def confirm_bol(request):
 # Inventory balances
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-@require_role('Admin', 'Office')  # Internal staff only
+@require_role('Admin', 'Office', 'Client')  # Client dashboard needs this for inventory display
 def balances(request):
     try:
         # TODO Phase 2: tenant filter once tenant_id is available
