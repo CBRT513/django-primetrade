@@ -78,6 +78,12 @@ class RoleBasedAccessMiddleware:
 
         # Client role restrictions
         if user_role == 'Client':
+            # Block access to admin HTML pages disguised as API endpoints
+            # Example: /api/releases/19/view/ returns HTML with edit forms
+            if path.startswith('/api/releases/') and path.endswith('/view/'):
+                logger.warning(f"[RBAC MIDDLEWARE] Client access DENIED to admin release page: {path}")
+                return redirect(f'{self.client_allowed_path}?productId={self.client_required_product_id}')
+            
             # Allow API access - decorators handle permission checking
             if path.startswith('/api/'):
                 if settings.DEBUG:
