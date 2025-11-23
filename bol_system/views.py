@@ -1122,7 +1122,7 @@ def approve_release(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-@require_role('Admin', 'Office')  # Internal staff only
+@require_role('Admin', 'Office', 'Client')  # Client dashboard needs this for open releases display
 def open_releases(request):
     try:
         from datetime import date as date_class
