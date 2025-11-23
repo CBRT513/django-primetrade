@@ -16,7 +16,10 @@ class Command(BaseCommand):
             if not bol.pdf_url.startswith('http'):
                 key = bol.pdf_url.lstrip('/')
             else:
-                match = re.search(r'(media/.+)$', bol.pdf_url)
+                # Extract S3 key from full URL
+                # Matches: https://bucket.s3.region.amazonaws.com/path/to/file.pdf
+                # Extracts: path/to/file.pdf
+                match = re.search(r'amazonaws\.com/(.+)$', bol.pdf_url)
                 if match:
                     key = match.group(1)
 
