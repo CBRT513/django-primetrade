@@ -1623,12 +1623,26 @@ def bol_history(request):
                 stamped_pdf_url = None
                 if bol.stamped_pdf_url and bol.stamped_pdf_url.strip():
                     try:
+                        # Extract S3 key from URL or use directly if already a key
+                        stamped_key = None
                         if bol.stamped_pdf_url.startswith('http'):
-                            stamped_pdf_url = bol.stamped_pdf_url
+                            # Extract key from full S3 URL
+                            match = re.search(r'amazonaws\.com/(.+)$', bol.stamped_pdf_url)
+                            if match:
+                                stamped_key = match.group(1)
                         else:
-                            stamped_pdf_url = default_storage.url(bol.stamped_pdf_url)
+                            # Already a key
+                            stamped_key = bol.stamped_pdf_url.lstrip('/')
+                        
+                        # Generate signed URL if we have a key
+                        if stamped_key:
+                            stamped_pdf_url = default_storage.url(stamped_key)
+                        else:
+                            # Fallback to original if key extraction failed
+                            logger.warning(f"Could not extract key from stamped_pdf_url for BOL {bol.id}: {bol.stamped_pdf_url}")
+                            stamped_pdf_url = bol.stamped_pdf_url
                     except Exception as url_err:
-                        logger.warning(f"Could not convert stamped_pdf_url for BOL {bol.id}: {url_err}")
+                        logger.warning(f"Could not generate signed stamped_pdf_url for BOL {bol.id}: {url_err}")
                         stamped_pdf_url = bol.stamped_pdf_url  # Fallback to original value
 
                 row_data = {

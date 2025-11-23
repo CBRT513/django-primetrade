@@ -40,14 +40,31 @@ class BOLSerializer(serializers.ModelSerializer):
         return obj.get_pdf_url()
 
     def get_stamped_pdf_url(self, obj):
+        """Generate signed URL for stamped (watermarked) PDF"""
         if not obj.stamped_pdf_url:
             return None
-        # If already a full URL, return as-is
-        if obj.stamped_pdf_url.startswith('http'):
-            return obj.stamped_pdf_url
+        
+        import re
         from django.core.files.storage import default_storage
+        
         try:
-            return default_storage.url(obj.stamped_pdf_url)
+            # Extract S3 key from URL or use directly if already a key
+            stamped_key = None
+            if obj.stamped_pdf_url.startswith('http'):
+                # Extract key from full S3 URL
+                match = re.search(r'amazonaws\.com/(.+)$', obj.stamped_pdf_url)
+                if match:
+                    stamped_key = match.group(1)
+            else:
+                # Already a key
+                stamped_key = obj.stamped_pdf_url.lstrip('/')
+            
+            # Generate signed URL if we have a key
+            if stamped_key:
+                return default_storage.url(stamped_key)
+            else:
+                # Fallback if key extraction failed
+                return obj.stamped_pdf_url
         except Exception:
             return obj.stamped_pdf_url
 
@@ -72,17 +89,32 @@ class ReleaseLoadSerializer(serializers.ModelSerializer):
         return obj.bol.get_pdf_url()
 
     def get_bol_stamped_pdf_url(self, obj):
-        """Get watermarked PDF URL with official weight stamp"""
+        """Get signed URL for watermarked PDF with official weight stamp"""
         if not obj.bol or not obj.bol.stamped_pdf_url:
             return None
-        # If already a full URL, return as-is
-        if obj.bol.stamped_pdf_url.startswith('http'):
-            return obj.bol.stamped_pdf_url
-        # Convert S3 path to full URL
+        
+        import re
         from django.core.files.storage import default_storage
+        
         try:
-            return default_storage.url(obj.bol.stamped_pdf_url)
-        except:
+            # Extract S3 key from URL or use directly if already a key
+            stamped_key = None
+            if obj.bol.stamped_pdf_url.startswith('http'):
+                # Extract key from full S3 URL
+                match = re.search(r'amazonaws\.com/(.+)$', obj.bol.stamped_pdf_url)
+                if match:
+                    stamped_key = match.group(1)
+            else:
+                # Already a key
+                stamped_key = obj.bol.stamped_pdf_url.lstrip('/')
+            
+            # Generate signed URL if we have a key
+            if stamped_key:
+                return default_storage.url(stamped_key)
+            else:
+                # Fallback if key extraction failed
+                return obj.bol.stamped_pdf_url
+        except Exception:
             return obj.bol.stamped_pdf_url  # Fallback to stored value
 
     def get_bol_created_at(self, obj):
