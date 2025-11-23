@@ -1193,7 +1193,7 @@ def open_releases(request):
 # Pending loads for BOL creation (only unshipped loads)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-@require_role('Admin', 'Office')  # Internal staff only
+@require_role('Admin', 'Office', 'Client')  # Client dashboard loading schedule needs this
 def pending_release_loads(request):
     try:
         from datetime import date as date_class, timedelta
