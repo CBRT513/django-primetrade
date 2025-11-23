@@ -1,5 +1,5 @@
 from django.contrib import admin
-from django.urls import path, include, re_path
+from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import RedirectView, TemplateView
@@ -9,6 +9,7 @@ from django.views.decorators.csrf import ensure_csrf_cookie
 from bol_system import auth_views
 from primetrade_project import auth_views as sso_auth_views
 from primetrade_project import api_views
+from primetrade_project import views as primetrade_views
 import os
 
 @ensure_csrf_cookie
@@ -48,9 +49,8 @@ urlpatterns = [
     path('client-schedule.html', login_required(TemplateView.as_view(template_name='client-schedule.html')), name='client_schedule'),
     path('bol-weights.html', login_required(TemplateView.as_view(template_name='bol-weights.html')), name='bol_weights'),
 
-    # Serve media files (PDFs) in both development and production
-    # Authentication is handled by the view that generates the PDF link
-    re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+    # Authenticated media access (signed URLs for PDFs)
+    path('media/<path:path>', primetrade_views.secure_media_download, name='secure_media'),
 ]
 
 # Serve static files in development

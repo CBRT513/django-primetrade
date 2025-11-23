@@ -56,12 +56,7 @@ def user_context(request):
         JsonResponse: User context with permissions as booleans
     """
     # Security: Never log tokens, session contents, or sensitive credentials
-    # Log only non-sensitive operational info for debugging
-    logger.info(f"[USER_CONTEXT] Request from {request.META.get('REMOTE_ADDR')}")
-    logger.info(f"[USER_CONTEXT] User: {request.user.email if request.user.is_authenticated else 'anonymous'}")
-
-    # Optional: Log session keys only (not values) for debugging
-    logger.debug(f"[USER_CONTEXT] Session keys present: {list(request.session.keys())}")
+    logger.info(f"[USER_CONTEXT] Request from {request.META.get('REMOTE_ADDR')}, user={request.user.email if request.user.is_authenticated else 'anonymous'}")
 
     if not request.user.is_authenticated:
         return JsonResponse(

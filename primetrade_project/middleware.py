@@ -8,6 +8,7 @@ Security Notes (Phase 2 - Nov 2025):
 - Admin/Office users can access all pages
 - API access control is enforced by @require_role decorators on each endpoint
 """
+from django.conf import settings
 from django.shortcuts import redirect
 from django.urls import resolve
 import logging
@@ -38,7 +39,6 @@ class RoleBasedAccessMiddleware:
             '/auth/callback/',
             '/auth/logout/',
             '/static/',
-            '/media/',  # TODO Phase 3: Secure media/PDF access
             # /api/ REMOVED - All API endpoints now use @require_role decorators
         ]
 
@@ -65,17 +65,23 @@ class RoleBasedAccessMiddleware:
         if not request.user.is_authenticated:
             return self.get_response(request)
 
+        # Attach tenant context to request (Phase 1: static)
+        request.tenant_id = request.session.get('tenant_id')
+        request.tenant_name = request.session.get('tenant_name')
+
         # Get user role from session
         role_info = request.session.get('primetrade_role', {})
         user_role = role_info.get('role', 'viewer')
 
-        logger.info(f"[RBAC MIDDLEWARE] User: {request.user.email}, Role: {user_role}, Path: {path}")
+        if settings.DEBUG:
+            logger.debug(f"[RBAC MIDDLEWARE] User: {request.user.email}, Role: {user_role}, Path: {path}")
 
         # Client role restrictions
         if user_role == 'Client':
             # Allow API access - decorators handle permission checking
             if path.startswith('/api/'):
-                logger.info(f"[RBAC MIDDLEWARE] Client API access - will be checked by @require_role decorator: {path}")
+                if settings.DEBUG:
+                    logger.debug(f"[RBAC MIDDLEWARE] Client API access - checked by @require_role decorator: {path}")
                 return self.get_response(request)
 
             # Allow client pages (dashboard and schedule)
@@ -84,14 +90,16 @@ class RoleBasedAccessMiddleware:
                 if path == '/client.html':
                     product_id = request.GET.get('productId')
                     if product_id == self.client_required_product_id:
-                        logger.info(f"[RBAC MIDDLEWARE] Client access ALLOWED to {path}?productId={product_id}")
+                        if settings.DEBUG:
+                            logger.debug(f"[RBAC MIDDLEWARE] Client access ALLOWED to {path}?productId={product_id}")
                         return self.get_response(request)
                     else:
                         logger.warning(f"[RBAC MIDDLEWARE] Client access DENIED to {path} (wrong/missing productId)")
                         return redirect(f'{self.client_allowed_path}?productId={self.client_required_product_id}')
                 else:
                     # /client-schedule.html - no productId required
-                    logger.info(f"[RBAC MIDDLEWARE] Client access ALLOWED to {path}")
+                    if settings.DEBUG:
+                        logger.debug(f"[RBAC MIDDLEWARE] Client access ALLOWED to {path}")
                     return self.get_response(request)
             else:
                 # Trying to access unauthorized page - redirect to client page
@@ -99,5 +107,6 @@ class RoleBasedAccessMiddleware:
                 return redirect(f'{self.client_allowed_path}?productId={self.client_required_product_id}')
 
         # Office and Admin roles can access everything
-        logger.info(f"[RBAC MIDDLEWARE] {user_role} access ALLOWED to {path}")
+        if settings.DEBUG:
+            logger.debug(f"[RBAC MIDDLEWARE] {user_role} access ALLOWED to {path}")
         return self.get_response(request)

@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.core.files.storage import default_storage
 from .models import *
 
 class ProductSerializer(serializers.ModelSerializer):
@@ -25,6 +26,8 @@ class TruckSerializer(serializers.ModelSerializer):
 
 class BOLSerializer(serializers.ModelSerializer):
     effective_weight_tons = serializers.DecimalField(max_digits=10, decimal_places=2, read_only=True)
+    pdf_url = serializers.SerializerMethodField()
+    stamped_pdf_url = serializers.SerializerMethodField()
 
     class Meta:
         model = BOL
@@ -32,6 +35,21 @@ class BOLSerializer(serializers.ModelSerializer):
                  'truck_number', 'net_tons', 'pdf_url', 'stamped_pdf_url',
                  'official_weight_tons', 'official_weight_entered_by', 'official_weight_entered_at',
                  'weight_variance_tons', 'weight_variance_percent', 'effective_weight_tons']
+
+    def get_pdf_url(self, obj):
+        return obj.get_pdf_url()
+
+    def get_stamped_pdf_url(self, obj):
+        if not obj.stamped_pdf_url:
+            return None
+        # If already a full URL, return as-is
+        if obj.stamped_pdf_url.startswith('http'):
+            return obj.stamped_pdf_url
+        from django.core.files.storage import default_storage
+        try:
+            return default_storage.url(obj.stamped_pdf_url)
+        except Exception:
+            return obj.stamped_pdf_url
 
 class ReleaseLoadSerializer(serializers.ModelSerializer):
     bol_number = serializers.SerializerMethodField()
@@ -49,17 +67,9 @@ class ReleaseLoadSerializer(serializers.ModelSerializer):
         return obj.bol.bol_number if obj.bol else None
 
     def get_bol_pdf_url(self, obj):
-        if not obj.bol or not obj.bol.pdf_url:
+        if not obj.bol:
             return None
-        # If already a full URL, return as-is
-        if obj.bol.pdf_url.startswith('http'):
-            return obj.bol.pdf_url
-        # Convert S3 path to full URL
-        from django.core.files.storage import default_storage
-        try:
-            return default_storage.url(obj.bol.pdf_url)
-        except:
-            return obj.bol.pdf_url  # Fallback to stored value
+        return obj.bol.get_pdf_url()
 
     def get_bol_stamped_pdf_url(self, obj):
         """Get watermarked PDF URL with official weight stamp"""

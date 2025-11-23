@@ -44,6 +44,10 @@ SSO_CLIENT_SECRET = config('SSO_CLIENT_SECRET', default=None)
 SSO_REDIRECT_URI = config('SSO_REDIRECT_URI', default='http://localhost:8001/auth/callback/')
 SSO_SCOPES = config('SSO_SCOPES', default='openid email profile roles')
 
+# Tenant configuration (Phase 1: static per-deployment)
+TENANT_ID = config('TENANT_ID', default='primetrade')
+TENANT_NAME = config('TENANT_NAME', default='PrimeTrade Logistics')
+
 # Debug logging control for authentication flow
 # Set to True to enable detailed [FLOW DEBUG] logging for troubleshooting auth issues
 # Default: False (production - clean logs)
@@ -200,14 +204,15 @@ if USE_S3:
     AWS_SECRET_ACCESS_KEY = config('AWS_SECRET_ACCESS_KEY')
     AWS_STORAGE_BUCKET_NAME = config('AWS_STORAGE_BUCKET_NAME', default='primetrade-documents')
     AWS_S3_REGION_NAME = config('AWS_S3_REGION_NAME', default='us-east-2')  # Ohio region
-    # Use direct S3 URLs (public access) for BOL PDFs
-    AWS_S3_CUSTOM_DOMAIN = f"{config('AWS_STORAGE_BUCKET_NAME', default='primetrade-documents')}.s3.{config('AWS_S3_REGION_NAME', default='us-east-2')}.amazonaws.com"
+    # Force signed URLs (no public domain)
+    AWS_S3_CUSTOM_DOMAIN = None
     AWS_S3_OBJECT_PARAMETERS = {
         'CacheControl': 'max-age=86400',  # 24 hours
     }
-    AWS_DEFAULT_ACL = None  # Modern S3 buckets use bucket policies instead of ACLs
+    AWS_DEFAULT_ACL = 'private'  # Private by default
     AWS_S3_FILE_OVERWRITE = False  # Never overwrite existing files
-    AWS_QUERYSTRING_AUTH = False  # Use direct URLs instead of signed URLs
+    AWS_QUERYSTRING_AUTH = True  # Use signed URLs
+    AWS_QUERYSTRING_EXPIRE = 86400  # 24 hours
 
     # Use S3 for media files (PDFs)
     STORAGES = {
@@ -263,19 +268,32 @@ LOGGING = {
         'bol_system': {
             'handlers': ['console', 'file'],
             'level': 'INFO',
+            'propagate': False,
         },
         'django': {
             'handlers': ['console', 'file'],
             'level': 'INFO',
+            'propagate': False,
         },
         'primetrade_project.auth_views': {
             'handlers': ['console', 'file'],
             'level': 'WARNING',  # Changed to WARNING for production safety (no debug/info OAuth logs)
+            'propagate': False,
+        },
+        'primetrade_project.api_views': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
         },
         'oauth.security': {
             'handlers': ['console', 'file'],
             'level': 'WARNING',
+            'propagate': False,
         },
+    },
+    'root': {
+        'handlers': ['console', 'file'],
+        'level': 'INFO',
     },
 }
 # Production Database Configuration

@@ -435,6 +435,9 @@ def sso_callback(request):
         'role': role_name,
         'permissions': permissions
     }
+    # Tenant context (Phase 1: static per deployment)
+    request.session['tenant_id'] = settings.TENANT_ID
+    request.session['tenant_name'] = settings.TENANT_NAME
     request.session['sso_access_token'] = access_token
     request.session['sso_refresh_token'] = tokens.get('refresh_token')
 

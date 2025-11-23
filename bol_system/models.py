@@ -149,7 +149,8 @@ class BOL(TimestampedModel):
     date = models.CharField(max_length=20)  # Keep as string to match Firebase
     net_tons = models.DecimalField(max_digits=10, decimal_places=2, help_text='CBRT scale weight (estimate)')
     notes = models.TextField(blank=True)
-    pdf_url = models.URLField(max_length=1000, blank=True)  # S3 signed URLs can be 400+ characters
+    pdf_url = models.URLField(max_length=1000, blank=True)  # Legacy URL (deprecated)
+    pdf_key = models.CharField(max_length=500, blank=True, null=True, help_text='S3 object key for signed URL generation')
     created_by_email = models.CharField(max_length=200, default='system@primetrade.com')
     lot_ref = models.ForeignKey('Lot', on_delete=models.SET_NULL, null=True, blank=True, help_text='Reference to lot for chemistry data')
     release_number = models.CharField(max_length=20, blank=True, help_text='Release number for reference')
@@ -211,6 +212,24 @@ class BOL(TimestampedModel):
     def effective_weight_tons(self):
         """Returns official weight if available, otherwise CBRT scale weight"""
         return self.official_weight_tons if self.official_weight_tons is not None else self.net_tons
+
+    def get_pdf_url(self):
+        """
+        Generate a URL for the BOL PDF.
+        - If pdf_key is set, generate a signed URL via default_storage
+        - Fallback to legacy pdf_url for backward compatibility
+        """
+        from django.core.files.storage import default_storage
+
+        if self.pdf_key:
+            try:
+                return default_storage.url(self.pdf_key)
+            except Exception:
+                # Fallback to legacy if storage fails
+                pass
+        if self.pdf_url:
+            return self.pdf_url
+        return None
 
     def set_official_weight(self, weight_tons, entered_by_email):
         """Set official weight, calculate variance, and generate watermarked PDF"""

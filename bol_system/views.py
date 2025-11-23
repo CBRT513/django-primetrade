@@ -13,6 +13,7 @@ from .release_parser import parse_release_pdf
 from .email_utils import send_bol_notification
 from primetrade_project.decorators import require_role, require_role_for_writes
 # Customer filtering utilities removed - all authenticated users see all data
+from django.utils.decorators import method_decorator
 import logging
 import os
 import base64
@@ -34,6 +35,15 @@ def _ip_of(request):
         return request.META.get('REMOTE_ADDR','')
     except Exception:
         return ''
+
+def _derive_pdf_key(path_or_url: str | None):
+    """Convert a stored URL/path into an S3 object key."""
+    if not path_or_url:
+        return None
+    if path_or_url.startswith('http'):
+        m = re.search(r'(media/.+)$', path_or_url)
+        return m.group(1) if m else None
+    return path_or_url.lstrip('/')
 
 def audit(request, action: str, obj=None, message: str = '', extra: dict | None = None):
     try:
@@ -133,11 +143,13 @@ def user_context(request):
     })
 
 # Product endpoints
+@method_decorator(require_role('Admin', 'Office', 'Client'), name='dispatch')
 class ProductListView(generics.ListCreateAPIView):
     serializer_class = ProductSerializer
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        # TODO Phase 2: Filter by tenant_id once multi-tenant enabled
         return Product.objects.filter(is_active=True).order_by('name')
 
     # Support upsert via POST so the existing frontend can use one endpoint
@@ -772,14 +784,16 @@ def confirm_bol(request):
         try:
             pdf_url = generate_bol_pdf(bol)
             bol.pdf_url = pdf_url
-            bol.save()
+            bol.pdf_key = _derive_pdf_key(pdf_url)
+            bol.save(update_fields=['pdf_url', 'pdf_key', 'updated_at'])
             logger.info(f"Generated PDF for BOL {bol.bol_number} at {pdf_url}")
         except Exception as e:
             logger.error(f"Failed to generate PDF for BOL {bol.bol_number}: {str(e)}")
             # Continue without PDF - don't fail the BOL creation
             pdf_url = f"/media/bol_pdfs/{bol.bol_number}.pdf"
             bol.pdf_url = pdf_url
-            bol.save()
+            bol.pdf_key = _derive_pdf_key(pdf_url)
+            bol.save(update_fields=['pdf_url', 'pdf_key', 'updated_at'])
 
         # Send email notification
         try:
@@ -809,9 +823,10 @@ def confirm_bol(request):
 # Inventory balances
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-@require_role('Admin', 'Office', 'Client')  # All authenticated users - Phase 2 audit fix
+@require_role('Admin', 'Office')  # Internal staff only
 def balances(request):
     try:
+        # TODO Phase 2: tenant filter once tenant_id is available
         products = Product.objects.filter(is_active=True)
         result = []
         for product in products:
@@ -1107,12 +1122,13 @@ def approve_release(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-@require_role('Admin', 'Office', 'Client')  # All authenticated users - Phase 2 audit fix
+@require_role('Admin', 'Office')  # Internal staff only
 def open_releases(request):
     try:
         from datetime import date as date_class
         today = date_class.today()
 
+        # TODO Phase 2: tenant filter once tenant_id is available
         rels = Release.objects.filter(status='OPEN').order_by('-created_at')
         result = []
         for r in rels:
@@ -1177,7 +1193,7 @@ def open_releases(request):
 # Pending loads for BOL creation (only unshipped loads)
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-@require_role('Admin', 'Office', 'Client')  # All authenticated users - Phase 2 audit fix
+@require_role('Admin', 'Office')  # Internal staff only
 def pending_release_loads(request):
     try:
         from datetime import date as date_class, timedelta
@@ -1191,6 +1207,7 @@ def pending_release_loads(request):
         next_week_start = this_week_end + timedelta(days=1)
         next_week_end = next_week_start + timedelta(days=6)
 
+        # TODO Phase 2: tenant filter once tenant_id is available
         loads = ReleaseLoad.objects.filter(status='PENDING').select_related(
             'release', 'release__customer_ref', 'release__ship_to_ref', 'release__carrier_ref', 'release__lot_ref', 'release__lot_ref__product'
         ).order_by('date','seq')
@@ -1550,8 +1567,7 @@ def bol_history(request):
     """
     try:
         # Phase 2 Security: All authenticated users (Admin, Office, Client) see all BOLs
-        # Role-based access control limits WHO can access (authentication)
-        # Write operations are restricted by @require_role decorators elsewhere
+        # TODO Phase 2: Filter by tenant_id when multi-tenant is enabled
         base_queryset = BOL.objects.all()
 
         role_info = request.session.get('primetrade_role', {})
@@ -1601,18 +1617,8 @@ def bol_history(request):
                 has_official = hasattr(bol, 'official_weight_tons') and bol.official_weight_tons is not None
                 display_weight = float(bol.official_weight_tons) if has_official else float(bol.net_tons)
 
-                # Convert S3 paths to full URLs (only if not already a URL)
-                # Handle empty strings and None values safely
-                pdf_url = None
-                if bol.pdf_url and bol.pdf_url.strip():
-                    try:
-                        if bol.pdf_url.startswith('http'):
-                            pdf_url = bol.pdf_url
-                        else:
-                            pdf_url = default_storage.url(bol.pdf_url)
-                    except Exception as url_err:
-                        logger.warning(f"Could not convert pdf_url for BOL {bol.id}: {url_err}")
-                        pdf_url = bol.pdf_url  # Fallback to original value
+                # Resolve PDF URLs using signer (pdf_key preferred, pdf_url legacy fallback)
+                pdf_url = bol.get_pdf_url()
 
                 stamped_pdf_url = None
                 if bol.stamped_pdf_url and bol.stamped_pdf_url.strip():
@@ -1745,8 +1751,7 @@ def set_official_weight(request, bol_id):
 
         logger.info(f"Official weight set for BOL {bol.bol_number}: {weight_tons} tons by {entered_by}")
 
-        # Convert S3 paths to full URLs (only if not already a URL)
-        pdf_url = bol.pdf_url if (bol.pdf_url and bol.pdf_url.startswith('http')) else (default_storage.url(bol.pdf_url) if bol.pdf_url else None)
+        pdf_url = bol.get_pdf_url()
         stamped_pdf_url = bol.stamped_pdf_url if (bol.stamped_pdf_url and bol.stamped_pdf_url.startswith('http')) else (default_storage.url(bol.stamped_pdf_url) if bol.stamped_pdf_url else None)
 
         return Response({
@@ -1786,7 +1791,8 @@ def regenerate_bol_pdf(request, bol_id):
         try:
             pdf_url = generate_bol_pdf(bol)
             bol.pdf_url = pdf_url
-            bol.save()
+            bol.pdf_key = _derive_pdf_key(pdf_url)
+            bol.save(update_fields=['pdf_url', 'pdf_key', 'updated_at'])
             logger.info(f"Regenerated PDF for BOL {bol.bol_number} at {pdf_url}")
 
             # Audit log
@@ -1836,28 +1842,20 @@ def download_bol_pdf(request, bol_id):
     try:
         bol = BOL.objects.get(id=bol_id)
 
-        # Get download URL (automatically signed if using S3)
+        # Generate signed URL (prefers pdf_key; falls back to legacy pdf_url)
         from django.core.files.storage import default_storage
 
-        # Regenerate URL to get fresh signed link
-        download_url = bol.pdf_url
-
-        # If using S3, regenerate signed URL for fresh expiration
-        if hasattr(default_storage, 'bucket'):
-            # This is S3 storage
+        download_url = bol.get_pdf_url()
+        if not download_url and bol.pdf_key:
+            # Try to generate explicitly if get_pdf_url failed
             try:
-                # Extract the file key from the URL
-                import re
-                from django.conf import settings
+                download_url = default_storage.url(bol.pdf_key)
+            except Exception:
+                pass
 
-                # Get the file path from the BOL
-                # The pdf_url is already a full URL, we need to extract the key
-                if bol.pdf_url:
-                    # Try to regenerate the URL to get a fresh signature
-                    download_url = default_storage.url(bol.pdf_url)
-            except Exception as e:
-                logger.warning(f"Could not regenerate signed URL: {e}, using existing URL")
-                download_url = bol.pdf_url
+        if not download_url:
+            logger.error(f"No PDF available for BOL {bol.bol_number}")
+            return Response({'error': 'PDF not available'}, status=status.HTTP_404_NOT_FOUND)
 
         # Audit log the download
         user_email = request.user.email or request.user.username
