@@ -47,6 +47,7 @@ urlpatterns = [
     path('open-releases/', login_required(TemplateView.as_view(template_name='open_releases.html')), name='open_releases'),
     path('loading-schedule.html', login_required(TemplateView.as_view(template_name='loading-schedule.html')), name='loading_schedule'),
     path('client-schedule.html', login_required(TemplateView.as_view(template_name='client-schedule.html')), name='client_schedule'),
+    path('client-release.html', login_required(TemplateView.as_view(template_name='client-release.html')), name='client_release'),
     path('bol-weights.html', login_required(TemplateView.as_view(template_name='bol-weights.html')), name='bol_weights'),
 
     # Authenticated media access (signed URLs for PDFs)
