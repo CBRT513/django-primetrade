@@ -241,10 +241,9 @@
 
     function renderLoadRow(load) {
       const daysText = formatDaysUntil(load.daysUntil);
-      // Client view: No "Create BOL" action button
-      // Client view: No link to admin release detail page (will create client page later)
+      // Client view: Link to client-friendly release detail page
       return `<tr class="${load.urgency}">
-        <td>${load.releaseNumber}</td>
+        <td><a href="/client-release.html?id=${load.releaseId}">${load.releaseNumber}</a></td>
         <td>${load.seq}</td>
         <td>${fmtDate(load.scheduledDate)}</td>
         <td><span class="urgency-badge ${load.urgency}">${daysText}</span></td>

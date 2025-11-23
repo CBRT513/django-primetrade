@@ -1,0 +1,510 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Release Details</title>
+  <link rel="stylesheet" href="/static/css/cbrt-brand.css">
+  <style>
+    body {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+    }
+
+    .wrap {
+      max-width: 1400px;
+      margin: 0 auto;
+    }
+
+    .header {
+      background: white;
+      border-radius: 16px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .logo {
+      max-height: 80px;
+      max-width: 200px;
+    }
+
+    .welcome h1 {
+      margin: 0 0 0.5rem 0;
+      color: #1e293b;
+      font-size: 1.75rem;
+    }
+
+    .welcome p {
+      margin: 0;
+      color: #64748b;
+      font-size: 1rem;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 1rem;
+    }
+
+    .btn {
+      background: var(--primary, #2563eb);
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 8px;
+      cursor: pointer;
+      text-decoration: none;
+      display: inline-block;
+      font-size: 0.95rem;
+      transition: all 0.2s;
+    }
+
+    .btn:hover {
+      opacity: 0.9;
+      transform: translateY(-1px);
+    }
+
+    .btn-secondary {
+      background: #6b7280;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      padding: 2rem;
+      margin-bottom: 2rem;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+    }
+
+    .card-title {
+      margin: 0 0 1.5rem 0;
+      color: #1e293b;
+      font-size: 1.5rem;
+      border-bottom: 2px solid var(--primary, #2563eb);
+      padding-bottom: 0.75rem;
+    }
+
+    .detail-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+    }
+
+    .detail-item {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .detail-label {
+      font-size: 0.85rem;
+      color: #6b7280;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .detail-value {
+      font-size: 1.1rem;
+      color: #1e293b;
+      font-weight: 500;
+    }
+
+    .loads-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 1rem;
+    }
+
+    .loads-table th {
+      background: #f8fafc;
+      padding: 12px;
+      text-align: left;
+      font-size: 0.9rem;
+      color: #475569;
+      font-weight: 600;
+      border-bottom: 2px solid #e2e8f0;
+    }
+
+    .loads-table td {
+      padding: 12px;
+      border-bottom: 1px solid #e2e8f0;
+      font-size: 0.95rem;
+    }
+
+    .loads-table tr:hover {
+      background: #f8fafc;
+    }
+
+    .status-badge {
+      padding: 4px 12px;
+      border-radius: 12px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      display: inline-block;
+    }
+
+    .status-shipped {
+      background: #d1fae5;
+      color: #065f46;
+    }
+
+    .status-pending {
+      background: #fef3c7;
+      color: #92400e;
+    }
+
+    .status-cancelled {
+      background: #f3f4f6;
+      color: #374151;
+    }
+
+    .summary-box {
+      background: #f8fafc;
+      border-left: 4px solid var(--primary, #2563eb);
+      padding: 1rem 1.5rem;
+      border-radius: 8px;
+      margin-top: 1rem;
+      font-size: 0.95rem;
+      color: #475569;
+    }
+
+    .weight-display {
+      display: flex;
+      flex-direction: column;
+      gap: 0.25rem;
+    }
+
+    .weight-official {
+      font-weight: 600;
+      color: #059669;
+    }
+
+    .weight-estimate {
+      font-size: 0.85rem;
+      color: #6b7280;
+    }
+
+    .bol-link {
+      color: #2563eb;
+      text-decoration: underline;
+      cursor: pointer;
+    }
+
+    .bol-link:hover {
+      color: #1d4ed8;
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: 2rem;
+      color: #6b7280;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <!-- Header -->
+    <div class="header">
+      <div class="welcome">
+        <h1 id="releaseTitle">Release Details</h1>
+        <p>View release information and shipments</p>
+      </div>
+      <div class="header-actions">
+        <a href="/client-schedule.html" class="btn btn-secondary">← Back to Schedule</a>
+        <a href="/client.html?productId=9" class="btn">Dashboard</a>
+      </div>
+    </div>
+
+    <!-- Release Info Card -->
+    <div class="card">
+      <h2 class="card-title">Release Information</h2>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <div class="detail-label">Release Number</div>
+          <div class="detail-value" id="releaseNumber">-</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Release Date</div>
+          <div class="detail-value" id="releaseDate">-</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Status</div>
+          <div class="detail-value" id="releaseStatus">-</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Customer PO</div>
+          <div class="detail-value" id="customerPO">-</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Carrier</div>
+          <div class="detail-value" id="carrier">-</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Quantity (Net Tons)</div>
+          <div class="detail-value" id="qtyTons">-</div>
+        </div>
+      </div>
+
+      <!-- Ship To Section -->
+      <h3 style="margin: 2rem 0 1rem 0; color: #475569; font-size: 1.1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">Ship To</h3>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <div class="detail-label">Name</div>
+          <div class="detail-value" id="shipToName">-</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Address</div>
+          <div class="detail-value" id="shipToAddress">-</div>
+        </div>
+      </div>
+
+      <!-- Material Section -->
+      <h3 style="margin: 2rem 0 1rem 0; color: #475569; font-size: 1.1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">Material</h3>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <div class="detail-label">Lot</div>
+          <div class="detail-value" id="materialLot">-</div>
+        </div>
+        <div class="detail-item">
+          <div class="detail-label">Description</div>
+          <div class="detail-value" id="materialDescription">-</div>
+        </div>
+      </div>
+
+      <!-- Chemistry (if present) -->
+      <div id="chemistrySection" style="display: none;">
+        <h3 style="margin: 2rem 0 1rem 0; color: #475569; font-size: 1.1rem; border-bottom: 1px solid #e2e8f0; padding-bottom: 0.5rem;">Chemistry</h3>
+        <div class="detail-grid">
+          <div class="detail-item">
+            <div class="detail-label">C</div>
+            <div class="detail-value" id="chemC">-</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Si</div>
+            <div class="detail-value" id="chemSi">-</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">S</div>
+            <div class="detail-value" id="chemS">-</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">P</div>
+            <div class="detail-value" id="chemP">-</div>
+          </div>
+          <div class="detail-item">
+            <div class="detail-label">Mn</div>
+            <div class="detail-value" id="chemMn">-</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Loads/Shipments Card -->
+    <div class="card">
+      <h2 class="card-title">Loads / Shipments</h2>
+      <table class="loads-table">
+        <thead>
+          <tr>
+            <th>Load #</th>
+            <th>Status</th>
+            <th>BOL Number</th>
+            <th>Weight (tons)</th>
+            <th>Date Shipped</th>
+            <th>Action</th>
+          </tr>
+        </thead>
+        <tbody id="loads-table-body">
+          <tr><td colspan="6" class="empty-state">Loading...</td></tr>
+        </tbody>
+      </table>
+
+      <div id="loads-summary" class="summary-box" style="display: none;">
+        <!-- Summary populated by JavaScript -->
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Utility functions
+    function getJSON(url) {
+      return fetch(url, { credentials: 'same-origin' })
+        .then(r => r.ok ? r.json() : Promise.reject(r));
+    }
+
+    function formatDate(dateStr) {
+      if (!dateStr) return '-';
+      const date = new Date(dateStr);
+      return date.toLocaleDateString('en-US', { month: '2-digit', day: '2-digit', year: 'numeric' });
+    }
+
+    function getReleaseId() {
+      const params = new URLSearchParams(window.location.search);
+      return params.get('id');
+    }
+
+    function renderLoads(loads, summary) {
+      const tbody = document.getElementById('loads-table-body');
+      tbody.innerHTML = '';
+
+      if (!loads || loads.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" class="empty-state">No loads scheduled for this release</td></tr>';
+        document.getElementById('loads-summary').style.display = 'none';
+        return;
+      }
+
+      loads.forEach(load => {
+        const row = document.createElement('tr');
+
+        // Status badge
+        let statusBadge = '';
+        let statusClass = '';
+        if (load.status === 'SHIPPED') {
+          statusClass = 'status-shipped';
+          statusBadge = 'SHIPPED';
+        } else if (load.status === 'PENDING') {
+          statusClass = 'status-pending';
+          statusBadge = 'PENDING';
+        } else if (load.status === 'CANCELLED') {
+          statusClass = 'status-cancelled';
+          statusBadge = 'CANCELLED';
+        }
+
+        // BOL number (clickable if exists)
+        let bolCell = '-';
+        if (load.bol_number) {
+          const bolPdfUrl = load.bol_stamped_pdf_url || load.bol_pdf_url;
+          if (bolPdfUrl) {
+            bolCell = `<a href="${bolPdfUrl}" target="_blank" class="bol-link">${load.bol_number}</a>`;
+          } else {
+            bolCell = load.bol_number;
+          }
+        }
+
+        // Weight display (official vs CBRT estimate)
+        let weightCell = '-';
+        if (load.official_weight) {
+          weightCell = `<div class="weight-display">
+            <span class="weight-official">${Number(load.official_weight).toFixed(2)} tons</span>
+            ${load.cbrt_weight ? `<span class="weight-estimate">Est: ${Number(load.cbrt_weight).toFixed(2)}</span>` : ''}
+          </div>`;
+        } else if (load.cbrt_weight) {
+          weightCell = `${Number(load.cbrt_weight).toFixed(2)} tons (Est)`;
+        }
+
+        // Date shipped
+        let dateCell = '-';
+        if (load.bol_created_at) {
+          dateCell = formatDate(load.bol_created_at);
+        }
+
+        // Action button
+        let actionCell = '';
+        if (load.status === 'SHIPPED') {
+          const pdfUrl = load.bol_stamped_pdf_url || load.bol_pdf_url;
+          if (pdfUrl) {
+            actionCell = `<button onclick="window.open('${pdfUrl}', '_blank')" class="btn" style="padding: 6px 12px; font-size: 0.9rem;">View BOL</button>`;
+          }
+        }
+
+        row.innerHTML = `
+          <td>${load.sequence || '-'}</td>
+          <td><span class="status-badge ${statusClass}">${statusBadge}</span></td>
+          <td>${bolCell}</td>
+          <td>${weightCell}</td>
+          <td>${dateCell}</td>
+          <td>${actionCell}</td>
+        `;
+
+        tbody.appendChild(row);
+      });
+
+      // Render summary
+      if (summary && summary.total_loads > 0) {
+        const shippedPct = Math.round((summary.shipped_loads / summary.total_loads) * 100);
+        document.getElementById('loads-summary').innerHTML = `
+          <strong>Summary:</strong>
+          ${summary.shipped_loads} of ${summary.total_loads} loads shipped (${shippedPct}%) |
+          ${parseFloat(summary.shipped_tons).toFixed(2)} / ${parseFloat(summary.total_tons).toFixed(2)} tons |
+          ${summary.pending_loads} pending, ${summary.cancelled_loads} cancelled
+        `;
+        document.getElementById('loads-summary').style.display = 'block';
+      }
+    }
+
+    async function loadRelease() {
+      const id = getReleaseId();
+      if (!id) {
+        alert('Invalid release ID');
+        window.location.href = '/client-schedule.html';
+        return;
+      }
+
+      try {
+        const release = await getJSON(`/api/releases/${id}/`);
+
+        // Update page title
+        document.getElementById('releaseTitle').textContent = `Release ${release.release_number || id}`;
+
+        // Populate release info
+        document.getElementById('releaseNumber').textContent = release.release_number || '-';
+        document.getElementById('releaseDate').textContent = formatDate(release.release_date);
+        document.getElementById('releaseStatus').textContent = release.status || '-';
+        document.getElementById('customerPO').textContent = release.customer_po || '-';
+        document.getElementById('carrier').textContent = release.ship_via || '-';
+        document.getElementById('qtyTons').textContent = release.quantity_net_tons ? `${Number(release.quantity_net_tons).toFixed(2)} tons` : '-';
+
+        // Ship To
+        document.getElementById('shipToName').textContent = release.ship_to_name || '-';
+        const address = [release.ship_to_street, release.ship_to_city, release.ship_to_state, release.ship_to_zip]
+          .filter(x => x)
+          .join(', ');
+        document.getElementById('shipToAddress').textContent = address || '-';
+
+        // Material
+        document.getElementById('materialLot').textContent = release.lot || '-';
+        document.getElementById('materialDescription').textContent = release.material_description || '-';
+
+        // Chemistry (show section if data exists)
+        const lot = release.lot_ref || {};
+        const hasChemistry = lot.c || lot.si || lot.s || lot.p || lot.mn;
+        if (hasChemistry) {
+          document.getElementById('chemC').textContent = lot.c || '-';
+          document.getElementById('chemSi').textContent = lot.si || '-';
+          document.getElementById('chemS').textContent = lot.s || '-';
+          document.getElementById('chemP').textContent = lot.p || '-';
+          document.getElementById('chemMn').textContent = lot.mn || '-';
+          document.getElementById('chemistrySection').style.display = 'block';
+        }
+
+        // Render loads table
+        renderLoads(release.loads || [], release.loads_summary);
+
+      } catch (error) {
+        console.error('Failed to load release:', error);
+        alert('Failed to load release details');
+        window.location.href = '/client-schedule.html';
+      }
+    }
+
+    // Load branding and release data
+    (async () => {
+      try {
+        const branding = await getJSON('/api/customers/branding/');
+        if (branding.primary_color) {
+          document.documentElement.style.setProperty('--primary', branding.primary_color);
+        }
+      } catch (e) {
+        console.error('Failed to load branding:', e);
+      }
+
+      loadRelease();
+    })();
+  </script>
+</body>
+</html>
