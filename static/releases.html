@@ -25,11 +25,12 @@
     <div class="card" style="padding: 1.5rem;">
       <div id="status" class="status" style="min-height: 1.25rem; margin-bottom: 0.5rem; color: var(--text-secondary);"></div>
       <form id="uploadForm">
-        <input type="file" id="file" accept="application/pdf" required />
+        <input type="file" id="file" accept="application/pdf" />
         <label style="margin-left:0.75rem; font-size: 0.9rem;">
           <input type="checkbox" id="useAI" checked style="margin-right:0.35rem;"> Use AI parser (Gemini 1.5 Flash)
         </label>
         <button class="btn btn-accent" type="submit">Upload & Parse</button>
+        <button class="btn btn-secondary" type="button" id="manualEntryBtn" style="margin-left: 0.5rem;">Manual Entry</button>
       </form>
       <pre id="out" style="margin-top:1rem; white-space: pre-wrap; background:#111; color:#eee; padding:1rem; border-radius:8px; max-height: 400px; overflow: auto;"></pre>
     </div>
@@ -48,7 +49,7 @@
           <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
             <div class="form-group">
               <label>Release #</label>
-              <input id="releaseNumber" type="text" readonly>
+              <input id="releaseNumber" type="text" required>
             </div>
             <div class="form-group">
               <label>Release Date</label>
@@ -602,6 +603,14 @@ function openReview(parsed) {
 }
 function closeReview() { modal.style.display = 'none'; }
 closeBtn.addEventListener('click', closeReview);
+
+// Manual Entry button - opens review modal with empty fields
+document.getElementById('manualEntryBtn').addEventListener('click', () => {
+  window._lastParsed = { parsed: { schedule: [] } };
+  fillReview({});
+  modal.style.display = 'flex';
+  document.getElementById('releaseNumber').focus();
+});
 modal.addEventListener('click', (e) => { if (e.target === modal) closeReview(); });
 document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeReview(); });
 copyBtn.addEventListener('click', () => {
@@ -713,7 +722,7 @@ form.addEventListener('submit', async (e) => {
   const zipEl = document.getElementById('shipToZip');
   if (zipEl) { zipEl.value = (zipEl.value || '').replace(/\D/g, '').slice(0,5); }
   if (!file) {
-    if (window.Utils && Utils.showStatus) Utils.showStatus('Please choose a PDF to upload.', 'error');
+    if (window.Utils && Utils.showStatus) Utils.showStatus('Please choose a PDF to upload, or use Manual Entry.', 'info');
     return;
   }
   const submitBtn = e.submitter || form.querySelector('button[type="submit"]');
