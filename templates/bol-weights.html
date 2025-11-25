@@ -244,9 +244,9 @@
 
     <div class="table-controls">
       <input type="text" id="bolSearch" class="search-box" placeholder="Search BOL#, customer, product...">
-      <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.9rem;">
+      <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.9rem; background: var(--surface); padding: 0.5rem 0.75rem; border-radius: 8px; border: 1px solid var(--border);">
         <input type="checkbox" id="showAll" onchange="applyFilters()" style="width: 16px; height: 16px; cursor: pointer;">
-        <span>Show all (including official)</span>
+        <span style="color: var(--text-primary);">Show all (including official)</span>
       </label>
       <select id="bolPageSize" class="page-size-select">
         <option value="10">10 per page</option>
@@ -469,7 +469,7 @@
             <td>${row.productName || '-'}</td>
             <td class="ta-r weight-cell" style="color: #f59e0b;">${cbrtWeight}</td>
             <td class="ta-r weight-cell" style="color: #059669; font-weight: 700;">${officialWeight}</td>
-            <td class="ta-r">${varianceHTML}</td>
+            <td class="ta-r" style="white-space: nowrap;">${varianceHTML}</td>
             <td class="ta-c">${statusBadge}</td>
             <td class="ta-c">${actionButton}</td>
           </tr>`;
