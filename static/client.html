@@ -321,6 +321,43 @@
       font-size: 0.875rem;
     }
 
+    /* Status filter tabs */
+    .status-tabs {
+      display: flex;
+      gap: 0.5rem;
+    }
+    .status-tab {
+      padding: 0.5rem 1rem;
+      border: 1px solid #cbd5e1;
+      background: white;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      color: #64748b;
+      transition: all 0.2s;
+    }
+    .status-tab:hover {
+      background: #f1f5f9;
+    }
+    .status-tab.active {
+      background: var(--primary, #2563eb);
+      color: white;
+      border-color: var(--primary, #2563eb);
+    }
+
+    /* Status badge in table */
+    .status-badge {
+      display: inline-block;
+      padding: 0.2rem 0.5rem;
+      border-radius: 4px;
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+    .status-badge.open { background: #dbeafe; color: #1e40af; }
+    .status-badge.complete { background: #dcfce7; color: #166534; }
+    .status-badge.cancelled { background: #fee2e2; color: #991b1b; }
+
     .btn {
       display: inline-block;
       padding: 0.5rem 1rem;
@@ -469,13 +506,19 @@
       <div class="pagination" id="shipmentPagination"></div>
     </div>
 
-    <!-- Open Releases -->
+    <!-- Releases -->
     <div class="section">
       <div class="section-header">
-        <h2 class="section-title">Open Releases</h2>
+        <h2 class="section-title">Releases</h2>
         <span id="releaseCount" class="badge badge-warning">0 open</span>
       </div>
       <div class="table-controls">
+        <div class="status-tabs">
+          <button class="status-tab active" data-status="OPEN">Open</button>
+          <button class="status-tab" data-status="COMPLETE">Complete</button>
+          <button class="status-tab" data-status="CANCELLED">Cancelled</button>
+          <button class="status-tab" data-status="ALL">All</button>
+        </div>
         <input type="text" id="releaseSearch" class="search-box" placeholder="Search release#, customer...">
         <select id="releasePageSize" class="page-size-select">
           <option value="10">10 per page</option>
@@ -489,6 +532,7 @@
           <tr>
             <th class="sortable" data-sort="releaseNumber">Release #</th>
             <th class="sortable" data-sort="customer">Customer</th>
+            <th class="sortable" data-sort="status">Status</th>
             <th class="sortable ta-r" data-sort="loadsShipped">Shipped</th>
             <th class="sortable ta-r" data-sort="loadsRemaining">Remaining</th>
             <th class="sortable ta-r" data-sort="totalLoads">Total</th>
@@ -497,7 +541,7 @@
         </thead>
         <tbody>
           <tr>
-            <td colspan="6">
+            <td colspan="7">
               <div class="loading">Loading releases...</div>
             </td>
           </tr>
@@ -720,22 +764,50 @@
         shipmentCount.textContent = `${allShipments.length} shipments`;
         renderShipments();
 
-        // Load open releases with sorting, filtering, pagination
-        const releasesData = await getJSON('/api/releases/open/');
+        // Load releases with sorting, filtering, pagination, and status filter
         const releasesTbody = document.querySelector('#releasesTable tbody');
         const releaseCount = document.getElementById('releaseCount');
 
         // Release table state
-        let allReleases = releasesData || [];
-        let filteredReleases = [...allReleases];
+        let allReleases = [];
+        let filteredReleases = [];
         let releaseCurrentPage = 1;
         let releasePageSize = 10;
         let releaseSortColumn = 'releaseNumber';
         let releaseSortDirection = 'asc';
+        let releaseStatus = 'OPEN';
+
+        async function loadReleases(status) {
+          releaseStatus = status || releaseStatus;
+          try {
+            const data = await getJSON(`/api/releases/?status=${releaseStatus}`);
+            allReleases = data || [];
+            updateReleaseCount();
+            applyReleaseFilters();
+          } catch (err) {
+            console.error('Failed to load releases:', err);
+            releasesTbody.innerHTML = `<tr><td colspan="7"><div class="empty-state" style="color: red;">Error loading releases</div></td></tr>`;
+          }
+        }
+
+        function updateReleaseCount() {
+          const statusLabel = releaseStatus === 'ALL' ? '' : releaseStatus.toLowerCase();
+          releaseCount.textContent = `${allReleases.length} ${statusLabel}`;
+        }
+
+        function applyReleaseFilters() {
+          const query = (document.getElementById('releaseSearch').value || '').toLowerCase();
+          filteredReleases = allReleases.filter(r =>
+            (r.releaseNumber || '').toLowerCase().includes(query) ||
+            (r.customer || '').toLowerCase().includes(query)
+          );
+          releaseCurrentPage = 1;
+          renderReleases();
+        }
 
         function renderReleases() {
           if (filteredReleases.length === 0) {
-            releasesTbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">✅</div><p>No open releases</p></div></td></tr>';
+            releasesTbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><div class="empty-state-icon">✅</div><p>No releases found</p></div></td></tr>';
             document.getElementById('releasePagination').innerHTML = '';
             return;
           }
@@ -759,16 +831,20 @@
           const start = (releaseCurrentPage - 1) * releasePageSize;
           const pageData = sorted.slice(start, start + releasePageSize);
 
-          releasesTbody.innerHTML = pageData.map(r => `
+          releasesTbody.innerHTML = pageData.map(r => {
+            const statusClass = (r.status || 'open').toLowerCase();
+            const statusBadge = `<span class="status-badge ${statusClass}">${r.status || 'OPEN'}</span>`;
+            return `
             <tr>
               <td style="font-weight: 600;">${r.releaseNumber || '-'}</td>
               <td>${r.customer || '-'}</td>
+              <td>${statusBadge}</td>
               <td class="ta-r">${r.loadsShipped || 0} <span style="color: #64748b;">(${Number(r.tonsShipped || 0).toFixed(2)} NT)</span></td>
               <td class="ta-r"><span class="badge badge-warning">${r.loadsRemaining || 0}</span> <span style="color: #64748b;">(${Number(r.tonsRemaining || 0).toFixed(2)} NT)</span></td>
               <td class="ta-r">${r.totalLoads || 0}</td>
               <td>${r.nextScheduledDate || '-'}</td>
-            </tr>
-          `).join('');
+            </tr>`;
+          }).join('');
 
           // Pagination controls
           const paginationEl = document.getElementById('releasePagination');
@@ -791,16 +867,17 @@
           renderReleases();
         };
 
-        // Search
-        document.getElementById('releaseSearch').addEventListener('input', function() {
-          const query = this.value.toLowerCase();
-          filteredReleases = allReleases.filter(r =>
-            (r.releaseNumber || '').toLowerCase().includes(query) ||
-            (r.customer || '').toLowerCase().includes(query)
-          );
-          releaseCurrentPage = 1;
-          renderReleases();
+        // Status tabs
+        document.querySelectorAll('.status-tab').forEach(tab => {
+          tab.addEventListener('click', function() {
+            document.querySelectorAll('.status-tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            loadReleases(this.dataset.status);
+          });
         });
+
+        // Search
+        document.getElementById('releaseSearch').addEventListener('input', applyReleaseFilters);
 
         // Page size
         document.getElementById('releasePageSize').addEventListener('change', function() {
@@ -825,8 +902,8 @@
           });
         });
 
-        releaseCount.textContent = `${allReleases.length} open`;
-        renderReleases();
+        // Initial load (defaults to OPEN)
+        loadReleases();
 
       } catch (e) {
         console.error('Dashboard load error:', e);

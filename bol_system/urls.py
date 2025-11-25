@@ -31,8 +31,9 @@ urlpatterns = [
     # Release parsing + approvals
     path('releases/upload/', views.upload_release, name='release_upload'),
     path('releases/approve/', views.approve_release, name='release_approve'),
-    path('releases/open/', views.open_releases, name='releases_open'),
-    path('releases/open/view/', login_required(TemplateView.as_view(template_name='open_releases.html')), name='releases_open_view'),
+    path('releases/', views.list_releases, name='releases_list'),  # ?status=OPEN|COMPLETE|CANCELLED|ALL
+    path('releases/open/', views.list_releases, name='releases_open'),  # Backward compatibility (defaults to OPEN)
+    path('releases/view/', login_required(TemplateView.as_view(template_name='releases.html')), name='releases_view'),
     path('releases/<int:release_id>/', views.release_detail_api, name='release_detail_api'),
     path('releases/<int:release_id>/view/', login_required(TemplateView.as_view(template_name='release_detail.html')), name='release_detail_view'),
 

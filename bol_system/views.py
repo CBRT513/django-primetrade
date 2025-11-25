@@ -1188,14 +1188,21 @@ def approve_release(request):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
-@require_role('Admin', 'Office', 'Client')  # Client dashboard needs this for open releases display
-def open_releases(request):
+@require_role('Admin', 'Office', 'Client')  # Client dashboard needs this for releases display
+def list_releases(request):
+    """List releases with optional status filter. Defaults to OPEN."""
     try:
         from datetime import date as date_class
         today = date_class.today()
 
+        # Get status filter from query params (default to OPEN for backward compatibility)
+        status_filter = request.query_params.get('status', 'OPEN').upper()
+
         # TODO Phase 2: tenant filter once tenant_id is available
-        rels = Release.objects.filter(status='OPEN').order_by('-created_at')
+        if status_filter == 'ALL':
+            rels = Release.objects.all().order_by('-created_at')
+        else:
+            rels = Release.objects.filter(status=status_filter).order_by('-created_at')
         result = []
         for r in rels:
             loads_total = r.loads.count()
@@ -1236,6 +1243,7 @@ def open_releases(request):
                 'id': r.id,
                 'releaseNumber': r.release_number,
                 'customer': r.customer_id_text,
+                'status': r.status,
                 'totalLoads': loads_total,
                 'loadsShipped': shipped,
                 'loadsRemaining': remaining,
@@ -1253,8 +1261,8 @@ def open_releases(request):
             })
         return Response(result)
     except Exception as e:
-        logger.error(f"open_releases error: {e}", exc_info=True)
-        return Response({'error': 'Failed to load open releases', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+        logger.error(f"list_releases error: {e}", exc_info=True)
+        return Response({'error': 'Failed to load releases', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 # Pending loads for BOL creation (only unshipped loads)
 @api_view(['GET'])
