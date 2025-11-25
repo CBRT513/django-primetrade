@@ -96,6 +96,19 @@ class CsrfExemptSessionAuthentication(SessionAuthentication):
     def enforce_csrf(self, request):
         return  # Disable CSRF check; session must still be authenticated
 
+# CSRF token endpoint - ensures cookie is set for JavaScript
+from django.http import JsonResponse
+from django.middleware.csrf import get_token
+
+@ensure_csrf_cookie
+def csrf_token_view(request):
+    """Return CSRF token and ensure cookie is set.
+
+    Call this endpoint on page load to ensure the csrftoken cookie exists
+    before making POST requests.
+    """
+    return JsonResponse({'csrfToken': get_token(request)})
+
 # Health check endpoint (no auth required for monitoring)
 @api_view(['GET'])
 @permission_classes([AllowAny])

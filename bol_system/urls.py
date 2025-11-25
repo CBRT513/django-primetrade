@@ -5,6 +5,7 @@ from . import views
 from . import auth_views
 
 urlpatterns = [
+    path('csrf/', views.csrf_token_view, name='csrf_token'),  # CSRF cookie setter
     path('health/', views.health_check, name='health_check'),
     path('user/context/', views.user_context, name='user_context'),  # User role and permissions
     path('products/', views.ProductListView.as_view(), name='products'),

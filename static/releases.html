@@ -493,9 +493,17 @@ document.getElementById('addCarrierForm').addEventListener('submit', async (e) =
   }
 });
 
-// Load customers and carriers on page load
-loadCustomers();
-loadCarriers();
+// Ensure CSRF cookie is set, then load customers and carriers
+fetch('/api/csrf/', { credentials: 'same-origin' })
+  .then(() => {
+    loadCustomers();
+    loadCarriers();
+  })
+  .catch(() => {
+    // Still try to load even if CSRF fetch fails
+    loadCustomers();
+    loadCarriers();
+  });
 
 function toISODate(d) {
   if (!d) return '';
