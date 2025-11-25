@@ -35,6 +35,81 @@
     .urgency-badge.overdue { background: #dc2626; color: white; }
     .urgency-badge.due-soon { background: #f59e0b; color: white; }
     .urgency-badge.upcoming { background: #10b981; color: white; }
+
+    /* Data table controls */
+    .table-controls {
+      display: flex;
+      gap: 1rem;
+      margin-top: 0.75rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .search-box {
+      flex: 1;
+      min-width: 200px;
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 1rem;
+      background: var(--surface);
+    }
+    .search-box:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
+    }
+    .page-size-select {
+      padding: 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 0.875rem;
+      background: var(--surface);
+    }
+    th.sortable {
+      cursor: pointer;
+      user-select: none;
+    }
+    th.sortable:hover {
+      background: rgba(0,0,0,0.05);
+    }
+    th.sortable::after {
+      content: ' ↕';
+      opacity: 0.5;
+    }
+    th.sortable.asc::after {
+      content: ' ↑';
+      opacity: 1;
+    }
+    th.sortable.desc::after {
+      content: ' ↓';
+      opacity: 1;
+    }
+    .pagination {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+      align-items: center;
+      margin-top: 1rem;
+    }
+    .pagination button {
+      padding: 0.5rem 1rem;
+      border: 1px solid var(--border);
+      background: var(--surface);
+      border-radius: 6px;
+      cursor: pointer;
+      color: var(--text-primary);
+    }
+    .pagination button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .pagination button:hover:not(:disabled) {
+      background: var(--surface-elevated);
+    }
+    .pagination .page-info {
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+    }
   </style>
 </head>
 <body>
@@ -66,20 +141,30 @@
         <span style="color: #f59e0b; font-weight: 600;">🟠 Amber</span> = Planned (estimate).
         Mix shows: <span style="color: #059669;">Official</span>/<span style="color: #f59e0b;">Planned</span>/Total
       </div>
+      <div class="table-controls">
+        <input type="text" id="releaseSearch" class="search-box" placeholder="Search release#, customer...">
+        <select id="releasePageSize" class="page-size-select">
+          <option value="10">10 per page</option>
+          <option value="25">25 per page</option>
+          <option value="50">50 per page</option>
+          <option value="100">100 per page</option>
+        </select>
+      </div>
       <div class="table-container" style="margin-top:.75rem;">
         <table id="tbl">
           <thead>
             <tr>
-              <th>Release #</th>
-              <th>Customer</th>
-              <th>Loads</th>
-              <th>Tons<br/><span style="font-size: 0.85em; font-weight: 400; color: #6b7280;">(Shipped / Total)</span></th>
-              <th>Next Load</th>
-              <th>Last Shipped</th>
+              <th class="sortable" data-sort="releaseNumber">Release #</th>
+              <th class="sortable" data-sort="customer">Customer</th>
+              <th class="sortable" data-sort="loadsShipped">Loads</th>
+              <th class="sortable" data-sort="tonsShipped">Tons<br/><span style="font-size: 0.85em; font-weight: 400; color: #6b7280;">(Shipped / Total)</span></th>
+              <th class="sortable" data-sort="nextScheduledDate">Next Load</th>
+              <th class="sortable" data-sort="lastShippedDate">Last Shipped</th>
             </tr>
           </thead>
           <tbody></tbody>
         </table>
+        <div class="pagination" id="releasePagination"></div>
       </div>
     </div>
   </div>
@@ -93,16 +178,71 @@
       } catch(e) {}
       return String(d);
     }
+
+    // Table state
+    let allReleases = [];
+    let filteredReleases = [];
+    let currentPage = 1;
+    let pageSize = 10;
+    let sortColumn = 'releaseNumber';
+    let sortDirection = 'asc';
+
     async function load() {
       const res = await fetch('/api/releases/open/', { credentials: 'same-origin' });
       if (!res.ok) throw new Error(await res.text());
-      const rows = await res.json();
-      document.getElementById('count').textContent = `${rows.length} open`;
-      // Sort by release number ascending
-      rows.sort((a, b) => (a.releaseNumber || '').localeCompare(b.releaseNumber || ''));
+      allReleases = await res.json();
+      // Add computed tonsShipped for sorting
+      allReleases.forEach(r => {
+        r.tonsShipped = Number(r.tonsOfficial || 0) + Number(r.tonsPlanned || 0);
+      });
+      document.getElementById('count').textContent = `${allReleases.length} open`;
+      applyFilters();
+    }
 
+    function applyFilters() {
+      const searchQuery = (document.getElementById('releaseSearch').value || '').toLowerCase();
+
+      filteredReleases = allReleases.filter(r => {
+        if (searchQuery) {
+          return (r.releaseNumber || '').toLowerCase().includes(searchQuery) ||
+                 (r.customer || '').toLowerCase().includes(searchQuery);
+        }
+        return true;
+      });
+
+      currentPage = 1;
+      renderReleases();
+    }
+
+    function renderReleases() {
       const tbody = document.querySelector('#tbl tbody');
-      tbody.innerHTML = rows.map(r => {
+
+      if (filteredReleases.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;">No releases found</td></tr>';
+        document.getElementById('releasePagination').innerHTML = '';
+        return;
+      }
+
+      // Sort
+      const sorted = [...filteredReleases].sort((a, b) => {
+        let aVal = a[sortColumn] || '';
+        let bVal = b[sortColumn] || '';
+        if (['loadsShipped', 'totalLoads', 'tonsShipped', 'totalTons'].includes(sortColumn)) {
+          aVal = Number(aVal) || 0;
+          bVal = Number(bVal) || 0;
+        }
+        if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+        if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+        return 0;
+      });
+
+      // Paginate
+      const totalPages = Math.ceil(sorted.length / pageSize);
+      currentPage = Math.min(currentPage, totalPages);
+      const start = (currentPage - 1) * pageSize;
+      const pageData = sorted.slice(start, start + pageSize);
+
+      tbody.innerHTML = pageData.map(r => {
         // Progress bar for loads
         const progress = r.totalLoads > 0 ? (r.loadsShipped / r.totalLoads * 100) : 0;
         const loadsDisplay = `
@@ -117,16 +257,12 @@
 
         let tonsDisplay = '';
         if (official > 0 && planned > 0) {
-          // Mix: show green/amber/total
           tonsDisplay = `<span style="color: #059669; font-weight: 600;">${official.toFixed(3)}</span>/<span style="color: #f59e0b; font-weight: 600;">${planned.toFixed(3)}</span>/<span style="font-weight: 600;">${total.toFixed(3)}</span>`;
         } else if (official > 0) {
-          // All official: show green
           tonsDisplay = `<span style="color: #059669; font-weight: 700;">${official.toFixed(3)}</span> / ${total.toFixed(3)}`;
         } else if (planned > 0) {
-          // All planned: show amber
           tonsDisplay = `<span style="color: #f59e0b; font-weight: 700;">${planned.toFixed(3)}</span> / ${total.toFixed(3)}`;
         } else {
-          // Nothing shipped
           tonsDisplay = `0.000 / ${total.toFixed(3)}`;
         }
 
@@ -141,7 +277,7 @@
           urgencyBadge = `<span class="urgency-badge upcoming">In ${r.daysUntilNextLoad}d</span>`;
         }
 
-return `<tr>
+        return `<tr>
           <td><a href="/api/releases/${r.id}/view/">${r.releaseNumber}</a></td>
           <td>${r.customer||''}</td>
           <td>${loadsDisplay}</td>
@@ -150,7 +286,53 @@ return `<tr>
           <td>${fmtDate(r.lastShippedDate)}</td>
         </tr>`;
       }).join('');
+
+      // Pagination
+      const paginationEl = document.getElementById('releasePagination');
+      if (totalPages > 1) {
+        paginationEl.innerHTML = `
+          <button onclick="releasePage(1)" ${currentPage === 1 ? 'disabled' : ''}>First</button>
+          <button onclick="releasePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>Prev</button>
+          <span class="page-info">Page ${currentPage} of ${totalPages} (${filteredReleases.length} total)</span>
+          <button onclick="releasePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>
+          <button onclick="releasePage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}>Last</button>
+        `;
+      } else {
+        paginationEl.innerHTML = `<span class="page-info">${filteredReleases.length} total</span>`;
+      }
     }
+
+    window.releasePage = function(page) {
+      currentPage = page;
+      renderReleases();
+    };
+
+    // Search
+    document.getElementById('releaseSearch').addEventListener('input', applyFilters);
+
+    // Page size
+    document.getElementById('releasePageSize').addEventListener('change', function() {
+      pageSize = parseInt(this.value);
+      currentPage = 1;
+      renderReleases();
+    });
+
+    // Sortable columns
+    document.querySelectorAll('#tbl th.sortable').forEach(th => {
+      th.addEventListener('click', function() {
+        const col = this.dataset.sort;
+        if (sortColumn === col) {
+          sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+        } else {
+          sortColumn = col;
+          sortDirection = 'asc';
+        }
+        document.querySelectorAll('#tbl th.sortable').forEach(t => t.classList.remove('asc', 'desc'));
+        this.classList.add(sortDirection);
+        renderReleases();
+      });
+    });
+
     document.getElementById('refresh').addEventListener('click', () => load().catch(err=>alert(err.message||String(err))));
     load().catch(err=>alert(err.message||String(err)));
   </script>

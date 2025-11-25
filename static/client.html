@@ -475,9 +475,35 @@
         <h2 class="section-title">Open Releases</h2>
         <span id="releaseCount" class="badge badge-warning">0 open</span>
       </div>
-      <div id="releasesContainer">
-        <div class="loading">Loading open releases...</div>
+      <div class="table-controls">
+        <input type="text" id="releaseSearch" class="search-box" placeholder="Search release#, customer...">
+        <select id="releasePageSize" class="page-size-select">
+          <option value="10">10 per page</option>
+          <option value="25">25 per page</option>
+          <option value="50">50 per page</option>
+          <option value="100">100 per page</option>
+        </select>
       </div>
+      <table id="releasesTable">
+        <thead>
+          <tr>
+            <th class="sortable" data-sort="releaseNumber">Release #</th>
+            <th class="sortable" data-sort="customer">Customer</th>
+            <th class="sortable ta-r" data-sort="loadsShipped">Shipped</th>
+            <th class="sortable ta-r" data-sort="loadsRemaining">Remaining</th>
+            <th class="sortable ta-r" data-sort="totalLoads">Total</th>
+            <th class="sortable" data-sort="nextScheduledDate">Next Load</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td colspan="6">
+              <div class="loading">Loading releases...</div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+      <div class="pagination" id="releasePagination"></div>
     </div>
   </div>
 
@@ -694,45 +720,113 @@
         shipmentCount.textContent = `${allShipments.length} shipments`;
         renderShipments();
 
-        // Load open releases (sorted by release number ascending)
-        const releases = await getJSON('/api/releases/open/');
-        const releasesContainer = document.getElementById('releasesContainer');
+        // Load open releases with sorting, filtering, pagination
+        const releasesData = await getJSON('/api/releases/open/');
+        const releasesTbody = document.querySelector('#releasesTable tbody');
         const releaseCount = document.getElementById('releaseCount');
 
-        if (!releases || releases.length === 0) {
-          releasesContainer.innerHTML = '<div class="empty-state"><div class="empty-state-icon">✅</div><p>No open releases</p></div>';
-          releaseCount.textContent = '0 open';
-        } else {
-          // Sort by release number ascending
-          releases.sort((a, b) => (a.releaseNumber || '').localeCompare(b.releaseNumber || ''));
-          releasesContainer.innerHTML = releases.map(release => `
-            <div class="release-card">
-              <div class="release-header">
-                <div>
-                  <div class="release-number">${release.releaseNumber || '-'}</div>
-                  <div class="release-customer">${release.customer || '-'}</div>
-                </div>
-                <span class="badge badge-warning">${release.loadsRemaining || 0} loads remaining</span>
-              </div>
-              <div class="release-progress">
-                <div class="release-stat">
-                  <div class="release-stat-label">Total Loads</div>
-                  <div class="release-stat-value">${release.totalLoads || 0}</div>
-                </div>
-                <div class="release-stat">
-                  <div class="release-stat-label">Shipped</div>
-                  <div class="release-stat-value">${release.loadsShipped || 0} loads (${Number(release.tonsShipped || 0).toFixed(2)} NT)</div>
-                </div>
-                <div class="release-stat">
-                  <div class="release-stat-label">Remaining</div>
-                  <div class="release-stat-value">${Number(release.tonsRemaining || 0).toFixed(2)} NT</div>
-                </div>
-              </div>
-              ${release.nextScheduledDate ? `<div style="margin-top: 0.75rem; color: #64748b; font-size: 0.875rem;">Next: ${release.nextScheduledDate}</div>` : ''}
-            </div>
+        // Release table state
+        let allReleases = releasesData || [];
+        let filteredReleases = [...allReleases];
+        let releaseCurrentPage = 1;
+        let releasePageSize = 10;
+        let releaseSortColumn = 'releaseNumber';
+        let releaseSortDirection = 'asc';
+
+        function renderReleases() {
+          if (filteredReleases.length === 0) {
+            releasesTbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">✅</div><p>No open releases</p></div></td></tr>';
+            document.getElementById('releasePagination').innerHTML = '';
+            return;
+          }
+
+          // Sort
+          const sorted = [...filteredReleases].sort((a, b) => {
+            let aVal = a[releaseSortColumn] || '';
+            let bVal = b[releaseSortColumn] || '';
+            if (['loadsShipped', 'loadsRemaining', 'totalLoads', 'tonsShipped', 'tonsRemaining'].includes(releaseSortColumn)) {
+              aVal = Number(aVal) || 0;
+              bVal = Number(bVal) || 0;
+            }
+            if (aVal < bVal) return releaseSortDirection === 'asc' ? -1 : 1;
+            if (aVal > bVal) return releaseSortDirection === 'asc' ? 1 : -1;
+            return 0;
+          });
+
+          // Paginate
+          const totalPages = Math.ceil(sorted.length / releasePageSize);
+          releaseCurrentPage = Math.min(releaseCurrentPage, totalPages);
+          const start = (releaseCurrentPage - 1) * releasePageSize;
+          const pageData = sorted.slice(start, start + releasePageSize);
+
+          releasesTbody.innerHTML = pageData.map(r => `
+            <tr>
+              <td style="font-weight: 600;">${r.releaseNumber || '-'}</td>
+              <td>${r.customer || '-'}</td>
+              <td class="ta-r">${r.loadsShipped || 0} <span style="color: #64748b;">(${Number(r.tonsShipped || 0).toFixed(2)} NT)</span></td>
+              <td class="ta-r"><span class="badge badge-warning">${r.loadsRemaining || 0}</span> <span style="color: #64748b;">(${Number(r.tonsRemaining || 0).toFixed(2)} NT)</span></td>
+              <td class="ta-r">${r.totalLoads || 0}</td>
+              <td>${r.nextScheduledDate || '-'}</td>
+            </tr>
           `).join('');
-          releaseCount.textContent = `${releases.length} open`;
+
+          // Pagination controls
+          const paginationEl = document.getElementById('releasePagination');
+          if (totalPages > 1) {
+            paginationEl.innerHTML = `
+              <button onclick="releasePage(1)" ${releaseCurrentPage === 1 ? 'disabled' : ''}>First</button>
+              <button onclick="releasePage(${releaseCurrentPage - 1})" ${releaseCurrentPage === 1 ? 'disabled' : ''}>Prev</button>
+              <span class="page-info">Page ${releaseCurrentPage} of ${totalPages} (${filteredReleases.length} total)</span>
+              <button onclick="releasePage(${releaseCurrentPage + 1})" ${releaseCurrentPage === totalPages ? 'disabled' : ''}>Next</button>
+              <button onclick="releasePage(${totalPages})" ${releaseCurrentPage === totalPages ? 'disabled' : ''}>Last</button>
+            `;
+          } else {
+            paginationEl.innerHTML = `<span class="page-info">${filteredReleases.length} total</span>`;
+          }
         }
+
+        // Global function for pagination
+        window.releasePage = function(page) {
+          releaseCurrentPage = page;
+          renderReleases();
+        };
+
+        // Search
+        document.getElementById('releaseSearch').addEventListener('input', function() {
+          const query = this.value.toLowerCase();
+          filteredReleases = allReleases.filter(r =>
+            (r.releaseNumber || '').toLowerCase().includes(query) ||
+            (r.customer || '').toLowerCase().includes(query)
+          );
+          releaseCurrentPage = 1;
+          renderReleases();
+        });
+
+        // Page size
+        document.getElementById('releasePageSize').addEventListener('change', function() {
+          releasePageSize = parseInt(this.value);
+          releaseCurrentPage = 1;
+          renderReleases();
+        });
+
+        // Sortable columns
+        document.querySelectorAll('#releasesTable th.sortable').forEach(th => {
+          th.addEventListener('click', function() {
+            const col = this.dataset.sort;
+            if (releaseSortColumn === col) {
+              releaseSortDirection = releaseSortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+              releaseSortColumn = col;
+              releaseSortDirection = 'asc';
+            }
+            document.querySelectorAll('#releasesTable th.sortable').forEach(t => t.classList.remove('asc', 'desc'));
+            this.classList.add(releaseSortDirection);
+            renderReleases();
+          });
+        });
+
+        releaseCount.textContent = `${allReleases.length} open`;
+        renderReleases();
 
       } catch (e) {
         console.error('Dashboard load error:', e);
