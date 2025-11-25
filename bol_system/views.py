@@ -440,6 +440,56 @@ def customer_branding(request):
         logger.error(f"customer_branding error: {e}", exc_info=True)
         return Response({'error': 'Failed to fetch branding'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+# Lot endpoints
+@ensure_csrf_cookie
+@api_view(['GET', 'POST'])
+@permission_classes([IsAuthenticated])
+@require_role_for_writes('admin', 'office')
+def lot_list(request):
+    """List all lots or create a new lot."""
+    from .serializers import LotSerializer
+    try:
+        if request.method == 'GET':
+            lots = Lot.objects.select_related('product').all().order_by('-code')
+            return Response(LotSerializer(lots, many=True).data)
+
+        # POST - create new lot
+        data = request.data if isinstance(request.data, dict) else {}
+        code = (data.get('code') or '').strip()
+        if not code:
+            return Response({'error': 'code is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+        # Check for duplicate
+        if Lot.objects.filter(code=code).exists():
+            return Response({'error': f'Lot {code} already exists'}, status=status.HTTP_409_CONFLICT)
+
+        # Get product if provided
+        product_id = data.get('product')
+        product_obj = None
+        if product_id:
+            try:
+                product_obj = Product.objects.get(id=product_id)
+            except Product.DoesNotExist:
+                pass
+
+        lot = Lot.objects.create(
+            code=code,
+            product=product_obj,
+            c=data.get('c') or None,
+            si=data.get('si') or None,
+            s=data.get('s') or None,
+            p=data.get('p') or None,
+            mn=data.get('mn') or None,
+            updated_by=request.user.username,
+        )
+        audit(request, 'LOT_CREATED', lot, f"Lot created: {code}")
+        return Response(LotSerializer(lot).data, status=status.HTTP_201_CREATED)
+
+    except Exception as e:
+        logger.error(f"lot_list error: {e}", exc_info=True)
+        return Response({'error': 'Failed to process lot request', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
 # Carrier endpoints with trucks
 @ensure_csrf_cookie
 @api_view(['GET', 'POST'])

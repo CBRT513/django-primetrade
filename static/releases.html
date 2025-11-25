@@ -100,7 +100,11 @@
           <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
             <div class="form-group">
               <label>Lot</label>
-              <input id="materialLot" type="text">
+              <div style="display: flex; gap: 0.5rem;">
+                <input id="materialLot" type="text" list="lotSuggestions" style="flex: 1;">
+                <datalist id="lotSuggestions"></datalist>
+                <button id="addLotBtn" class="btn btn-sm" type="button" style="padding: 0.5rem 0.75rem;">Add</button>
+              </div>
             </div>
             <div class="form-group">
               <label>Material Description</label>
@@ -135,6 +139,23 @@
             <label>Schedule</label>
             <div id="scheduleList" class="table-container" style="background:transparent; border:none;">
               <!-- rows injected -->
+            </div>
+            <div id="manualScheduleEntry" style="margin-top: 0.75rem; padding: 0.75rem; background: var(--surface-elevated, #f8f9fa); border-radius: 8px; border: 1px solid var(--border, #e5e7eb);">
+              <div style="display: flex; gap: 0.5rem; align-items: flex-end; flex-wrap: wrap;">
+                <div style="flex: 1; min-width: 120px;">
+                  <label style="font-size: 0.85rem;">Date</label>
+                  <input id="scheduleDate" type="date" style="width: 100%;">
+                </div>
+                <div style="width: 80px;">
+                  <label style="font-size: 0.85rem;">Loads</label>
+                  <input id="scheduleLoads" type="number" min="1" value="1" style="width: 100%;">
+                </div>
+                <button id="addScheduleBtn" class="btn btn-sm" type="button">Add Load(s)</button>
+                <button id="clearScheduleBtn" class="btn btn-sm btn-secondary" type="button">Clear</button>
+              </div>
+              <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem;">
+                Add delivery dates one at a time, or add multiple loads on the same date.
+              </p>
             </div>
           </div>
 
@@ -235,6 +256,58 @@
           </div>
           <div style="display:flex; gap: 0.5rem; justify-content:flex-end; margin-top: 0.75rem;">
             <button id="saveCarrierBtn" class="btn btn-accent btn-sm" type="submit">Save Carrier</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Add Lot Modal -->
+  <div id="addLotModal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 1001;">
+    <div style="background: var(--surface, #fff); border-radius: 12px; width: min(600px, 95vw); max-height: 90vh; overflow: auto; box-shadow: var(--shadow-xl); border: 1px solid var(--border);">
+      <div style="display:flex;justify-content:space-between;align-items:center;padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);">
+        <h3 style="margin: 0;">Add New Lot</h3>
+        <button id="closeAddLot" class="btn btn-danger btn-sm" type="button">Close</button>
+      </div>
+      <div style="padding: 1rem 1.25rem;">
+        <div id="addLotStatus" class="status" style="margin-bottom:.5rem;"></div>
+        <form id="addLotForm" onsubmit="return false;">
+          <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr;">
+            <div class="form-group">
+              <label>Lot Code *</label>
+              <input id="newLotCode" type="text" required placeholder="e.g., 2025-001">
+            </div>
+            <div class="form-group">
+              <label>Material Description</label>
+              <input id="newLotDescription" type="text" list="productSuggestions" placeholder="e.g., Pig Iron">
+              <datalist id="productSuggestions"></datalist>
+            </div>
+          </div>
+          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.75rem;">Chemistry (optional):</p>
+          <div class="dashboard-grid" style="grid-template-columns: repeat(5, 1fr);">
+            <div class="form-group">
+              <label>C</label>
+              <input id="newLotC" type="number" step="0.001">
+            </div>
+            <div class="form-group">
+              <label>Si</label>
+              <input id="newLotSi" type="number" step="0.001">
+            </div>
+            <div class="form-group">
+              <label>S</label>
+              <input id="newLotS" type="number" step="0.001">
+            </div>
+            <div class="form-group">
+              <label>P</label>
+              <input id="newLotP" type="number" step="0.001">
+            </div>
+            <div class="form-group">
+              <label>Mn</label>
+              <input id="newLotMn" type="number" step="0.001">
+            </div>
+          </div>
+          <div style="display:flex; gap: 0.5rem; justify-content:flex-end; margin-top: 0.75rem;">
+            <button id="saveLotBtn" class="btn btn-accent btn-sm" type="submit">Save Lot</button>
           </div>
         </form>
       </div>
@@ -493,16 +566,237 @@ document.getElementById('addCarrierForm').addEventListener('submit', async (e) =
   }
 });
 
-// Ensure CSRF cookie is set, then load customers and carriers
+// Lot functionality
+const addLotModal = document.getElementById('addLotModal');
+const addLotBtn = document.getElementById('addLotBtn');
+const closeAddLot = document.getElementById('closeAddLot');
+const materialLotInput = document.getElementById('materialLot');
+let lotsCache = [];
+let productsCache = [];
+
+// Load lots from API
+async function loadLots() {
+  try {
+    const resp = await fetch('/api/lots/', { credentials: 'same-origin' });
+    if (resp.ok) {
+      lotsCache = await resp.json();
+      const datalist = document.getElementById('lotSuggestions');
+      datalist.innerHTML = lotsCache.map(l =>
+        `<option value="${l.code}" data-id="${l.id}">${l.code}${l.product_name ? ' - ' + l.product_name : ''}</option>`
+      ).join('');
+    }
+  } catch (e) {
+    console.error('Failed to load lots:', e);
+  }
+}
+
+// Load products for lot creation
+async function loadProducts() {
+  try {
+    const resp = await fetch('/api/products/', { credentials: 'same-origin' });
+    if (resp.ok) {
+      productsCache = await resp.json();
+      const datalist = document.getElementById('productSuggestions');
+      datalist.innerHTML = productsCache.map(p =>
+        `<option value="${p.name}">${p.name}</option>`
+      ).join('');
+    }
+  } catch (e) {
+    console.error('Failed to load products:', e);
+  }
+}
+
+// Auto-populate chemistry when lot is selected
+materialLotInput.addEventListener('change', function() {
+  const lotCode = this.value.trim();
+  if (!lotCode) return;
+
+  const lot = lotsCache.find(l => l.code === lotCode);
+  if (lot) {
+    // Fill in chemistry fields
+    if (lot.c !== null) document.getElementById('chemC').value = lot.c;
+    if (lot.si !== null) document.getElementById('chemSi').value = lot.si;
+    if (lot.s !== null) document.getElementById('chemS').value = lot.s;
+    if (lot.p !== null) document.getElementById('chemP').value = lot.p;
+    if (lot.mn !== null) document.getElementById('chemMn').value = lot.mn;
+    // Fill in material description from product
+    if (lot.product_name) {
+      document.getElementById('materialDescription').value = lot.product_name;
+    }
+  }
+});
+
+// Open Add Lot modal
+addLotBtn.addEventListener('click', () => {
+  const parsedValue = materialLotInput.value.trim();
+  if (parsedValue) {
+    document.getElementById('newLotCode').value = parsedValue;
+  }
+  loadProducts();
+  addLotModal.style.display = 'flex';
+});
+
+// Close Lot modal
+closeAddLot.addEventListener('click', () => { addLotModal.style.display = 'none'; });
+addLotModal.addEventListener('click', (e) => { if (e.target === addLotModal) addLotModal.style.display = 'none'; });
+
+// Save new lot
+document.getElementById('addLotForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const statusEl = document.getElementById('addLotStatus');
+  const saveBtn = document.getElementById('saveLotBtn');
+
+  const code = document.getElementById('newLotCode').value.trim();
+  const description = document.getElementById('newLotDescription').value.trim();
+
+  // Find product by name if provided
+  let productId = null;
+  if (description) {
+    const product = productsCache.find(p => p.name.toLowerCase() === description.toLowerCase());
+    if (product) productId = product.id;
+  }
+
+  const payload = {
+    code: code,
+    product: productId,
+    c: document.getElementById('newLotC').value || null,
+    si: document.getElementById('newLotSi').value || null,
+    s: document.getElementById('newLotS').value || null,
+    p: document.getElementById('newLotP').value || null,
+    mn: document.getElementById('newLotMn').value || null,
+  };
+
+  try {
+    saveBtn.disabled = true;
+    const csrf = (window.Utils && Utils.getCSRFToken) ? Utils.getCSRFToken() : null;
+    const resp = await fetch('/api/lots/', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', ...(csrf ? {'X-CSRFToken': csrf} : {}) },
+      credentials: 'same-origin',
+      body: JSON.stringify(payload)
+    });
+
+    const json = await resp.json();
+    if (!resp.ok) {
+      statusEl.textContent = json.error || json.detail || 'Failed to save lot';
+      statusEl.className = 'status error';
+      return;
+    }
+
+    statusEl.textContent = 'Lot saved!';
+    statusEl.className = 'status success';
+    await loadLots();
+
+    // Set the new lot as selected and trigger change to populate fields
+    materialLotInput.value = code;
+    materialLotInput.dispatchEvent(new Event('change'));
+    if (description) {
+      document.getElementById('materialDescription').value = description;
+    }
+
+    setTimeout(() => {
+      addLotModal.style.display = 'none';
+      document.getElementById('addLotForm').reset();
+      statusEl.textContent = '';
+    }, 1000);
+
+    if (window.Utils && Utils.showStatus) Utils.showStatus('Lot added successfully', 'success');
+  } catch (e) {
+    statusEl.textContent = e.message || 'Failed to save lot';
+    statusEl.className = 'status error';
+  } finally {
+    saveBtn.disabled = false;
+  }
+});
+
+// Schedule management for manual entry
+let manualSchedule = [];
+
+function renderScheduleTable() {
+  const schedEl = document.getElementById('scheduleList');
+  if (manualSchedule.length === 0) {
+    schedEl.innerHTML = '<div style="color: var(--text-secondary); padding: 0.5rem 0;">No loads scheduled yet</div>';
+    return;
+  }
+
+  const perLoad = document.getElementById('qtyTons').value ?
+    (Number(document.getElementById('qtyTons').value) / manualSchedule.length) : null;
+
+  let html = '<table><thead><tr><th>Date</th><th>Load #</th><th>Est. Tons</th><th></th></tr></thead><tbody>';
+  manualSchedule.forEach((item, idx) => {
+    const d = item.date ? toUSDate(item.date) : '';
+    const nt = perLoad != null && isFinite(perLoad) ? perLoad.toFixed(3) : '';
+    html += `<tr>
+      <td>${d}</td>
+      <td>${idx + 1}</td>
+      <td>${nt}${nt ? ' NT' : ''}</td>
+      <td><button type="button" class="btn btn-sm btn-danger" onclick="removeScheduleItem(${idx})" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">×</button></td>
+    </tr>`;
+  });
+  html += '</tbody></table>';
+  schedEl.innerHTML = html;
+}
+
+window.removeScheduleItem = function(idx) {
+  manualSchedule.splice(idx, 1);
+  // Update sequence numbers
+  manualSchedule.forEach((item, i) => { item.load = i + 1; });
+  renderScheduleTable();
+  // Update _lastParsed
+  if (window._lastParsed && window._lastParsed.parsed) {
+    window._lastParsed.parsed.schedule = manualSchedule;
+  }
+};
+
+document.getElementById('addScheduleBtn').addEventListener('click', () => {
+  const dateVal = document.getElementById('scheduleDate').value;
+  const loadsCount = parseInt(document.getElementById('scheduleLoads').value) || 1;
+
+  if (!dateVal) {
+    if (window.Utils && Utils.showStatus) Utils.showStatus('Please select a date', 'error');
+    return;
+  }
+
+  // Add the specified number of loads for this date
+  for (let i = 0; i < loadsCount; i++) {
+    manualSchedule.push({
+      date: dateVal,
+      load: manualSchedule.length + 1
+    });
+  }
+
+  renderScheduleTable();
+
+  // Update _lastParsed so approve picks it up
+  if (window._lastParsed && window._lastParsed.parsed) {
+    window._lastParsed.parsed.schedule = manualSchedule;
+  }
+
+  // Clear inputs for next entry
+  document.getElementById('scheduleDate').value = '';
+  document.getElementById('scheduleLoads').value = '1';
+});
+
+document.getElementById('clearScheduleBtn').addEventListener('click', () => {
+  manualSchedule = [];
+  renderScheduleTable();
+  if (window._lastParsed && window._lastParsed.parsed) {
+    window._lastParsed.parsed.schedule = [];
+  }
+});
+
+// Ensure CSRF cookie is set, then load customers, carriers, and lots
 fetch('/api/csrf/', { credentials: 'same-origin' })
   .then(() => {
     loadCustomers();
     loadCarriers();
+    loadLots();
   })
   .catch(() => {
     // Still try to load even if CSRF fetch fails
     loadCustomers();
     loadCarriers();
+    loadLots();
   });
 
 function toISODate(d) {
@@ -615,7 +909,9 @@ closeBtn.addEventListener('click', closeReview);
 // Manual Entry button - opens review modal with empty fields
 document.getElementById('manualEntryBtn').addEventListener('click', () => {
   window._lastParsed = { parsed: { schedule: [] } };
+  manualSchedule = [];  // Reset manual schedule
   fillReview({});
+  renderScheduleTable();  // Show empty schedule
   modal.style.display = 'flex';
   document.getElementById('releaseNumber').focus();
 });

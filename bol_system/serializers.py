@@ -134,9 +134,11 @@ class CustomerShipToSerializer(serializers.ModelSerializer):
         fields = ['id','name','street','street2','city','state','zip']
 
 class LotSerializer(serializers.ModelSerializer):
+    product_name = serializers.CharField(source='product.name', read_only=True, default='')
+
     class Meta:
         model = Lot
-        fields = ['id','code','c','si','s','p','mn']
+        fields = ['id', 'code', 'product', 'product_name', 'c', 'si', 's', 'p', 'mn']
 
 class ReleaseSerializer(serializers.ModelSerializer):
     loads = ReleaseLoadSerializer(many=True, read_only=True)

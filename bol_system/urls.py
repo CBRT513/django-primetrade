@@ -14,6 +14,7 @@ urlpatterns = [
     path('customers/<int:customer_id>/shiptos/', views.customer_shiptos, name='customer_shiptos'),
     path('customers/branding/', views.customer_branding, name='customer_branding'),
     path('carriers/', views.carrier_list, name='carriers'),
+    path('lots/', views.lot_list, name='lots'),
     path('bol/preview/', views.preview_bol, name='preview_bol'),
     path('bol/confirm/', views.confirm_bol, name='confirm_bol'),
     path('releases/pending-loads/', views.pending_release_loads, name='pending_release_loads'),
