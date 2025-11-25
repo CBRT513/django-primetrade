@@ -12,6 +12,7 @@ from .pdf_generator import generate_bol_pdf
 from .release_parser import parse_release_pdf
 from .email_utils import send_bol_notification
 from primetrade_project.decorators import require_role, require_role_for_writes
+from django.views.decorators.csrf import ensure_csrf_cookie
 # Customer filtering utilities removed - all authenticated users see all data
 from django.utils.decorators import method_decorator
 import logging
@@ -221,6 +222,7 @@ class ProductListView(generics.ListCreateAPIView):
             return Response({'error': 'Failed to save product', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
 # Customer endpoints
+@ensure_csrf_cookie
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 @require_role('Admin', 'Office')  # Internal staff only - customer management is internal
@@ -426,6 +428,7 @@ def customer_branding(request):
         return Response({'error': 'Failed to fetch branding'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 # Carrier endpoints with trucks
+@ensure_csrf_cookie
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 @require_role_for_writes('admin', 'office')  # POST operations require Admin or Office role (needed for BOL creation)
