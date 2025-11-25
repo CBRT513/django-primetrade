@@ -249,6 +249,78 @@
       margin-bottom: 1rem;
     }
 
+    /* Data table controls */
+    .table-controls {
+      display: flex;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .search-box {
+      flex: 1;
+      min-width: 200px;
+      padding: 0.5rem 1rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 1rem;
+    }
+    .search-box:focus {
+      outline: none;
+      border-color: var(--primary, #2563eb);
+      box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+    }
+    .page-size-select {
+      padding: 0.5rem;
+      border: 1px solid #cbd5e1;
+      border-radius: 8px;
+      font-size: 0.875rem;
+    }
+    th.sortable {
+      cursor: pointer;
+      user-select: none;
+    }
+    th.sortable:hover {
+      background: #e2e8f0;
+    }
+    th.sortable::after {
+      content: ' ↕';
+      opacity: 0.3;
+    }
+    th.sortable.asc::after {
+      content: ' ↑';
+      opacity: 1;
+    }
+    th.sortable.desc::after {
+      content: ' ↓';
+      opacity: 1;
+    }
+    .pagination {
+      display: flex;
+      gap: 0.5rem;
+      justify-content: center;
+      align-items: center;
+      margin-top: 1rem;
+    }
+    .pagination button {
+      padding: 0.5rem 1rem;
+      border: 1px solid #cbd5e1;
+      background: white;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .pagination button:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .pagination button:hover:not(:disabled) {
+      background: #f1f5f9;
+    }
+    .pagination .page-info {
+      color: #64748b;
+      font-size: 0.875rem;
+    }
+
     .btn {
       display: inline-block;
       padding: 0.5rem 1rem;
@@ -366,14 +438,23 @@
         <h2 class="section-title">Recent Shipments</h2>
         <span id="shipmentCount" class="badge badge-info">0 shipments</span>
       </div>
+      <div class="table-controls">
+        <input type="text" id="shipmentSearch" class="search-box" placeholder="Search BOL#, product, truck...">
+        <select id="shipmentPageSize" class="page-size-select">
+          <option value="10">10 per page</option>
+          <option value="25">25 per page</option>
+          <option value="50">50 per page</option>
+          <option value="100">100 per page</option>
+        </select>
+      </div>
       <table id="shipmentsTable">
         <thead>
           <tr>
-            <th>Date</th>
-            <th>BOL #</th>
-            <th>Product</th>
-            <th>Truck</th>
-            <th class="ta-r">Net Tons</th>
+            <th class="sortable" data-sort="date">Date</th>
+            <th class="sortable" data-sort="bolNo">BOL #</th>
+            <th class="sortable" data-sort="productName">Product</th>
+            <th class="sortable" data-sort="truckNo">Truck</th>
+            <th class="sortable ta-r" data-sort="netTons">Net Tons</th>
             <th class="ta-c">Status</th>
           </tr>
         </thead>
@@ -385,6 +466,7 @@
           </tr>
         </tbody>
       </table>
+      <div class="pagination" id="shipmentPagination"></div>
     </div>
 
     <!-- Open Releases -->
@@ -496,26 +578,50 @@
           `).join('');
         }
 
-        // Load recent shipments (all BOLs)
+        // Load recent shipments (all BOLs) with sorting, filtering, pagination
         const historyData = await getJSON('/api/history/');
         const tbody = document.querySelector('#shipmentsTable tbody');
         const shipmentCount = document.getElementById('shipmentCount');
 
-        if (!historyData.rows || historyData.rows.length === 0) {
-          tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">📋</div><p>No shipments yet</p></div></td></tr>';
-          shipmentCount.textContent = '0 shipments';
-        } else {
-          // Show last 10 shipments
-          const recentShipments = historyData.rows.slice(0, 10);
-          tbody.innerHTML = recentShipments.map(row => {
-            // Use stamped PDF if available, otherwise original
-            const pdfUrl = row.stampedPdfUrl || row.pdfUrl;
+        // Shipment table state
+        let allShipments = historyData.rows || [];
+        let filteredShipments = [...allShipments];
+        let currentPage = 1;
+        let pageSize = 10;
+        let sortColumn = 'date';
+        let sortDirection = 'desc';
 
-            // Color-code weight: green for official, amber for estimate
+        function renderShipments() {
+          if (filteredShipments.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><div class="empty-state-icon">📋</div><p>No shipments found</p></div></td></tr>';
+            document.getElementById('shipmentPagination').innerHTML = '';
+            return;
+          }
+
+          // Sort
+          const sorted = [...filteredShipments].sort((a, b) => {
+            let aVal = a[sortColumn] || '';
+            let bVal = b[sortColumn] || '';
+            if (sortColumn === 'netTons' || sortColumn === 'officialWeightTons') {
+              aVal = Number(aVal) || 0;
+              bVal = Number(bVal) || 0;
+            }
+            if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+            if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+            return 0;
+          });
+
+          // Paginate
+          const totalPages = Math.ceil(sorted.length / pageSize);
+          currentPage = Math.min(currentPage, totalPages);
+          const start = (currentPage - 1) * pageSize;
+          const pageData = sorted.slice(start, start + pageSize);
+
+          tbody.innerHTML = pageData.map(row => {
+            const pdfUrl = row.stampedPdfUrl || row.pdfUrl;
             const hasOfficial = row.officialWeightTons !== null && row.officialWeightTons !== undefined;
             const weightColor = hasOfficial ? '#059669' : '#f59e0b';
             const weightValue = hasOfficial ? Number(row.officialWeightTons).toFixed(2) : Number(row.netTons || 0).toFixed(2);
-
             return `
             <tr>
               <td>${row.date || '-'}</td>
@@ -524,13 +630,71 @@
               <td>${row.truckNo || '-'}</td>
               <td class="ta-r" style="color: ${weightColor}; font-weight: 600;">${weightValue}</td>
               <td class="ta-c"><span class="badge badge-success">Shipped</span></td>
-            </tr>
-            `;
+            </tr>`;
           }).join('');
-          shipmentCount.textContent = `${historyData.rows.length} shipments`;
+
+          // Pagination controls
+          const paginationEl = document.getElementById('shipmentPagination');
+          if (totalPages > 1) {
+            paginationEl.innerHTML = `
+              <button onclick="shipmentPage(1)" ${currentPage === 1 ? 'disabled' : ''}>First</button>
+              <button onclick="shipmentPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>Prev</button>
+              <span class="page-info">Page ${currentPage} of ${totalPages} (${filteredShipments.length} total)</span>
+              <button onclick="shipmentPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>
+              <button onclick="shipmentPage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}>Last</button>
+            `;
+          } else {
+            paginationEl.innerHTML = `<span class="page-info">${filteredShipments.length} total</span>`;
+          }
         }
 
-        // Load open releases
+        // Global functions for pagination
+        window.shipmentPage = function(page) {
+          currentPage = page;
+          renderShipments();
+        };
+
+        // Search
+        document.getElementById('shipmentSearch').addEventListener('input', function() {
+          const query = this.value.toLowerCase();
+          filteredShipments = allShipments.filter(row =>
+            (row.bolNo || '').toLowerCase().includes(query) ||
+            (row.productName || '').toLowerCase().includes(query) ||
+            (row.truckNo || '').toLowerCase().includes(query) ||
+            (row.date || '').toLowerCase().includes(query)
+          );
+          currentPage = 1;
+          renderShipments();
+        });
+
+        // Page size
+        document.getElementById('shipmentPageSize').addEventListener('change', function() {
+          pageSize = parseInt(this.value);
+          currentPage = 1;
+          renderShipments();
+        });
+
+        // Sortable columns
+        document.querySelectorAll('#shipmentsTable th.sortable').forEach(th => {
+          th.addEventListener('click', function() {
+            const col = this.dataset.sort;
+            if (sortColumn === col) {
+              sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+              sortColumn = col;
+              sortDirection = 'asc';
+            }
+            // Update UI
+            document.querySelectorAll('#shipmentsTable th.sortable').forEach(t => t.classList.remove('asc', 'desc'));
+            this.classList.add(sortDirection);
+            renderShipments();
+          });
+        });
+
+        shipmentCount.textContent = `${allShipments.length} shipments`;
+        renderShipments();
+
+        // Load open releases (sorted by release number ascending)
         const releases = await getJSON('/api/releases/open/');
         const releasesContainer = document.getElementById('releasesContainer');
         const releaseCount = document.getElementById('releaseCount');
@@ -539,6 +703,8 @@
           releasesContainer.innerHTML = '<div class="empty-state"><div class="empty-state-icon">✅</div><p>No open releases</p></div>';
           releaseCount.textContent = '0 open';
         } else {
+          // Sort by release number ascending
+          releases.sort((a, b) => (a.releaseNumber || '').localeCompare(b.releaseNumber || ''));
           releasesContainer.innerHTML = releases.map(release => `
             <div class="release-card">
               <div class="release-header">
