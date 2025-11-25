@@ -145,14 +145,15 @@ def watermark_bol_pdf(bol):
 
         # Save to storage
         saved_path = default_storage.save(stamped_path, ContentFile(output_buffer.read()))
-        stamped_url = default_storage.url(saved_path)
 
         logger.info(f"Successfully watermarked BOL {bol.bol_number}, saved to: {saved_path}")
 
         # Close files
         original_pdf_file.close()
 
-        return stamped_url
+        # Return the S3 key (path), not a signed URL
+        # The serializer/view will generate signed URLs on-demand
+        return saved_path
 
     except Exception as e:
         logger.error(f"Error watermarking BOL {bol.bol_number}: {str(e)}", exc_info=True)
