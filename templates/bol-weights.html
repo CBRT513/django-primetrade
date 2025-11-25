@@ -207,24 +207,27 @@
       justify-content: center;
       align-items: center;
       margin-top: 1rem;
+      padding: 1rem;
+      background: white;
+      border-radius: 8px;
     }
     .pagination button {
       padding: 0.5rem 1rem;
-      border: 1px solid var(--border);
-      background: var(--surface);
+      border: 1px solid #e5e7eb;
+      background: white;
       border-radius: 6px;
       cursor: pointer;
-      color: var(--text-primary);
+      color: #1f2937;
     }
     .pagination button:disabled {
       opacity: 0.5;
       cursor: not-allowed;
     }
     .pagination button:hover:not(:disabled) {
-      background: var(--surface-elevated);
+      background: #f3f4f6;
     }
     .pagination .page-info {
-      color: var(--text-secondary);
+      color: #4b5563;
       font-size: 0.875rem;
     }
   </style>
@@ -244,9 +247,9 @@
 
     <div class="table-controls">
       <input type="text" id="bolSearch" class="search-box" placeholder="Search BOL#, customer, product...">
-      <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.9rem; background: var(--surface); padding: 0.5rem 0.75rem; border-radius: 8px; border: 1px solid var(--border);">
+      <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.9rem; background: white; padding: 0.5rem 0.75rem; border-radius: 8px; border: 1px solid #e5e7eb;">
         <input type="checkbox" id="showAll" onchange="applyFilters()" style="width: 16px; height: 16px; cursor: pointer;">
-        <span style="color: var(--text-primary);">Show all (including official)</span>
+        <span style="color: #1f2937;">Show all (including official)</span>
       </label>
       <select id="bolPageSize" class="page-size-select">
         <option value="10">10 per page</option>
