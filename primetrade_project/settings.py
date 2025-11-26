@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 from decouple import config
+from django.core.exceptions import ImproperlyConfigured
 
 # Sentry Error Monitoring Configuration
 # Only initializes if SENTRY_DSN environment variable is set
@@ -35,6 +36,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # Security Settings
 SECRET_KEY = config('SECRET_KEY')  # No default - must be set in .env
 DEBUG = config('DEBUG', default=False, cast=bool)
+
+# Validate SECRET_KEY length in production
+if not DEBUG and len(SECRET_KEY) < 50:
+    raise ImproperlyConfigured(
+        f"SECRET_KEY must be at least 50 characters in production (current: {len(SECRET_KEY)}). "
+        "Generate a secure key with: python -c 'from django.core.management.utils import "
+        "get_random_secret_key; print(get_random_secret_key())'"
+    )
+
 ALLOWED_HOSTS = config('ALLOWED_HOSTS', default='localhost,127.0.0.1').split(',')
 
 # SSO Configuration
@@ -259,8 +269,10 @@ LOGGING = {
             'formatter': 'verbose',
         },
         'file': {
-            'class': 'logging.FileHandler',
+            'class': 'logging.handlers.RotatingFileHandler',
             'filename': BASE_DIR / 'logs' / 'primetrade.log',
+            'maxBytes': 10485760,  # 10MB
+            'backupCount': 5,
             'formatter': 'verbose',
         },
     },
