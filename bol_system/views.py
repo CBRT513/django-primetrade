@@ -2124,14 +2124,21 @@ def inventory_report(request):
 
         # PDF generation
         if output_format == 'pdf':
-            from bol_system.inventory_report_pdf import generate_eom_inventory_pdf
-            pdf_bytes = generate_eom_inventory_pdf(report_data)
+            try:
+                from bol_system.inventory_report_pdf import generate_eom_inventory_pdf
+                pdf_bytes = generate_eom_inventory_pdf(report_data)
 
-            from django.http import HttpResponse
-            response = HttpResponse(pdf_bytes, content_type='application/pdf')
-            filename = f"inventory_report_{from_date or 'all'}_{to_date or 'all'}.pdf"
-            response['Content-Disposition'] = f'attachment; filename="{filename}"'
-            return response
+                from django.http import HttpResponse
+                response = HttpResponse(pdf_bytes, content_type='application/pdf')
+                filename = f"inventory_report_{from_date or 'all'}_{to_date or 'all'}.pdf"
+                response['Content-Disposition'] = f'attachment; filename="{filename}"'
+                return response
+            except Exception as pdf_error:
+                logger.error(f"PDF generation failed: {str(pdf_error)}", exc_info=True)
+                return Response(
+                    {'error': 'Failed to generate PDF', 'detail': str(pdf_error)},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
 
         return Response(report_data)
 
