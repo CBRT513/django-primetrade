@@ -4,8 +4,19 @@ FROM python:3.11-slim
 WORKDIR /app
 
 # Install system dependencies
+# - postgresql-client: for database operations
+# - WeasyPrint dependencies: libpango, libcairo, fonts for PDF generation
+# - poppler-utils: for pdf2image (pdftoppm)
 RUN apt-get update && apt-get install -y \
     postgresql-client \
+    libpango-1.0-0 \
+    libpangoft2-1.0-0 \
+    libharfbuzz-subset0 \
+    libcairo2 \
+    libgdk-pixbuf2.0-0 \
+    libffi-dev \
+    fonts-liberation \
+    poppler-utils \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install Python dependencies
