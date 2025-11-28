@@ -28,6 +28,7 @@ urlpatterns = [
     path('history/', views.bol_history, name='history'),
     path('audit/', views.audit_logs, name='audit_logs'),
     path('inventory-report/', views.inventory_report, name='inventory_report'),
+    path('inventory-report/pdf/', views.inventory_report_pdf, name='inventory_report_pdf'),
 
     # Release parsing + approvals
     path('releases/upload/', views.upload_release, name='release_upload'),

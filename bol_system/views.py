@@ -2122,24 +2122,6 @@ def inventory_report(request):
             }
         }
 
-        # PDF generation
-        if output_format == 'pdf':
-            try:
-                from bol_system.inventory_report_pdf import generate_eom_inventory_pdf
-                pdf_bytes = generate_eom_inventory_pdf(report_data)
-
-                from django.http import HttpResponse
-                response = HttpResponse(pdf_bytes, content_type='application/pdf')
-                filename = f"inventory_report_{from_date or 'all'}_{to_date or 'all'}.pdf"
-                response['Content-Disposition'] = f'attachment; filename="{filename}"'
-                return response
-            except Exception as pdf_error:
-                logger.error(f"PDF generation failed: {str(pdf_error)}", exc_info=True)
-                return Response(
-                    {'error': 'Failed to generate PDF', 'detail': str(pdf_error)},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
-
         return Response(report_data)
 
     except Exception as e:
@@ -2147,4 +2129,117 @@ def inventory_report(request):
         return Response(
             {'error': 'An unexpected error occurred', 'detail': str(e)},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )
+
+
+from django.contrib.auth.decorators import login_required
+from django.http import HttpResponse as DjangoHttpResponse
+
+@login_required
+@require_role('Admin', 'Office')
+def inventory_report_pdf(request):
+    """
+    Generate PDF for EOM Inventory Report.
+    Separate endpoint to avoid DRF/HttpResponse conflicts.
+
+    Query params:
+    - from_date: Start of period (YYYY-MM-DD)
+    - to_date: End of period (YYYY-MM-DD)
+    """
+    try:
+        from_date_str = request.GET.get('from_date', '')
+        to_date_str = request.GET.get('to_date', '')
+
+        from_date = _parse_date_any(from_date_str) if from_date_str else None
+        to_date = _parse_date_any(to_date_str) if to_date_str else None
+
+        # Build report data (same logic as inventory_report)
+        products = Product.objects.filter(is_active=True)
+        result = []
+        grand_beginning = 0
+        grand_shipped = 0
+        grand_ending = 0
+
+        for product in products:
+            bols = BOL.objects.filter(product=product)
+            shipped_before = 0
+            shipped_in_period = 0
+            period_bols = []
+
+            for bol in bols:
+                bol_date = _parse_date_any(bol.date)
+                try:
+                    if bol.official_weight_tons is not None:
+                        weight = float(bol.official_weight_tons)
+                    else:
+                        weight = float(bol.net_tons)
+                except (TypeError, ValueError):
+                    weight = float(bol.net_tons)
+
+                if bol_date is None:
+                    shipped_before += weight
+                elif from_date and bol_date < from_date:
+                    shipped_before += weight
+                elif (from_date is None or bol_date >= from_date) and (to_date is None or bol_date <= to_date):
+                    shipped_in_period += weight
+                    period_bols.append({
+                        'id': bol.id,
+                        'bol_number': bol.bol_number,
+                        'date': bol.date,
+                        'weight_tons': round(weight, 2),
+                        'is_official': bol.official_weight_tons is not None,
+                        'customer': bol.buyer_name,
+                        'release_number': bol.release_number or ''
+                    })
+                elif to_date and bol_date > to_date:
+                    pass
+                else:
+                    shipped_before += weight
+
+            start_tons = float(product.start_tons)
+            beginning = round(start_tons - shipped_before, 2)
+            shipped = round(shipped_in_period, 2)
+            ending = round(beginning - shipped, 2)
+
+            grand_beginning += beginning
+            grand_shipped += shipped
+            grand_ending += ending
+
+            result.append({
+                'id': product.id,
+                'name': product.name,
+                'start_tons': round(start_tons, 2),
+                'beginning_inventory': beginning,
+                'shipped_this_period': shipped,
+                'ending_inventory': ending,
+                'bols': sorted(period_bols, key=lambda x: x['date'] or '')
+            })
+
+        report_data = {
+            'from_date': from_date.isoformat() if from_date else None,
+            'to_date': to_date.isoformat() if to_date else None,
+            'generated_at': datetime.now().isoformat(),
+            'products': result,
+            'totals': {
+                'beginning_inventory': round(grand_beginning, 2),
+                'shipped_this_period': round(grand_shipped, 2),
+                'ending_inventory': round(grand_ending, 2)
+            }
+        }
+
+        # Generate PDF
+        from bol_system.inventory_report_pdf import generate_eom_inventory_pdf
+        pdf_bytes = generate_eom_inventory_pdf(report_data)
+
+        response = DjangoHttpResponse(pdf_bytes, content_type='application/pdf')
+        filename = f"inventory_report_{from_date or 'all'}_{to_date or 'all'}.pdf"
+        response['Content-Disposition'] = f'attachment; filename="{filename}"'
+        return response
+
+    except Exception as e:
+        logger.error(f"Error in inventory_report_pdf: {str(e)}", exc_info=True)
+        return DjangoHttpResponse(
+            f"Error generating PDF: {str(e)}",
+            status=500,
+            content_type='text/plain'
         )
