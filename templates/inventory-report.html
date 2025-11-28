@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Inventory Report</title>
+  <link rel="stylesheet" href="/static/css/cbrt-brand.css">
+  <style>
+    .date-inputs {
+      display: flex;
+      gap: 1rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    .date-inputs label {
+      font-weight: 500;
+      color: var(--text-secondary);
+    }
+    .date-inputs input[type="date"] {
+      padding: 0.5rem;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      font-size: 1rem;
+      background: var(--surface);
+    }
+    .date-inputs input[type="date"]:focus {
+      outline: none;
+      border-color: var(--primary);
+      box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
+    }
+    table { width: 100%; border-collapse: collapse; }
+    th, td {
+      padding: 0.75rem 1rem;
+      text-align: left;
+      border-bottom: 1px solid var(--border);
+    }
+    th {
+      background: var(--surface-elevated);
+      font-weight: 600;
+      color: var(--text-secondary);
+      font-size: 0.875rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .text-right { text-align: right; }
+    .font-mono { font-family: monospace; }
+    .product-row {
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+    .product-row:hover { background: var(--surface-elevated); }
+    .product-row td:first-child::before {
+      content: '\25B6';
+      display: inline-block;
+      margin-right: 0.5rem;
+      transition: transform 0.2s;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+    }
+    .product-row.expanded td:first-child::before {
+      transform: rotate(90deg);
+    }
+    .bol-details {
+      display: none;
+      background: #f8fafc;
+    }
+    .bol-details.visible { display: table-row; }
+    .bol-details td { padding: 0; }
+    .bol-table {
+      width: 100%;
+      margin: 0;
+      border: none;
+    }
+    .bol-table th {
+      background: #f1f5f9;
+      font-size: 0.75rem;
+      padding: 0.5rem 1rem;
+    }
+    .bol-table td {
+      font-size: 0.875rem;
+      padding: 0.5rem 1rem;
+      border-bottom: 1px solid #e2e8f0;
+    }
+    .totals-row {
+      font-weight: 700;
+      background: var(--surface-elevated);
+    }
+    .totals-row td { border-top: 2px solid var(--border); }
+    .official-weight { color: #059669; font-weight: 600; }
+    .estimate-weight { color: #f59e0b; font-weight: 600; }
+    .empty-state {
+      text-align: center;
+      padding: 3rem;
+      color: var(--text-secondary);
+    }
+    .btn-group { display: flex; gap: 0.5rem; }
+    .legend {
+      margin-top: 0.75rem;
+      padding: 0.75rem;
+      background: #f0f9ff;
+      border-left: 4px solid #059669;
+      border-radius: 4px;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="cbrt-header" style="position: relative;">
+      <div class="company-info">
+        <img src="/static/cbrt-logo-optimized.svg" alt="CBRT" class="company-logo">
+        <div>
+          <h1 class="company-name">Inventory Report</h1>
+          <p class="company-tagline">End-of-month inventory tracking</p>
+        </div>
+      </div>
+      <div class="user-actions" style="position: absolute; top: 20px; right: 20px; display:flex; gap:.5rem;">
+        <a href="/" class="btn">Home</a>
+        <a href="/releases.html" class="btn">Releases</a>
+        <a href="/auth/logout/" class="btn" style="background: #dc3545; color: white; padding: 8px 20px;">Logout</a>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="date-inputs">
+        <label>From:</label>
+        <input type="date" id="fromDate">
+        <label>To:</label>
+        <input type="date" id="toDate">
+        <div class="btn-group">
+          <button id="generateBtn" class="btn btn-primary">Generate Report</button>
+          <button id="downloadPdfBtn" class="btn btn-secondary" disabled>Download PDF</button>
+        </div>
+      </div>
+
+      <div class="legend">
+        <strong>Weight Display:</strong>
+        <span class="official-weight">Green</span> = Official (certified scale),
+        <span class="estimate-weight">Amber</span> = Estimated (CBRT scale)
+      </div>
+
+      <div class="table-container" style="margin-top: 1rem;">
+        <table id="reportTable">
+          <thead>
+            <tr>
+              <th>Product</th>
+              <th class="text-right">Beginning Inventory</th>
+              <th class="text-right">Shipped This Period</th>
+              <th class="text-right">Ending Inventory</th>
+            </tr>
+          </thead>
+          <tbody id="reportBody">
+            <tr>
+              <td colspan="4" class="empty-state">
+                Select a date range and click "Generate Report"
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let reportData = null;
+
+    // Set default dates to current month
+    const today = new Date();
+    const firstOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+    document.getElementById('fromDate').value = firstOfMonth.toISOString().split('T')[0];
+    document.getElementById('toDate').value = today.toISOString().split('T')[0];
+
+    function formatNumber(n) {
+      return n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    function formatDate(d) {
+      if (!d) return '';
+      try {
+        if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+          const [y, m, dd] = d.split('-');
+          return `${m}/${dd}/${y}`;
+        }
+        return d;
+      } catch (e) {
+        return d;
+      }
+    }
+
+    async function generateReport() {
+      const fromDate = document.getElementById('fromDate').value;
+      const toDate = document.getElementById('toDate').value;
+
+      const params = new URLSearchParams();
+      if (fromDate) params.append('from_date', fromDate);
+      if (toDate) params.append('to_date', toDate);
+
+      const tbody = document.getElementById('reportBody');
+      tbody.innerHTML = '<tr><td colspan="4" class="empty-state">Loading...</td></tr>';
+
+      try {
+        const res = await fetch(`/api/inventory-report/?${params}`, { credentials: 'same-origin' });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Failed to load report');
+        }
+        reportData = await res.json();
+        renderReport();
+        document.getElementById('downloadPdfBtn').disabled = false;
+      } catch (err) {
+        tbody.innerHTML = `<tr><td colspan="4" class="empty-state" style="color: #dc2626;">Error: ${err.message}</td></tr>`;
+        document.getElementById('downloadPdfBtn').disabled = true;
+      }
+    }
+
+    function renderReport() {
+      const tbody = document.getElementById('reportBody');
+
+      if (!reportData || !reportData.products || reportData.products.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="4" class="empty-state">No products found</td></tr>';
+        return;
+      }
+
+      let html = '';
+      reportData.products.forEach((product, idx) => {
+        // Product row
+        html += `
+          <tr class="product-row" data-idx="${idx}">
+            <td>${product.name}</td>
+            <td class="text-right font-mono">${formatNumber(product.beginning_inventory)}</td>
+            <td class="text-right font-mono">${formatNumber(product.shipped_this_period)}</td>
+            <td class="text-right font-mono">${formatNumber(product.ending_inventory)}</td>
+          </tr>
+        `;
+
+        // BOL details row (hidden by default)
+        if (product.bols && product.bols.length > 0) {
+          html += `
+            <tr class="bol-details" data-idx="${idx}">
+              <td colspan="4">
+                <table class="bol-table">
+                  <thead>
+                    <tr>
+                      <th>BOL #</th>
+                      <th>Date</th>
+                      <th>Customer</th>
+                      <th>Release</th>
+                      <th class="text-right">Weight (tons)</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${product.bols.map(bol => `
+                      <tr>
+                        <td><a href="/api/bol/${bol.id}/">${bol.bol_number}</a></td>
+                        <td>${formatDate(bol.date)}</td>
+                        <td>${bol.customer || ''}</td>
+                        <td>${bol.release_number || ''}</td>
+                        <td class="text-right font-mono ${bol.is_official ? 'official-weight' : 'estimate-weight'}">
+                          ${formatNumber(bol.weight_tons)}
+                        </td>
+                      </tr>
+                    `).join('')}
+                  </tbody>
+                </table>
+              </td>
+            </tr>
+          `;
+        } else {
+          html += `
+            <tr class="bol-details" data-idx="${idx}">
+              <td colspan="4" style="padding: 1rem; color: var(--text-secondary); font-style: italic;">
+                No shipments during this period
+              </td>
+            </tr>
+          `;
+        }
+      });
+
+      // Totals row
+      html += `
+        <tr class="totals-row">
+          <td>TOTALS</td>
+          <td class="text-right font-mono">${formatNumber(reportData.totals.beginning_inventory)}</td>
+          <td class="text-right font-mono">${formatNumber(reportData.totals.shipped_this_period)}</td>
+          <td class="text-right font-mono">${formatNumber(reportData.totals.ending_inventory)}</td>
+        </tr>
+      `;
+
+      tbody.innerHTML = html;
+
+      // Add click handlers for expandable rows
+      document.querySelectorAll('.product-row').forEach(row => {
+        row.addEventListener('click', () => {
+          const idx = row.dataset.idx;
+          const detailRow = document.querySelector(`.bol-details[data-idx="${idx}"]`);
+          row.classList.toggle('expanded');
+          detailRow.classList.toggle('visible');
+        });
+      });
+    }
+
+    async function downloadPdf() {
+      const fromDate = document.getElementById('fromDate').value;
+      const toDate = document.getElementById('toDate').value;
+
+      const params = new URLSearchParams();
+      if (fromDate) params.append('from_date', fromDate);
+      if (toDate) params.append('to_date', toDate);
+      params.append('format', 'pdf');
+
+      const btn = document.getElementById('downloadPdfBtn');
+      btn.disabled = true;
+      btn.textContent = 'Generating...';
+
+      try {
+        const res = await fetch(`/api/inventory-report/?${params}`, { credentials: 'same-origin' });
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Failed to generate PDF');
+        }
+        const blob = await res.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `inventory_report_${fromDate || 'all'}_${toDate || 'all'}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        window.URL.revokeObjectURL(url);
+      } catch (err) {
+        alert('Error: ' + err.message);
+      } finally {
+        btn.disabled = false;
+        btn.textContent = 'Download PDF';
+      }
+    }
+
+    document.getElementById('generateBtn').addEventListener('click', generateReport);
+    document.getElementById('downloadPdfBtn').addEventListener('click', downloadPdf);
+  </script>
+</body>
+</html>

@@ -49,6 +49,7 @@ urlpatterns = [
     path('client-schedule.html', login_required(TemplateView.as_view(template_name='client-schedule.html')), name='client_schedule'),
     path('client-release.html', login_required(TemplateView.as_view(template_name='client-release.html')), name='client_release'),
     path('bol-weights.html', login_required(TemplateView.as_view(template_name='bol-weights.html')), name='bol_weights'),
+    path('inventory-report.html', login_required(TemplateView.as_view(template_name='inventory-report.html')), name='inventory_report_page'),
 
     # Authenticated media access (signed URLs for PDFs)
     path('media/<path:path>', primetrade_views.secure_media_download, name='secure_media'),

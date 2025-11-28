@@ -2002,3 +2002,142 @@ def upload_release(request):
     except Exception as e:
         logger.error(f"Error parsing release PDF: {e}", exc_info=True)
         return Response({'error': 'Failed to parse PDF', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
+
+# =============================
+# EOM Inventory Report endpoint
+# =============================
+@api_view(['GET'])
+@authentication_classes([CsrfExemptSessionAuthentication])
+@permission_classes([IsAuthenticated])
+@require_role('Admin', 'Office')  # Internal staff only
+def inventory_report(request):
+    """
+    EOM Inventory Report with date range filtering.
+
+    Query params:
+    - from_date: Start of period (YYYY-MM-DD or MM/DD/YYYY)
+    - to_date: End of period (YYYY-MM-DD or MM/DD/YYYY)
+    - format: 'json' (default) or 'pdf'
+
+    Returns per-product:
+    - Beginning inventory (start_tons minus BOLs shipped BEFORE from_date)
+    - Shipped during period (BOLs with date in range)
+    - Ending inventory (beginning minus shipped)
+    - BOL details for the period
+    """
+    try:
+        from_date_str = request.query_params.get('from_date', '')
+        to_date_str = request.query_params.get('to_date', '')
+        output_format = request.query_params.get('format', 'json')
+
+        from_date = _parse_date_any(from_date_str) if from_date_str else None
+        to_date = _parse_date_any(to_date_str) if to_date_str else None
+
+        # Validate date range if both provided
+        if from_date and to_date and from_date > to_date:
+            return Response(
+                {'error': 'from_date must be before or equal to to_date'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        products = Product.objects.filter(is_active=True)
+        result = []
+        grand_beginning = 0
+        grand_shipped = 0
+        grand_ending = 0
+
+        for product in products:
+            bols = BOL.objects.filter(product=product)
+
+            # Separate BOLs into pre-period and in-period
+            shipped_before = 0
+            shipped_in_period = 0
+            period_bols = []
+
+            for bol in bols:
+                bol_date = _parse_date_any(bol.date)
+
+                # Get weight (official if available, otherwise net_tons)
+                try:
+                    if bol.official_weight_tons is not None:
+                        weight = float(bol.official_weight_tons)
+                    else:
+                        weight = float(bol.net_tons)
+                except (TypeError, ValueError):
+                    weight = float(bol.net_tons)
+
+                # Categorize by date
+                if bol_date is None:
+                    # Unknown date - include in shipped_before as conservative default
+                    shipped_before += weight
+                elif from_date and bol_date < from_date:
+                    shipped_before += weight
+                elif (from_date is None or bol_date >= from_date) and (to_date is None or bol_date <= to_date):
+                    shipped_in_period += weight
+                    period_bols.append({
+                        'id': bol.id,
+                        'bol_number': bol.bol_number,
+                        'date': bol.date,
+                        'weight_tons': round(weight, 2),
+                        'is_official': bol.official_weight_tons is not None,
+                        'customer': bol.buyer_name,
+                        'release_number': bol.release_number or ''
+                    })
+                elif to_date and bol_date > to_date:
+                    # After period - don't count
+                    pass
+                else:
+                    # Fallback for edge cases
+                    shipped_before += weight
+
+            start_tons = float(product.start_tons)
+            beginning = round(start_tons - shipped_before, 2)
+            shipped = round(shipped_in_period, 2)
+            ending = round(beginning - shipped, 2)
+
+            grand_beginning += beginning
+            grand_shipped += shipped
+            grand_ending += ending
+
+            result.append({
+                'id': product.id,
+                'name': product.name,
+                'start_tons': round(start_tons, 2),
+                'beginning_inventory': beginning,
+                'shipped_this_period': shipped,
+                'ending_inventory': ending,
+                'bols': sorted(period_bols, key=lambda x: x['date'] or '')
+            })
+
+        report_data = {
+            'from_date': from_date.isoformat() if from_date else None,
+            'to_date': to_date.isoformat() if to_date else None,
+            'generated_at': datetime.now().isoformat(),
+            'products': result,
+            'totals': {
+                'beginning_inventory': round(grand_beginning, 2),
+                'shipped_this_period': round(grand_shipped, 2),
+                'ending_inventory': round(grand_ending, 2)
+            }
+        }
+
+        # PDF generation
+        if output_format == 'pdf':
+            from bol_system.inventory_report_pdf import generate_eom_inventory_pdf
+            pdf_bytes = generate_eom_inventory_pdf(report_data)
+
+            from django.http import HttpResponse
+            response = HttpResponse(pdf_bytes, content_type='application/pdf')
+            filename = f"inventory_report_{from_date or 'all'}_{to_date or 'all'}.pdf"
+            response['Content-Disposition'] = f'attachment; filename="{filename}"'
+            return response
+
+        return Response(report_data)
+
+    except Exception as e:
+        logger.error(f"Error in inventory_report: {str(e)}", exc_info=True)
+        return Response(
+            {'error': 'An unexpected error occurred', 'detail': str(e)},
+            status=status.HTTP_500_INTERNAL_SERVER_ERROR
+        )

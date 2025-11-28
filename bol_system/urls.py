@@ -27,6 +27,7 @@ urlpatterns = [
     path('balances/', views.balances, name='balances'),
     path('history/', views.bol_history, name='history'),
     path('audit/', views.audit_logs, name='audit_logs'),
+    path('inventory-report/', views.inventory_report, name='inventory_report'),
 
     # Release parsing + approvals
     path('releases/upload/', views.upload_release, name='release_upload'),
