@@ -244,8 +244,6 @@ def generate_eom_inventory_pdf(report_data):
 
         for bol in bols:
             weight_str = _format_tons(bol.get('weight_tons', 0))
-            if bol.get('is_official'):
-                weight_str += '*'
 
             detail_data.append([
                 bol.get('bol_number', ''),
@@ -283,7 +281,7 @@ def generate_eom_inventory_pdf(report_data):
         fontSize=7,
         textColor=colors.HexColor('#888888'),
     )
-    story.append(Paragraph("* Official (certified scale) weight", legend_style))
+    story.append(Paragraph("All weights are CBRT scale weights (net tons)", legend_style))
 
     story.append(Spacer(1, 0.05 * inch))
     story.append(line_table)

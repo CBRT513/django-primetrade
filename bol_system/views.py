@@ -2058,14 +2058,11 @@ def inventory_report(request):
             for bol in bols:
                 bol_date = _parse_date_any(bol.date)
 
-                # Get weight (official if available, otherwise net_tons)
+                # Use CBRT scale weight (net_tons) per client request
                 try:
-                    if bol.official_weight_tons is not None:
-                        weight = float(bol.official_weight_tons)
-                    else:
-                        weight = float(bol.net_tons)
-                except (TypeError, ValueError):
                     weight = float(bol.net_tons)
+                except (TypeError, ValueError):
+                    weight = 0.0
 
                 # Categorize by date
                 if bol_date is None:
@@ -2080,7 +2077,7 @@ def inventory_report(request):
                         'bol_number': bol.bol_number,
                         'date': bol.date,
                         'weight_tons': round(weight, 2),
-                        'is_official': bol.official_weight_tons is not None,
+                        'is_official': False,  # Always CBRT weight now
                         'customer': bol.buyer_name,
                         'release_number': bol.release_number or ''
                     })
@@ -2168,13 +2165,11 @@ def inventory_report_pdf(request):
 
             for bol in bols:
                 bol_date = _parse_date_any(bol.date)
+                # Use CBRT scale weight (net_tons) per client request
                 try:
-                    if bol.official_weight_tons is not None:
-                        weight = float(bol.official_weight_tons)
-                    else:
-                        weight = float(bol.net_tons)
-                except (TypeError, ValueError):
                     weight = float(bol.net_tons)
+                except (TypeError, ValueError):
+                    weight = 0.0
 
                 if bol_date is None:
                     shipped_before += weight
@@ -2187,7 +2182,7 @@ def inventory_report_pdf(request):
                         'bol_number': bol.bol_number,
                         'date': bol.date,
                         'weight_tons': round(weight, 2),
-                        'is_official': bol.official_weight_tons is not None,
+                        'is_official': False,  # Always CBRT weight now
                         'customer': bol.buyer_name,
                         'release_number': bol.release_number or ''
                     })
