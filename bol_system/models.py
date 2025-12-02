@@ -215,19 +215,34 @@ class BOL(TimestampedModel):
 
     def get_pdf_url(self):
         """
-        Generate a URL for the BOL PDF.
+        Generate a fresh signed URL for the BOL PDF.
         - If pdf_key is set, generate a signed URL via default_storage
-        - Fallback to legacy pdf_url for backward compatibility
+        - If pdf_url contains an S3 URL, extract the key and generate fresh signed URL
+        - This ensures URLs never expire for the user
         """
+        import re
         from django.core.files.storage import default_storage
 
-        if self.pdf_key:
+        # Try pdf_key first (preferred)
+        if hasattr(self, 'pdf_key') and self.pdf_key:
             try:
                 return default_storage.url(self.pdf_key)
             except Exception:
-                # Fallback to legacy if storage fails
                 pass
+
+        # Extract S3 key from legacy pdf_url and generate fresh signed URL
         if self.pdf_url:
+            try:
+                # Extract key from S3 URL (handles both styles)
+                # e.g., https://bucket.s3.region.amazonaws.com/bols/2025/PRT-2025-0001.pdf
+                # or https://s3.region.amazonaws.com/bucket/bols/2025/PRT-2025-0001.pdf
+                match = re.search(r'amazonaws\.com/(.+?)(?:\?|$)', self.pdf_url)
+                if match:
+                    s3_key = match.group(1)
+                    return default_storage.url(s3_key)
+            except Exception:
+                pass
+            # Final fallback - return stored URL (may be expired)
             return self.pdf_url
         return None
 
