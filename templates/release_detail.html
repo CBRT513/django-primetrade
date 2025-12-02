@@ -21,7 +21,7 @@
       </div>
       <div class="user-actions" style="position: absolute; top: 20px; right: 20px; display:flex; gap:.5rem;">
         <a href="/" class="btn">Home</a>
-        <a href="/api/releases/open/view/" class="btn">Open Releases</a>
+        <a href="/open-releases/" class="btn">Open Releases</a>
         <a href="/auth/logout/" class="btn" style="background: #dc3545; color: white; padding: 8px 20px;">Logout</a>
       </div>
     </div>
@@ -33,7 +33,7 @@
         <div style="display:flex; gap:.5rem; justify-content:space-between; margin-bottom:1rem;">
           <button type="button" id="cancelReleaseBtn" class="btn" style="background: #dc3545; color: white;">Cancel Release</button>
           <div style="display:flex; gap:.5rem;">
-            <a class="btn" href="/api/releases/open/view/">Back</a>
+            <a class="btn" href="/open-releases/">Back</a>
             <button type="submit" class="btn btn-accent">Save Changes</button>
           </div>
         </div>
@@ -318,7 +318,7 @@
       const j = await r.json().catch(()=>null);
       if (!r.ok){ show((j&&j.error)||`HTTP ${r.status}`,'error',8000); return; }
       show('Release cancelled','success');
-      setTimeout(()=>{ window.location.href='/api/releases/open/view/'; }, 800);
+      setTimeout(()=>{ window.location.href='/open-releases/'; }, 800);
     });
 
     // Save Changes form handler
@@ -365,7 +365,7 @@
       const j = await r.json().catch(()=>null);
       if (!r.ok){ show((j&&j.error)||`HTTP ${r.status}`,'error',8000); return; }
       show('Release updated','success');
-      setTimeout(()=>{ window.location.href='/api/releases/open/view/'; }, 800);
+      setTimeout(()=>{ window.location.href='/open-releases/'; }, 800);
     });
 
     load().catch(()=>show('Failed to load release','error',6000));

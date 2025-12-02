@@ -17,7 +17,7 @@
       </div>
       <div class="user-actions" style="position: absolute; top: 20px; right: 20px; display:flex; gap:.5rem;">
         <a href="/" class="btn">Home</a>
-        <a href="/api/releases/open/view/" class="btn">Open Releases</a>
+        <a href="/open-releases/" class="btn">Open Releases</a>
         <a href="/auth/logout/" class="btn" style="background: #dc3545; color: white; padding: 8px 20px;">Logout</a>
       </div>
     </div>
@@ -1010,7 +1010,7 @@ approveBtn.addEventListener('click', async () => {
     if (window.Utils && Utils.showStatus) Utils.showStatus(`Release saved (ID ${json.id})`, 'success');
     // Close modal and navigate to Open Releases for confirmation
     try { modal.style.display = 'none'; } catch(_){}
-    setTimeout(() => { window.location.href = '/api/releases/open/view/'; }, 600);
+    setTimeout(() => { window.location.href = '/open-releases/'; }, 600);
   } catch (e) {
     const ms = document.getElementById('modalStatus');
     ms.textContent = e?.message || String(e) || 'Save failed';
