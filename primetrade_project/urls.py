@@ -44,7 +44,7 @@ urlpatterns = [
     path('customers.html', login_required(lambda request: serve_static_html(request, 'customers.html')), name='customers'),
     path('carriers.html', login_required(lambda request: serve_static_html(request, 'carriers.html')), name='carriers'),
     path('releases.html', login_required(lambda request: serve_static_html(request, 'releases.html')), name='releases'),
-    path('open-releases/', login_required(TemplateView.as_view(template_name='open_releases.html')), name='open_releases'),
+    path('open-releases/', login_required(TemplateView.as_view(template_name='releases.html')), name='open_releases'),
     path('loading-schedule.html', login_required(TemplateView.as_view(template_name='loading-schedule.html')), name='loading_schedule'),
     path('client-schedule.html', login_required(TemplateView.as_view(template_name='client-schedule.html')), name='client_schedule'),
     path('client-release.html', login_required(TemplateView.as_view(template_name='client-release.html')), name='client_release'),
