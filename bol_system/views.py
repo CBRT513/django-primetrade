@@ -2079,7 +2079,8 @@ def inventory_report(request):
                         'weight_tons': round(weight, 2),
                         'is_official': False,  # Always CBRT weight now
                         'customer': bol.buyer_name,
-                        'release_number': bol.release_number or ''
+                        'release_number': bol.release_number or '',
+                        'pdf_url': bol.get_pdf_url() or ''
                     })
                 elif to_date and bol_date > to_date:
                     # After period - don't count
@@ -2184,7 +2185,8 @@ def inventory_report_pdf(request):
                         'weight_tons': round(weight, 2),
                         'is_official': False,  # Always CBRT weight now
                         'customer': bol.buyer_name,
-                        'release_number': bol.release_number or ''
+                        'release_number': bol.release_number or '',
+                        'pdf_url': bol.get_pdf_url() or ''
                     })
                 elif to_date and bol_date > to_date:
                     pass

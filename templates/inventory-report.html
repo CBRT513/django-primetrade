@@ -248,11 +248,11 @@
                   <tbody>
                     ${product.bols.map(bol => `
                       <tr>
-                        <td><a href="/api/bol/${bol.id}/">${bol.bol_number}</a></td>
+                        <td>${bol.pdf_url ? `<a href="${bol.pdf_url}" target="_blank">${bol.bol_number}</a>` : bol.bol_number}</td>
                         <td>${formatDate(bol.date)}</td>
                         <td>${bol.customer || ''}</td>
                         <td>${bol.release_number || ''}</td>
-                        <td class="text-right font-mono ${bol.is_official ? 'official-weight' : 'estimate-weight'}">
+                        <td class="text-right font-mono">
                           ${formatNumber(bol.weight_tons)}
                         </td>
                       </tr>
