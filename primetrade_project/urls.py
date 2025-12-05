@@ -34,7 +34,8 @@ urlpatterns = [
     # Legacy logout endpoint (preserved for backward compatibility)
     path('logout/', auth_views.logout_view, name='logout'),
 
-    path('', login_required(lambda request: serve_static_html(request, 'index.html')), name='home'),
+    # Dashboard with RBAC enforcement - requires 'dashboard:view' permission
+    path('', primetrade_views.dashboard, name='home'),
 
     # Protected frontend HTML pages
     path('office.html', login_required(lambda request: serve_static_html(request, 'office.html')), name='office'),

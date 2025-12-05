@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>Access Denied - Cincinnati Barge & Rail Terminal</title>
+    <link rel="stylesheet" href="/static/css/cbrt-brand.css">
+</head>
+<body>
+    <div class="wrap">
+        <div class="cbrt-header">
+            <div class="cbrt-company">
+                <div class="cbrt-company-name">Cincinnati Barge & Rail Terminal, LLC</div>
+                <div class="cbrt-company-info">1707 Riverside Drive • Cincinnati, Ohio 45202 • (513) 721-1707 • www.barge2rail.com</div>
+            </div>
+        </div>
+
+        <div class="card" style="max-width: 600px; margin: 100px auto; text-align: center;">
+            <h2 style="color: var(--primary); margin-bottom: 20px;">Access Denied</h2>
+            <p style="font-size: 1.125rem; color: var(--text-secondary); margin-bottom: 30px;">
+                {{ message|default:"You don't have permission to access this page." }}
+            </p>
+            <a href="/" class="btn btn-accent" style="display: inline-block;">Return to Dashboard</a>
+        </div>
+    </div>
+</body>
+</html>

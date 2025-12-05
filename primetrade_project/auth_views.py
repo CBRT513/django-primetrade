@@ -441,6 +441,15 @@ def sso_callback(request):
     request.session['sso_access_token'] = access_token
     request.session['sso_refresh_token'] = tokens.get('refresh_token')
 
+    # Store application_roles for FeaturePermissionMiddleware (RBAC)
+    request.session['application_roles'] = application_roles
+    logger.info(f"Stored application_roles in session: {list(application_roles.keys())}")
+
+    # Store feature_permissions directly for quick access
+    feature_permissions = primetrade_role.get('features', {})
+    request.session['feature_permissions'] = feature_permissions
+    logger.info(f"Stored feature_permissions in session: {list(feature_permissions.keys())}")
+
     if settings.DEBUG_AUTH_FLOW:
         logger.debug(f"[FLOW DEBUG 10] Session data stored:")
         logger.debug(f"[FLOW DEBUG 10.1]   - primetrade_role: {role_name} with permissions: {permissions}")

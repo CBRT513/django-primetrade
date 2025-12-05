@@ -2,7 +2,24 @@ import os
 from django.http import Http404, HttpResponseRedirect, FileResponse
 from django.contrib.auth.decorators import login_required
 from django.core.files.storage import default_storage
+from django.views.static import serve
+from django.views.decorators.csrf import ensure_csrf_cookie
+from django.conf import settings
 from primetrade_project.decorators import require_role
+from bol_system.permissions import feature_permission_required
+
+
+@login_required
+@feature_permission_required('dashboard', 'view')
+@ensure_csrf_cookie
+def dashboard(request):
+    """
+    Main dashboard view with RBAC enforcement.
+
+    Requires 'dashboard:view' permission from SSO RBAC.
+    """
+    file_path = os.path.join(settings.BASE_DIR, 'static', 'index.html')
+    return serve(request, 'index.html', document_root=os.path.join(settings.BASE_DIR, 'static'))
 
 
 @login_required
