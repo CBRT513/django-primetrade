@@ -1,5 +1,5 @@
 """
-Middleware for PrimeTrade role-based PAGE access control.
+Middleware for PrimeTrade role-based PAGE access control and tenant context.
 
 Security Notes (Phase 2 - Nov 2025):
 - Middleware controls PAGE access (HTML pages), NOT API access
@@ -7,6 +7,11 @@ Security Notes (Phase 2 - Nov 2025):
 - Client users restricted to /client.html?productId=9 for pages
 - Admin/Office users can access all pages
 - API access control is enforced by @require_role decorators on each endpoint
+
+Tenant Architecture (Dec 2025):
+- TenantMiddleware sets request.tenant from session or JWT claims
+- All views filter by request.tenant for data isolation
+- Cross-tenant access attempts are logged as security warnings
 """
 from django.conf import settings
 from django.shortcuts import redirect
@@ -14,6 +19,7 @@ from django.urls import resolve
 import logging
 
 logger = logging.getLogger(__name__)
+security_logger = logging.getLogger('security')
 
 
 class RoleBasedAccessMiddleware:
@@ -22,11 +28,17 @@ class RoleBasedAccessMiddleware:
 
     Client users:
     - Can access /api/* endpoints (permission checked by decorators)
-    - Can access /client.html?productId=9 (dashboard)
+    - Can access /client.html (dashboard) - data isolation handled by tenant filtering
     - Can access /client-schedule.html (loading schedule)
+    - Can access /client-release.html (release details)
 
     Office and Admin users:
     - Can access all pages and API endpoints
+
+    Multi-Tenant Security (Dec 2025):
+    - Removed hardcoded productId=9 restriction
+    - Data isolation now handled by TenantMiddleware + API tenant filtering
+    - Client sees only their tenant's data via API endpoints
     """
 
     def __init__(self, get_response):
@@ -47,9 +59,8 @@ class RoleBasedAccessMiddleware:
             '/api/health/',  # Health check endpoint can stay public
         ]
 
-        # Client-only allowed path
-        self.client_allowed_path = '/client.html'
-        self.client_required_product_id = '9'
+        # Client-allowed pages (data isolation handled by tenant filtering)
+        self.client_allowed_pages = ['/client.html', '/client-schedule.html', '/client-release.html']
 
     def __call__(self, request):
         # Skip check for public paths
@@ -82,37 +93,75 @@ class RoleBasedAccessMiddleware:
             # Example: /api/releases/19/view/ returns HTML with edit forms
             if path.startswith('/api/releases/') and path.endswith('/view/'):
                 logger.warning(f"[RBAC MIDDLEWARE] Client access DENIED to admin release page: {path}")
-                return redirect(f'{self.client_allowed_path}?productId={self.client_required_product_id}')
-            
+                return redirect('/client.html')
+
             # Allow API access - decorators handle permission checking
+            # Data isolation handled by tenant filtering at API level
             if path.startswith('/api/'):
                 if settings.DEBUG:
                     logger.debug(f"[RBAC MIDDLEWARE] Client API access - checked by @require_role decorator: {path}")
                 return self.get_response(request)
 
-            # Allow client pages (dashboard, schedule, and release details)
-            if path in ['/client.html', '/client-schedule.html', '/client-release.html']:
-                # For /client.html, require productId=9
-                if path == '/client.html':
-                    product_id = request.GET.get('productId')
-                    if product_id == self.client_required_product_id:
-                        if settings.DEBUG:
-                            logger.debug(f"[RBAC MIDDLEWARE] Client access ALLOWED to {path}?productId={product_id}")
-                        return self.get_response(request)
-                    else:
-                        logger.warning(f"[RBAC MIDDLEWARE] Client access DENIED to {path} (wrong/missing productId)")
-                        return redirect(f'{self.client_allowed_path}?productId={self.client_required_product_id}')
-                else:
-                    # /client-schedule.html and /client-release.html - no productId required
-                    if settings.DEBUG:
-                        logger.debug(f"[RBAC MIDDLEWARE] Client access ALLOWED to {path}")
-                    return self.get_response(request)
+            # Allow client pages - data isolation handled by tenant filtering
+            if path in self.client_allowed_pages:
+                if settings.DEBUG:
+                    logger.debug(f"[RBAC MIDDLEWARE] Client access ALLOWED to {path}")
+                return self.get_response(request)
             else:
-                # Trying to access unauthorized page - redirect to client page
-                logger.warning(f"[RBAC MIDDLEWARE] Client access DENIED to {path}, redirecting to client page")
-                return redirect(f'{self.client_allowed_path}?productId={self.client_required_product_id}')
+                # Trying to access unauthorized page - redirect to client dashboard
+                logger.warning(f"[RBAC MIDDLEWARE] Client access DENIED to {path}, redirecting to client dashboard")
+                return redirect('/client.html')
 
         # Office and Admin roles can access everything
         if settings.DEBUG:
             logger.debug(f"[RBAC MIDDLEWARE] {user_role} access ALLOWED to {path}")
         return self.get_response(request)
+
+
+class TenantMiddleware:
+    """
+    Middleware to inject tenant context into every request.
+
+    Sets request.tenant based on:
+    1. Session data (tenant_code from SSO)
+    2. JWT claims (tenant_code claim)
+
+    All views should filter queries by request.tenant to ensure data isolation.
+    """
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+        self._tenant_cache = {}
+
+    def __call__(self, request):
+        request.tenant = None
+
+        # Try to get tenant from session first (set during SSO login)
+        tenant_code = request.session.get('tenant_code')
+
+        # Fallback: check JWT claims if present
+        if not tenant_code and hasattr(request, 'auth') and request.auth:
+            tenant_code = getattr(request.auth, 'tenant_code', None)
+
+        # Look up tenant by code
+        if tenant_code:
+            request.tenant = self._get_tenant_by_code(tenant_code)
+            if request.tenant:
+                logger.debug(f"[TenantMiddleware] Set tenant: {request.tenant.name}")
+            else:
+                security_logger.warning(
+                    f"[TenantMiddleware] Unknown tenant_code '{tenant_code}' "
+                    f"for user {getattr(request.user, 'email', 'anonymous')}"
+                )
+
+        return self.get_response(request)
+
+    def _get_tenant_by_code(self, code):
+        """Get tenant by code with caching."""
+        if code not in self._tenant_cache:
+            from bol_system.models import Tenant
+            try:
+                self._tenant_cache[code] = Tenant.objects.get(code=code, is_active=True)
+            except Tenant.DoesNotExist:
+                self._tenant_cache[code] = None
+        return self._tenant_cache[code]

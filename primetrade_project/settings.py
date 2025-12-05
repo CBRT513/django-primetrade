@@ -96,6 +96,7 @@ MIDDLEWARE = [
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
     'primetrade_project.middleware.RoleBasedAccessMiddleware',  # Role-based page access control
+    'primetrade_project.middleware.TenantMiddleware',  # Multi-tenant data isolation
 ]
 
 ROOT_URLCONF = 'primetrade_project.urls'

@@ -6,11 +6,12 @@ from rest_framework.authentication import SessionAuthentication
 from django.db import models, connection, transaction, IntegrityError
 from django.db.models.functions import Coalesce
 from django.core.files.storage import default_storage
-from .models import Product, Customer, Carrier, Truck, BOL, Release, ReleaseLoad, CustomerShipTo, Lot, AuditLog
+from .models import Product, Customer, Carrier, Truck, BOL, Release, ReleaseLoad, CustomerShipTo, Lot, AuditLog, Tenant
 from .serializers import ProductSerializer, CustomerSerializer, CarrierSerializer, TruckSerializer, ReleaseSerializer, ReleaseLoadSerializer, CustomerShipToSerializer, AuditLogSerializer
 from .pdf_generator import generate_bol_pdf
 from .release_parser import parse_release_pdf
 from .email_utils import send_bol_notification
+from .security import validate_tenant_access, get_tenant_filter
 from primetrade_project.decorators import require_role, require_role_for_writes
 from django.views.decorators.csrf import ensure_csrf_cookie
 # Customer filtering utilities removed - all authenticated users see all data
@@ -49,7 +50,9 @@ def _derive_pdf_key(path_or_url: str | None):
 def audit(request, action: str, obj=None, message: str = '', extra: dict | None = None):
     try:
         from .models import AuditLog  # local import to avoid circular during migrations
+        tenant = getattr(request, 'tenant', None)
         entry = AuditLog.objects.create(
+            tenant=tenant,
             action=action,
             object_type=(obj.__class__.__name__ if obj is not None else ''),
             object_id=(str(getattr(obj, 'id', '') or getattr(obj, 'pk', '') or '')),
@@ -163,8 +166,8 @@ class ProductListView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        # TODO Phase 2: Filter by tenant_id once multi-tenant enabled
-        return Product.objects.filter(is_active=True).order_by('name')
+        # Filter by tenant for data isolation
+        return Product.objects.filter(is_active=True, **get_tenant_filter(self.request)).order_by('name')
 
     # Support upsert via POST so the existing frontend can use one endpoint
     def post(self, request, *args, **kwargs):
@@ -242,7 +245,7 @@ class ProductListView(generics.ListCreateAPIView):
 def customer_list(request):
     try:
         if request.method == 'GET':
-            customers = Customer.objects.all().order_by('customer')
+            customers = Customer.objects.filter(**get_tenant_filter(request)).order_by('customer')
             return Response(CustomerSerializer(customers, many=True).data)
 
         # POST - create or update
@@ -280,6 +283,7 @@ def customer_list(request):
             # Create new customer
             try:
                 cust = Customer.objects.create(
+                    tenant=getattr(request, 'tenant', None),
                     customer=customer_name,
                     address=address,
                     address2=address2,
@@ -310,7 +314,7 @@ def customer_detail(request, customer_id: int):
     - Client users cannot access customer details
     """
     try:
-        customer = Customer.objects.get(id=customer_id)
+        customer = Customer.objects.get(id=customer_id, **get_tenant_filter(request))
         return Response(CustomerSerializer(customer).data)
     except Customer.DoesNotExist:
         return Response({'error': 'Customer not found'}, status=status.HTTP_404_NOT_FOUND)
@@ -540,18 +544,19 @@ def carrier_list(request):
                     )
 
                 carrier = Carrier.objects.create(
+                    tenant=getattr(request, 'tenant', None),
                     carrier_name=data.get('carrier_name'),
                     contact_name=data.get('contact_name', ''),
                     phone=data.get('phone', ''),
                     email=data.get('email', ''),
                     is_active=data.get('is_active', True)
-)
+                )
                 logger.info(f"Carrier {carrier.id} created by {request.user.username}")
                 audit(request, 'CARRIER_CREATED', carrier, f"Carrier created: {carrier.carrier_name}")
                 return Response({'ok': True, 'id': carrier.id})
 
         # GET request - list carriers
-        carriers = Carrier.objects.filter(is_active=True).order_by('carrier_name')
+        carriers = Carrier.objects.filter(is_active=True, **get_tenant_filter(request)).order_by('carrier_name')
         result = []
         for carrier in carriers:
             trucks = carrier.trucks.filter(is_active=True)
@@ -892,12 +897,12 @@ def confirm_bol(request):
 @require_role('Admin', 'Office', 'Client')  # Client dashboard needs this for inventory display
 def balances(request):
     try:
-        # TODO Phase 2: tenant filter once tenant_id is available
-        products = Product.objects.filter(is_active=True)
+        # Filter by tenant for data isolation
+        products = Product.objects.filter(is_active=True, **get_tenant_filter(request))
         result = []
         for product in products:
             # Use official weight if available, otherwise fall back to CBRT weight
-            bols = BOL.objects.filter(product=product)
+            bols = BOL.objects.filter(product=product, **get_tenant_filter(request))
             shipped = 0
             for bol in bols:
                 try:
@@ -1198,11 +1203,12 @@ def list_releases(request):
         # Get status filter from query params (default to OPEN for backward compatibility)
         status_filter = request.query_params.get('status', 'OPEN').upper()
 
-        # TODO Phase 2: tenant filter once tenant_id is available
+        # Filter by tenant for data isolation
+        tenant_filter = get_tenant_filter(request)
         if status_filter == 'ALL':
-            rels = Release.objects.all().order_by('-created_at')
+            rels = Release.objects.filter(**tenant_filter).order_by('-created_at')
         else:
-            rels = Release.objects.filter(status=status_filter).order_by('-created_at')
+            rels = Release.objects.filter(status=status_filter, **tenant_filter).order_by('-created_at')
         result = []
         for r in rels:
             loads_total = r.loads.count()
@@ -1619,7 +1625,7 @@ def audit_logs(request):
     """
     try:
         limit = int(request.GET.get('limit', '200'))
-        rows = AuditLog.objects.all().order_by('-created_at')[:max(1, min(limit, 1000))]
+        rows = AuditLog.objects.filter(**get_tenant_filter(request)).order_by('-created_at')[:max(1, min(limit, 1000))]
         return Response(AuditLogSerializer(rows, many=True).data)
     except Exception as e:
         logger.error(f"audit_logs error: {e}", exc_info=True)
@@ -1641,8 +1647,8 @@ def bol_history(request):
     """
     try:
         # Phase 2 Security: All authenticated users (Admin, Office, Client) see all BOLs
-        # TODO Phase 2: Filter by tenant_id when multi-tenant is enabled
-        base_queryset = BOL.objects.all()
+        # Filter by tenant for data isolation
+        base_queryset = BOL.objects.filter(**get_tenant_filter(request))
 
         role_info = request.session.get('primetrade_role', {})
         user_role = role_info.get('role', 'Unknown')
@@ -1652,7 +1658,7 @@ def bol_history(request):
         if product_id:
             # Product-specific history (legacy behavior)
             try:
-                product = Product.objects.get(id=product_id)
+                product = Product.objects.get(id=product_id, **get_tenant_filter(request))
             except Product.DoesNotExist:
                 return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -2041,14 +2047,14 @@ def inventory_report(request):
                 status=status.HTTP_400_BAD_REQUEST
             )
 
-        products = Product.objects.filter(is_active=True)
+        products = Product.objects.filter(is_active=True, **get_tenant_filter(request))
         result = []
         grand_beginning = 0
         grand_shipped = 0
         grand_ending = 0
 
         for product in products:
-            bols = BOL.objects.filter(product=product)
+            bols = BOL.objects.filter(product=product, **get_tenant_filter(request))
 
             # Separate BOLs into pre-period and in-period
             shipped_before = 0
@@ -2152,14 +2158,14 @@ def inventory_report_pdf(request):
         to_date = _parse_date_any(to_date_str) if to_date_str else None
 
         # Build report data (same logic as inventory_report)
-        products = Product.objects.filter(is_active=True)
+        products = Product.objects.filter(is_active=True, **get_tenant_filter(request))
         result = []
         grand_beginning = 0
         grand_shipped = 0
         grand_ending = 0
 
         for product in products:
-            bols = BOL.objects.filter(product=product)
+            bols = BOL.objects.filter(product=product, **get_tenant_filter(request))
             shipped_before = 0
             shipped_in_period = 0
             period_bols = []

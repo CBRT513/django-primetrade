@@ -5,16 +5,40 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
+class Tenant(models.Model):
+    """
+    Multi-tenant support for PrimeTrade.
+
+    Each tenant represents a distinct customer/organization with isolated data.
+    All tenant-scoped models have a ForeignKey to Tenant.
+    """
+    name = models.CharField(max_length=100, help_text="Full tenant name (e.g., 'Liberty Steel')")
+    code = models.CharField(max_length=20, unique=True, help_text="Short code (e.g., 'LIBERTY')")
+    is_active = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+
 class TimestampedModel(models.Model):
     """Base model with common timestamp fields"""
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     updated_by = models.CharField(max_length=200, blank=True, default='system')
-    
+
     class Meta:
         abstract = True
 
 class Product(TimestampedModel):
+    tenant = models.ForeignKey(
+        Tenant, on_delete=models.CASCADE, null=True,
+        related_name='products', help_text='Tenant this product belongs to'
+    )
     name = models.CharField(max_length=200, unique=True)
     start_tons = models.DecimalField(max_digits=10, decimal_places=2, default=0)
     is_active = models.BooleanField(default=True)
@@ -25,7 +49,7 @@ class Product(TimestampedModel):
     s = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
     p = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
     mn = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
-    
+
     class Meta:
         ordering = ['name']
     
@@ -45,6 +69,10 @@ class Product(TimestampedModel):
         return self.start_tons - self.shipped_tons
 
 class Customer(TimestampedModel):
+    tenant = models.ForeignKey(
+        Tenant, on_delete=models.CASCADE, null=True,
+        related_name='customers', help_text='Tenant this customer belongs to'
+    )
     customer = models.CharField(max_length=200, unique=True)
     address = models.CharField(max_length=200)
     address2 = models.CharField(max_length=200, blank=True)
@@ -75,6 +103,10 @@ class Customer(TimestampedModel):
         return "\n".join(address_lines)
 
 class CustomerShipTo(TimestampedModel):
+    tenant = models.ForeignKey(
+        Tenant, on_delete=models.CASCADE, null=True,
+        related_name='ship_tos', help_text='Tenant this ship-to belongs to'
+    )
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, related_name='ship_tos')
     name = models.CharField(max_length=200, blank=True)
     street = models.CharField(max_length=200)
@@ -92,6 +124,10 @@ class CustomerShipTo(TimestampedModel):
         return f"{self.customer.customer} -> {self.street}, {self.city}" 
 
 class Carrier(TimestampedModel):
+    tenant = models.ForeignKey(
+        Tenant, on_delete=models.CASCADE, null=True,
+        related_name='carriers', help_text='Tenant this carrier belongs to'
+    )
     carrier_name = models.CharField(max_length=200, unique=True)
     contact_name = models.CharField(max_length=200, blank=True)
     phone = models.CharField(max_length=20, blank=True)
@@ -134,6 +170,10 @@ class BOLCounter(models.Model):
             return f"PRT-{current_year}-{counter.sequence:04d}"
 
 class BOL(TimestampedModel):
+    tenant = models.ForeignKey(
+        Tenant, on_delete=models.CASCADE, null=True,
+        related_name='bols', help_text='Tenant this BOL belongs to'
+    )
     bol_number = models.CharField(max_length=20, unique=True, db_index=True)
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
     product_name = models.CharField(max_length=200)
@@ -308,6 +348,10 @@ class CompanyBranding(TimestampedModel):
 # Lot and Release management (Phase 2)
 # =============================
 class Lot(TimestampedModel):
+    tenant = models.ForeignKey(
+        Tenant, on_delete=models.CASCADE, null=True,
+        related_name='lots', help_text='Tenant this lot belongs to'
+    )
     code = models.CharField(max_length=100, unique=True, db_index=True)
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True)
     c = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
@@ -323,6 +367,10 @@ class Lot(TimestampedModel):
         return self.code
 
 class Release(TimestampedModel):
+    tenant = models.ForeignKey(
+        Tenant, on_delete=models.CASCADE, null=True,
+        related_name='releases', help_text='Tenant this release belongs to'
+    )
     STATUS_CHOICES = (
         ("OPEN", "Open"),
         ("COMPLETE", "Complete"),
@@ -389,6 +437,10 @@ class Release(TimestampedModel):
 
 
 class ReleaseLoad(TimestampedModel):
+    tenant = models.ForeignKey(
+        Tenant, on_delete=models.CASCADE, null=True,
+        related_name='release_loads', help_text='Tenant this release load belongs to'
+    )
     STATUS_CHOICES = (
         ("PENDING", "Pending"),
         ("SHIPPED", "Shipped"),
@@ -411,6 +463,10 @@ class ReleaseLoad(TimestampedModel):
 
 
 class AuditLog(TimestampedModel):
+    tenant = models.ForeignKey(
+        Tenant, on_delete=models.CASCADE, null=True,
+        related_name='audit_logs', help_text='Tenant this audit log belongs to'
+    )
     action = models.CharField(max_length=64)
     object_type = models.CharField(max_length=64, blank=True)
     object_id = models.CharField(max_length=64, blank=True)
