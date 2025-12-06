@@ -294,7 +294,7 @@
     }
 
     async function load() {
-      const res = await fetch('/api/releases/pending-loads/', { credentials: 'same-origin' });
+      const res = await fetch('/api/client/pending-loads/', { credentials: 'same-origin' });
       if (!res.ok) throw new Error(await res.text());
       allLoads = await res.json();
       render();

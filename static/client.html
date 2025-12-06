@@ -616,9 +616,8 @@
     // Load all dashboard data
     (async () => {
       try {
-        // Load products/inventory
-        const products = await getJSON('/api/products/');
-        const balances = await getJSON('/api/balances/');
+        // Load products/inventory from client portal API
+        const balances = await getJSON('/api/client/inventory/');
 
         // Render inventory cards
         const inventoryGrid = document.getElementById('inventoryGrid');
