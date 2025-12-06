@@ -137,6 +137,7 @@ def health_check(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 @require_role('Admin', 'Office', 'Client')  # All authenticated users need this for dashboard
+@feature_permission_required('dashboard', 'view')
 def user_context(request):
     """
     Return user context including role and permissions for frontend.
@@ -162,6 +163,7 @@ def user_context(request):
 
 # Product endpoints
 @method_decorator(require_role('Admin', 'Office', 'Client'), name='dispatch')
+@method_decorator(feature_permission_required('products', 'view'), name='dispatch')
 class ProductListView(generics.ListCreateAPIView):
     serializer_class = ProductSerializer
     permission_classes = [IsAuthenticated]
@@ -243,6 +245,7 @@ class ProductListView(generics.ListCreateAPIView):
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 @require_role('Admin', 'Office')  # Internal staff only - customer management is internal
+@feature_permission_required('customers', 'view')
 def customer_list(request):
     try:
         if request.method == 'GET':
@@ -306,6 +309,7 @@ def customer_list(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 @require_role('Admin', 'Office')  # Internal staff only
+@feature_permission_required('customers', 'view')
 def customer_detail(request, customer_id: int):
     """
     Get details for a single customer by ID.
@@ -327,6 +331,7 @@ def customer_detail(request, customer_id: int):
 @api_view(['GET','POST'])
 @permission_classes([IsAuthenticated])
 @require_role_for_writes('admin', 'office')  # POST operations require Admin or Office role (both have write permission)
+@feature_permission_required('customers', 'view')
 def customer_shiptos(request, customer_id: int):
     try:
         try:
@@ -450,6 +455,7 @@ def customer_branding(request):
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 @require_role_for_writes('admin', 'office')
+@feature_permission_required('products', 'view')
 def lot_list(request):
     """List all lots or create a new lot."""
     from .serializers import LotSerializer
@@ -500,6 +506,7 @@ def lot_list(request):
 @api_view(['GET', 'POST'])
 @permission_classes([IsAuthenticated])
 @require_role_for_writes('admin', 'office')  # POST operations require Admin or Office role (needed for BOL creation)
+@feature_permission_required('carriers', 'view')
 def carrier_list(request):
     try:
         if request.method == 'POST':
@@ -898,6 +905,7 @@ def confirm_bol(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 @require_role('Admin', 'Office', 'Client')  # Client dashboard needs this for inventory display
+@feature_permission_required('reports', 'view')
 def balances(request):
     try:
         # Filter by tenant for data isolation
@@ -955,6 +963,7 @@ def _parse_date_any(s: str):
 @authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
 @require_role('admin', 'office')  # Allow Admin and Office roles to approve releases (both have write permission)
+@feature_permission_required('releases', 'modify')
 def approve_release(request):
     try:
         data = request.data if isinstance(request.data, dict) else {}
@@ -1197,6 +1206,7 @@ def approve_release(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 @require_role('Admin', 'Office', 'Client')  # Client dashboard needs this for releases display
+@feature_permission_required('releases', 'view')
 def list_releases(request):
     """List releases with optional status filter. Defaults to OPEN."""
     try:
@@ -1277,6 +1287,7 @@ def list_releases(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 @require_role('Admin', 'Office', 'Client')  # Client dashboard loading schedule needs this
+@feature_permission_required('releases', 'view')
 def pending_release_loads(request):
     try:
         from datetime import date as date_class, timedelta
@@ -1370,6 +1381,7 @@ def pending_release_loads(request):
 @authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
 @require_role('Admin', 'Office', 'Client')  # All authenticated users - Phase 2 audit fix
+@feature_permission_required('releases', 'view')
 def load_detail_api(request, load_id):
     try:
         load = ReleaseLoad.objects.select_related('release__customer_ref', 'release__ship_to_ref', 'release__carrier_ref', 'release__lot_ref').get(id=load_id)
@@ -1409,6 +1421,7 @@ def load_detail_api(request, load_id):
 @authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
 @require_role_for_writes('admin', 'office')  # PATCH operations require Admin or Office role (both have write permission)
+@feature_permission_required('releases', 'view')
 def release_detail_api(request, release_id):
     try:
         rel = Release.objects.select_related('customer_ref', 'ship_to_ref', 'carrier_ref', 'lot_ref').prefetch_related('loads__bol').get(id=release_id)
@@ -1617,6 +1630,7 @@ def release_detail_api(request, release_id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 @require_role('Admin', 'Office')  # Internal staff only - Client cannot access
+@feature_permission_required('reports', 'view')
 def audit_logs(request):
     """
     Return audit logs - INTERNAL STAFF ONLY.
@@ -1879,6 +1893,7 @@ def set_official_weight(request, bol_id):
 @authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
 @require_role('admin')  # Regenerating PDFs requires admin role (sensitive operation)
+@feature_permission_required('admin', 'modify')
 def regenerate_bol_pdf(request, bol_id):
     """
     Regenerate the PDF for a BOL using current data.
@@ -1990,6 +2005,7 @@ def download_bol_pdf(request, bol_id):
 @authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
 @require_role('admin', 'office')  # Allow Admin and Office roles to upload releases (both have write permission)
+@feature_permission_required('releases', 'create')
 def upload_release(request):
     """
     Accept a release PDF, parse header/material/schedule fields, and return JSON.
@@ -2024,6 +2040,7 @@ def upload_release(request):
 @authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
 @require_role('Admin', 'Office')  # Internal staff only
+@feature_permission_required('reports', 'view')
 def inventory_report(request):
     """
     EOM Inventory Report with date range filtering.
@@ -2148,6 +2165,7 @@ from django.http import HttpResponse as DjangoHttpResponse
 
 @login_required
 @require_role('Admin', 'Office')
+@feature_permission_required('reports', 'view')
 def inventory_report_pdf(request):
     """
     Generate PDF for EOM Inventory Report.

@@ -22,6 +22,115 @@ def dashboard(request):
     return serve(request, 'index.html', document_root=os.path.join(settings.BASE_DIR, 'static'))
 
 
+# =============================================================================
+# Frontend Page Views with RBAC
+# =============================================================================
+
+def _serve_static(request, filename):
+    """Helper to serve static HTML files."""
+    return serve(request, filename, document_root=os.path.join(settings.BASE_DIR, 'static'))
+
+
+@login_required
+@feature_permission_required('bol', 'create')
+@ensure_csrf_cookie
+def office_page(request):
+    """Office page - BOL creation interface."""
+    return _serve_static(request, 'office.html')
+
+
+@login_required
+@feature_permission_required('bol', 'view')
+@ensure_csrf_cookie
+def bol_page(request):
+    """BOL page - view BOLs."""
+    return _serve_static(request, 'bol.html')
+
+
+@login_required
+@feature_permission_required('bol', 'modify')
+@ensure_csrf_cookie
+def bol_weights_page(request):
+    """BOL weights page - set official weights."""
+    return _serve_static(request, 'bol-weights.html')
+
+
+@login_required
+@feature_permission_required('products', 'view')
+@ensure_csrf_cookie
+def products_page(request):
+    """Products catalog page."""
+    return _serve_static(request, 'products.html')
+
+
+@login_required
+@feature_permission_required('customers', 'view')
+@ensure_csrf_cookie
+def customers_page(request):
+    """Customer database page."""
+    return _serve_static(request, 'customers.html')
+
+
+@login_required
+@feature_permission_required('carriers', 'view')
+@ensure_csrf_cookie
+def carriers_page(request):
+    """Carrier management page."""
+    return _serve_static(request, 'carriers.html')
+
+
+@login_required
+@feature_permission_required('releases', 'view')
+@ensure_csrf_cookie
+def releases_page(request):
+    """Releases management page."""
+    return _serve_static(request, 'releases.html')
+
+
+@login_required
+@feature_permission_required('schedule', 'view')
+@ensure_csrf_cookie
+def loading_schedule_page(request):
+    """Loading schedule page."""
+    return serve(request, 'loading-schedule.html', document_root=settings.BASE_DIR / 'templates')
+
+
+@login_required
+@feature_permission_required('reports', 'view')
+@ensure_csrf_cookie
+def inventory_report_page(request):
+    """Inventory report page."""
+    return serve(request, 'inventory-report.html', document_root=settings.BASE_DIR / 'templates')
+
+
+@login_required
+@feature_permission_required('client_portal', 'view')
+@ensure_csrf_cookie
+def client_page(request):
+    """Client portal page."""
+    return _serve_static(request, 'client.html')
+
+
+@login_required
+@feature_permission_required('client_portal', 'view')
+@ensure_csrf_cookie
+def client_schedule_page(request):
+    """Client schedule page."""
+    return serve(request, 'client-schedule.html', document_root=settings.BASE_DIR / 'templates')
+
+
+@login_required
+@feature_permission_required('client_portal', 'view')
+@ensure_csrf_cookie
+def client_release_page(request):
+    """Client release page."""
+    return serve(request, 'client-release.html', document_root=settings.BASE_DIR / 'templates')
+
+
+# =============================================================================
+# Media Access
+# =============================================================================
+
 @login_required
 @require_role('Admin', 'Office', 'Client')
 def secure_media_download(request, path):

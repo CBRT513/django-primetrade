@@ -37,20 +37,20 @@ urlpatterns = [
     # Dashboard with RBAC enforcement - requires 'dashboard:view' permission
     path('', primetrade_views.dashboard, name='home'),
 
-    # Protected frontend HTML pages
-    path('office.html', login_required(lambda request: serve_static_html(request, 'office.html')), name='office'),
-    path('client.html', login_required(lambda request: serve_static_html(request, 'client.html')), name='client'),
-    path('bol.html', login_required(lambda request: serve_static_html(request, 'bol.html')), name='bol'),
-    path('products.html', login_required(lambda request: serve_static_html(request, 'products.html')), name='products'),
-    path('customers.html', login_required(lambda request: serve_static_html(request, 'customers.html')), name='customers'),
-    path('carriers.html', login_required(lambda request: serve_static_html(request, 'carriers.html')), name='carriers'),
-    path('releases.html', login_required(lambda request: serve_static_html(request, 'releases.html')), name='releases'),
-    path('open-releases/', login_required(TemplateView.as_view(template_name='releases.html')), name='open_releases'),
-    path('loading-schedule.html', login_required(TemplateView.as_view(template_name='loading-schedule.html')), name='loading_schedule'),
-    path('client-schedule.html', login_required(TemplateView.as_view(template_name='client-schedule.html')), name='client_schedule'),
-    path('client-release.html', login_required(TemplateView.as_view(template_name='client-release.html')), name='client_release'),
-    path('bol-weights.html', login_required(TemplateView.as_view(template_name='bol-weights.html')), name='bol_weights'),
-    path('inventory-report.html', login_required(TemplateView.as_view(template_name='inventory-report.html')), name='inventory_report_page'),
+    # Protected frontend HTML pages with RBAC
+    path('office.html', primetrade_views.office_page, name='office'),
+    path('client.html', primetrade_views.client_page, name='client'),
+    path('bol.html', primetrade_views.bol_page, name='bol'),
+    path('products.html', primetrade_views.products_page, name='products'),
+    path('customers.html', primetrade_views.customers_page, name='customers'),
+    path('carriers.html', primetrade_views.carriers_page, name='carriers'),
+    path('releases.html', primetrade_views.releases_page, name='releases'),
+    path('open-releases/', primetrade_views.releases_page, name='open_releases'),
+    path('loading-schedule.html', primetrade_views.loading_schedule_page, name='loading_schedule'),
+    path('client-schedule.html', primetrade_views.client_schedule_page, name='client_schedule'),
+    path('client-release.html', primetrade_views.client_release_page, name='client_release'),
+    path('bol-weights.html', primetrade_views.bol_weights_page, name='bol_weights'),
+    path('inventory-report.html', primetrade_views.inventory_report_page, name='inventory_report_page'),
 
     # Authenticated media access (signed URLs for PDFs)
     path('media/<path:path>', primetrade_views.secure_media_download, name='secure_media'),
