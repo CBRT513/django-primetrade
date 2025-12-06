@@ -450,6 +450,12 @@ def sso_callback(request):
     request.session['feature_permissions'] = feature_permissions
     logger.info(f"Stored feature_permissions in session: {list(feature_permissions.keys())}")
 
+    # RBAC Debug logging
+    logger.info(f"[RBAC DEBUG] application_roles from JWT: {application_roles}")
+    logger.info(f"[RBAC DEBUG] primetrade_role from JWT: {primetrade_role}")
+    logger.info(f"[RBAC DEBUG] Stored in session - application_roles: {request.session.get('application_roles')}")
+    logger.info(f"[RBAC DEBUG] Stored in session - feature_permissions: {request.session.get('feature_permissions')}")
+
     if settings.DEBUG_AUTH_FLOW:
         logger.debug(f"[FLOW DEBUG 10] Session data stored:")
         logger.debug(f"[FLOW DEBUG 10.1]   - primetrade_role: {role_name} with permissions: {permissions}")

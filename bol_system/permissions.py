@@ -162,6 +162,12 @@ def feature_permission_required(feature: str, permission: str):
     def decorator(view_func):
         @wraps(view_func)
         def wrapper(request, *args, **kwargs):
+            # RBAC Debug logging
+            user_email = getattr(request.user, "email", "unknown")
+            logger.info(f"[RBAC DEBUG] Checking {feature}:{permission} for {user_email}")
+            logger.info(f"[RBAC DEBUG] Session feature_permissions: {request.session.get('feature_permissions', {})}")
+            logger.info(f"[RBAC DEBUG] Session application_roles: {request.session.get('application_roles', {})}")
+
             if not has_permission(request, feature, permission):
                 user_email = getattr(request.user, "email", "unknown")
                 security_logger.warning(
