@@ -13,6 +13,7 @@ from .release_parser import parse_release_pdf
 from .email_utils import send_bol_notification
 from .security import validate_tenant_access, get_tenant_filter
 from primetrade_project.decorators import require_role, require_role_for_writes
+from bol_system.permissions import feature_permission_required
 from django.views.decorators.csrf import ensure_csrf_cookie
 # Customer filtering utilities removed - all authenticated users see all data
 from django.utils.decorators import method_decorator
@@ -581,6 +582,7 @@ def carrier_list(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @require_role('admin', 'office')  # Preview requires Admin or Office role (both have write permission)
+@feature_permission_required('bol', 'create')
 def preview_bol(request):
     """
     Generate a preview PDF without saving to database
@@ -704,6 +706,7 @@ def preview_bol(request):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @require_role('admin', 'office')  # Allow Admin and Office roles to create BOLs (both have write permission)
+@feature_permission_required('bol', 'create')
 def confirm_bol(request):
     try:
         data = request.data
@@ -1635,6 +1638,7 @@ def audit_logs(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 @require_role('Admin', 'Office', 'Client')  # All authenticated users
+@feature_permission_required('bol', 'view')
 def bol_history(request):
     """
     Return BOL history for all authenticated users.
@@ -1765,6 +1769,7 @@ def bol_history(request):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 @require_role('Admin', 'Office', 'Client')  # All authenticated users - Phase 2 audit fix
+@feature_permission_required('bol', 'view')
 def bol_detail(request, bol_id):
     try:
         bol = BOL.objects.get(id=bol_id)
@@ -1798,6 +1803,7 @@ def bol_detail(request, bol_id):
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
 @require_role('admin', 'office')  # Allow Admin and Office roles to set official weights (both have write permission)
+@feature_permission_required('bol', 'modify')
 def set_official_weight(request, bol_id):
     """
     Set official certified scale weight for a BOL.
@@ -1919,6 +1925,7 @@ def regenerate_bol_pdf(request, bol_id):
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
 @require_role('Admin', 'Office', 'Client')  # All authenticated users - Phase 2 audit fix
+@feature_permission_required('bol', 'view')
 def download_bol_pdf(request, bol_id):
     """
     Generate a fresh download link for a BOL PDF.
