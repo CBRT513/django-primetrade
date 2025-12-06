@@ -52,7 +52,7 @@ def bol_page(request):
 @ensure_csrf_cookie
 def bol_weights_page(request):
     """BOL weights page - set official weights."""
-    return _serve_static(request, 'bol-weights.html')
+    return serve(request, 'bol-weights.html', document_root=settings.BASE_DIR / 'templates')
 
 
 @login_required
