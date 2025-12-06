@@ -30,7 +30,7 @@ db.sqlite3
 db.sqlite3-journal
 media/bol_pdfs/*.pdf
 staticfiles/
-/static/
+# /static/  # Tracking static files now
 *.pot
 
 # Environment variables with secrets

@@ -835,7 +835,7 @@
             const statusBadge = `<span class="status-badge ${statusClass}">${r.status || 'OPEN'}</span>`;
             return `
             <tr>
-              <td style="font-weight: 600;">${r.releaseNumber || '-'}</td>
+              <td><a href="/client-release.html?id=${r.id}" style="font-weight: 600; color: var(--primary);">${r.releaseNumber || '-'}</a></td>
               <td>${r.customer || '-'}</td>
               <td>${statusBadge}</td>
               <td class="ta-r">${r.loadsShipped || 0} <span style="color: #64748b;">(${Number(r.tonsShipped || 0).toFixed(2)} NT)</span></td>
