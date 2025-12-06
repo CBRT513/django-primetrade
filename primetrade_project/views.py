@@ -80,11 +80,19 @@ def carriers_page(request):
 
 
 @login_required
+@feature_permission_required('releases', 'create')
+@ensure_csrf_cookie
+def releases_upload_page(request):
+    """Release upload page - parse PDFs to create releases."""
+    return _serve_static(request, 'releases.html')
+
+
+@login_required
 @feature_permission_required('releases', 'view')
 @ensure_csrf_cookie
-def releases_page(request):
-    """Releases management page."""
-    return _serve_static(request, 'releases.html')
+def open_releases_page(request):
+    """Open releases list - view releases ready for BOL creation."""
+    return serve(request, 'releases.html', document_root=settings.BASE_DIR / 'templates')
 
 
 @login_required
