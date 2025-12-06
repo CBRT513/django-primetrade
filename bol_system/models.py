@@ -519,3 +519,82 @@ class RoleRedirectConfig(models.Model):
     def __str__(self):
         status = "✓" if self.is_active else "✗"
         return f"{status} {self.role_name} → {self.landing_page}"
+
+
+class UserCustomerAccess(models.Model):
+    """
+    Links SSO users to customers they can access in PrimeTrade.
+
+    This is the app-owned user-to-customer association (best practice).
+    SSO handles authentication and generic roles, PrimeTrade handles
+    domain-specific associations.
+
+    Usage:
+        - Client users get filtered views of only their customer's data
+        - A user can have access to multiple customers
+        - is_primary determines default customer for dashboard
+
+    Admin workflow:
+        1. Client user logs in via SSO with 'Client' role
+        2. Admin creates UserCustomerAccess linking their email to a Customer
+        3. Client portal APIs filter data by this association
+    """
+    tenant = models.ForeignKey(
+        Tenant, on_delete=models.CASCADE, null=True,
+        related_name='user_customer_access',
+        help_text='Tenant this access belongs to'
+    )
+    user_email = models.EmailField(
+        db_index=True,
+        help_text='Email address from SSO (must match exactly)'
+    )
+    customer = models.ForeignKey(
+        Customer, on_delete=models.CASCADE,
+        related_name='user_access',
+        help_text='Customer this user can access'
+    )
+    is_primary = models.BooleanField(
+        default=True,
+        help_text='Primary customer shown on dashboard (only one per user)'
+    )
+    access_level = models.CharField(
+        max_length=20,
+        default='view',
+        choices=[
+            ('view', 'View Only'),
+            ('edit', 'View & Edit'),
+            ('admin', 'Full Access'),
+        ],
+        help_text='Level of access to customer data'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    created_by = models.EmailField(
+        blank=True,
+        help_text='Admin who granted this access'
+    )
+    notes = models.TextField(
+        blank=True,
+        help_text='Internal notes about this access grant'
+    )
+
+    class Meta:
+        unique_together = ['user_email', 'customer']
+        verbose_name = 'User Customer Access'
+        verbose_name_plural = 'User Customer Access'
+        ordering = ['user_email', '-is_primary', 'customer__customer']
+        indexes = [
+            models.Index(fields=['user_email', 'is_primary']),
+        ]
+
+    def __str__(self):
+        primary = "★" if self.is_primary else ""
+        return f"{primary}{self.user_email} → {self.customer.customer} ({self.access_level})"
+
+    def save(self, *args, **kwargs):
+        # Ensure only one primary per user
+        if self.is_primary:
+            UserCustomerAccess.objects.filter(
+                user_email=self.user_email,
+                is_primary=True
+            ).exclude(pk=self.pk).update(is_primary=False)
+        super().save(*args, **kwargs)

@@ -2271,3 +2271,253 @@ def inventory_report_pdf(request):
             status=500,
             content_type='text/plain'
         )
+
+
+# =============================================================================
+# Client Portal APIs
+# =============================================================================
+
+def get_user_customer(request):
+    """
+    Get primary customer for the current user.
+
+    Returns Customer object if user has a UserCustomerAccess record,
+    None otherwise.
+
+    Usage:
+        customer = get_user_customer(request)
+        if not customer:
+            return Response({'error': 'No customer association'}, status=403)
+    """
+    from .models import UserCustomerAccess
+
+    try:
+        access = UserCustomerAccess.objects.select_related('customer').get(
+            user_email=request.user.email,
+            is_primary=True
+        )
+        return access.customer
+    except UserCustomerAccess.DoesNotExist:
+        return None
+
+
+def get_user_customers(request):
+    """
+    Get all customers the current user can access.
+
+    Returns QuerySet of UserCustomerAccess objects.
+    """
+    from .models import UserCustomerAccess
+
+    return UserCustomerAccess.objects.filter(
+        user_email=request.user.email
+    ).select_related('customer').order_by('-is_primary', 'customer__customer')
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@feature_permission_required('client_portal', 'view')
+def client_context(request):
+    """
+    Return client portal context including customer association.
+
+    Returns:
+        - customer: Primary customer info (or null if not associated)
+        - customers: All customers user can access
+        - access_level: User's access level for primary customer
+    """
+    from .models import UserCustomerAccess
+
+    primary_access = None
+    try:
+        primary_access = UserCustomerAccess.objects.select_related('customer').get(
+            user_email=request.user.email,
+            is_primary=True
+        )
+    except UserCustomerAccess.DoesNotExist:
+        pass
+
+    all_access = get_user_customers(request)
+
+    return Response({
+        'user_email': request.user.email,
+        'customer': {
+            'id': primary_access.customer.id,
+            'name': primary_access.customer.customer,
+            'address': primary_access.customer.address,
+            'city': primary_access.customer.city,
+            'state': primary_access.customer.state,
+        } if primary_access else None,
+        'access_level': primary_access.access_level if primary_access else None,
+        'customers': [
+            {
+                'id': a.customer.id,
+                'name': a.customer.customer,
+                'is_primary': a.is_primary,
+                'access_level': a.access_level,
+            }
+            for a in all_access
+        ],
+        'has_customer_access': primary_access is not None,
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@feature_permission_required('client_portal', 'view')
+def client_shipments(request):
+    """
+    Return BOLs/shipments for the client's customer only.
+
+    Query params:
+        - limit: Number of records (default 50)
+        - offset: Pagination offset
+    """
+    customer = get_user_customer(request)
+    if not customer:
+        return Response({
+            'error': 'No customer association',
+            'message': 'Your account is not linked to a customer. Please contact support.'
+        }, status=status.HTTP_403_FORBIDDEN)
+
+    limit = min(int(request.GET.get('limit', 50)), 200)
+    offset = int(request.GET.get('offset', 0))
+
+    bols = BOL.objects.filter(
+        customer=customer
+    ).select_related('product').order_by('-created_at')[offset:offset + limit]
+
+    total = BOL.objects.filter(customer=customer).count()
+
+    return Response({
+        'customer': {
+            'id': customer.id,
+            'name': customer.customer,
+        },
+        'total': total,
+        'limit': limit,
+        'offset': offset,
+        'shipments': [
+            {
+                'id': bol.id,
+                'bol_number': bol.bol_number,
+                'date': bol.bol_date.isoformat() if bol.bol_date else None,
+                'product': bol.product.name if bol.product else bol.product_name,
+                'weight_tons': str(bol.official_weight_tons or bol.net_weight_tons or ''),
+                'carrier': bol.carrier_name,
+                'truck': bol.truck_number,
+                'pdf_url': bol.get_pdf_url(),
+                'status': 'shipped',
+            }
+            for bol in bols
+        ]
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@feature_permission_required('client_portal', 'view')
+def client_pending_loads(request):
+    """
+    Return pending release loads for the client's customer only.
+
+    These are loads scheduled but not yet shipped (no BOL created).
+    """
+    customer = get_user_customer(request)
+    if not customer:
+        return Response({
+            'error': 'No customer association',
+            'message': 'Your account is not linked to a customer. Please contact support.'
+        }, status=status.HTTP_403_FORBIDDEN)
+
+    # Get releases for this customer with pending loads
+    pending_loads = ReleaseLoad.objects.filter(
+        release__customer_ref=customer,
+        status='PENDING'
+    ).select_related(
+        'release', 'release__lot_ref', 'release__carrier_ref'
+    ).order_by('date', 'seq')
+
+    return Response({
+        'customer': {
+            'id': customer.id,
+            'name': customer.customer,
+        },
+        'total': pending_loads.count(),
+        'pending_loads': [
+            {
+                'id': load.id,
+                'release_id': load.release.id,
+                'release_number': load.release.release_number,
+                'date': load.date.isoformat() if load.date else None,
+                'seq': load.seq,
+                'planned_tons': str(load.planned_tons) if load.planned_tons else None,
+                'product': load.release.lot_ref.product.name if load.release.lot_ref and load.release.lot_ref.product else None,
+                'carrier': load.release.carrier_ref.name if load.release.carrier_ref else load.release.ship_via,
+            }
+            for load in pending_loads
+        ]
+    })
+
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
+@feature_permission_required('client_portal', 'view')
+def client_inventory(request):
+    """
+    Return inventory/product balances for the client's customer.
+
+    Shows products the customer has releases for, with remaining balances.
+    """
+    customer = get_user_customer(request)
+    if not customer:
+        return Response({
+            'error': 'No customer association',
+            'message': 'Your account is not linked to a customer. Please contact support.'
+        }, status=status.HTTP_403_FORBIDDEN)
+
+    # Get products from releases for this customer
+    from django.db.models import Sum, F, Value, DecimalField
+    from django.db.models.functions import Coalesce
+
+    # Find releases for this customer
+    releases = Release.objects.filter(
+        customer_ref=customer,
+        status='OPEN'
+    ).select_related('lot_ref', 'lot_ref__product')
+
+    inventory = []
+    for release in releases:
+        if not release.lot_ref or not release.lot_ref.product:
+            continue
+
+        product = release.lot_ref.product
+
+        # Calculate shipped vs remaining
+        shipped = ReleaseLoad.objects.filter(
+            release=release,
+            status='SHIPPED'
+        ).aggregate(
+            total=Coalesce(Sum('official_weight_tons'), Value(0), output_field=DecimalField())
+        )['total']
+
+        remaining = float(release.quantity_net_tons or 0) - float(shipped or 0)
+
+        inventory.append({
+            'release_id': release.id,
+            'release_number': release.release_number,
+            'product_id': product.id,
+            'product_name': product.name,
+            'total_tons': str(release.quantity_net_tons),
+            'shipped_tons': str(shipped),
+            'remaining_tons': str(round(remaining, 2)),
+            'status': release.status,
+        })
+
+    return Response({
+        'customer': {
+            'id': customer.id,
+            'name': customer.customer,
+        },
+        'inventory': inventory
+    })

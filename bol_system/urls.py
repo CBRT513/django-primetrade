@@ -40,4 +40,10 @@ urlpatterns = [
     path('releases/<int:release_id>/view/', login_required(TemplateView.as_view(template_name='release_detail.html')), name='release_detail_view'),
 
     path('auth/me/', auth_views.current_user, name='current_user'),
+
+    # Client Portal API endpoints (customer-filtered views)
+    path('client/context/', views.client_context, name='client_context'),
+    path('client/shipments/', views.client_shipments, name='client_shipments'),
+    path('client/pending-loads/', views.client_pending_loads, name='client_pending_loads'),
+    path('client/inventory/', views.client_inventory, name='client_inventory'),
 ]

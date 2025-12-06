@@ -1,7 +1,8 @@
 from django.contrib import admin
 from .models import (
     Product, Customer, Carrier, Truck, BOL, BOLCounter, CompanyBranding,
-    RoleRedirectConfig, Tenant, Release, ReleaseLoad, Lot, AuditLog, CustomerShipTo
+    RoleRedirectConfig, Tenant, Release, ReleaseLoad, Lot, AuditLog, CustomerShipTo,
+    UserCustomerAccess
 )
 
 
@@ -171,3 +172,26 @@ class CustomerShipToAdmin(TenantAdminMixin, admin.ModelAdmin):
     list_display = ['customer', 'name', 'city', 'state', 'is_active']
     list_filter = ['is_active', 'state']
     search_fields = ['customer__customer', 'name', 'city']
+
+
+@admin.register(UserCustomerAccess)
+class UserCustomerAccessAdmin(admin.ModelAdmin):
+    """Admin interface for managing user-customer associations (Client Portal)."""
+    list_display = ['user_email', 'customer', 'is_primary', 'access_level', 'created_at']
+    list_filter = ['is_primary', 'access_level', 'created_at']
+    search_fields = ['user_email', 'customer__customer']
+    autocomplete_fields = ['customer']
+    readonly_fields = ['created_at', 'updated_at']
+
+    fieldsets = (
+        ('User Association', {
+            'fields': ('user_email', 'customer')
+        }),
+        ('Access Settings', {
+            'fields': ('is_primary', 'access_level')
+        }),
+        ('Metadata', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
