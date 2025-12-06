@@ -181,7 +181,7 @@ class UserCustomerAccessAdmin(admin.ModelAdmin):
     list_filter = ['is_primary', 'access_level', 'created_at']
     search_fields = ['user_email', 'customer__customer']
     autocomplete_fields = ['customer']
-    readonly_fields = ['created_at', 'updated_at']
+    readonly_fields = ['created_at']
 
     fieldsets = (
         ('User Association', {
@@ -191,7 +191,7 @@ class UserCustomerAccessAdmin(admin.ModelAdmin):
             'fields': ('is_primary', 'access_level')
         }),
         ('Metadata', {
-            'fields': ('created_at', 'updated_at'),
+            'fields': ('created_at',),
             'classes': ('collapse',)
         }),
     )
