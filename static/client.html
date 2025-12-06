@@ -648,7 +648,7 @@
         }
 
         // Load recent shipments (all BOLs) with sorting, filtering, pagination
-        const historyData = await getJSON('/api/history/');
+        const historyData = await getJSON('/api/client/shipments/');
         const tbody = document.querySelector('#shipmentsTable tbody');
         const shipmentCount = document.getElementById('shipmentCount');
 

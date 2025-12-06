@@ -2346,38 +2346,31 @@ def client_shipments(request):
     """
     Return all BOLs/shipments (single-tenant, read-only).
 
-    Query params:
-        - limit: Number of records (default 50)
-        - offset: Pagination offset
+    Same format as /api/history/ for frontend compatibility.
     """
-    limit = min(int(request.GET.get('limit', 50)), 200)
-    offset = int(request.GET.get('offset', 0))
+    bols = BOL.objects.select_related('product', 'customer').order_by('-created_at')
 
-    bols = BOL.objects.select_related(
-        'product', 'customer'
-    ).order_by('-created_at')[offset:offset + limit]
+    rows = []
+    for bol in bols:
+        has_official = bol.official_weight_tons is not None
+        display_weight = float(bol.official_weight_tons) if has_official else float(bol.net_tons or 0)
 
-    total = BOL.objects.count()
+        rows.append({
+            'id': bol.id,
+            'bolNo': bol.bol_number,
+            'date': bol.date,
+            'truckNo': bol.truck_number,
+            'netTons': round(display_weight, 2),
+            'cbrtWeightTons': round(float(bol.net_tons or 0), 2),
+            'pdfUrl': bol.get_pdf_url(),
+            'productName': bol.product_name,
+            'buyerName': bol.buyer_name,
+            'officialWeightTons': round(float(bol.official_weight_tons), 2) if has_official else None,
+        })
 
     return Response({
-        'total': total,
-        'limit': limit,
-        'offset': offset,
-        'shipments': [
-            {
-                'id': bol.id,
-                'bol_number': bol.bol_number,
-                'date': bol.bol_date.isoformat() if bol.bol_date else None,
-                'product': bol.product.name if bol.product else bol.product_name,
-                'customer': bol.customer.customer if bol.customer else bol.buyer_name,
-                'weight_tons': str(bol.official_weight_tons or bol.net_weight_tons or ''),
-                'carrier': bol.carrier_name,
-                'truck': bol.truck_number,
-                'pdf_url': bol.get_pdf_url(),
-                'status': 'shipped',
-            }
-            for bol in bols
-        ]
+        'summary': None,
+        'rows': rows
     })
 
 
