@@ -37,20 +37,18 @@ def user_context(request):
         "is_admin": boolean
     }
 
-    Backend stores in session (set during OAuth callback):
-    request.session['primetrade_role'] = {
-        'role': 'Office',  # Admin, Office, or Client
-        'permissions': ['read', 'write', 'delete']
-    }
+    Session data (set during OAuth callback):
+    - primetrade_role: {"role": "Office", "permissions": []}
+    - feature_permissions: {"customers": ["view", "create"], ...}
 
-    Permission Logic:
-    - Admin: ['full_access'] -> can_write=true, is_admin=true
-    - Office: ['read', 'write', 'delete'] -> can_write=true, is_admin=false
-    - Client: ['read'] -> can_write=false, is_admin=false
+    Permission Logic (RBAC Dec 2025):
+    - can_write: true if user has "create" or "modify" for any feature
+    - is_admin: true if role is "Admin" or has "full_access" permission
 
-    Security (Phase 2 Fix):
-    - All authenticated users (Admin, Office, Client) can access
-    - Required for client dashboard initialization
+    Examples:
+    - Admin: permissions=["full_access"] -> can_write=true, is_admin=true
+    - Office: features={"bol": ["create", "modify"]} -> can_write=true
+    - Client: features={"bol": ["view"]} -> can_write=false
 
     Returns:
         JsonResponse: User context with permissions as booleans
@@ -74,15 +72,33 @@ def user_context(request):
     role = role_info.get("role", "Client")  # Default to Client
     permissions = role_info.get("permissions", [])
 
-    # Convert permissions array to boolean flags for frontend
-    can_write = "write" in permissions or "full_access" in permissions
-    is_admin = "full_access" in permissions
+    # Get feature permissions from session (RBAC system)
+    feature_permissions = request.session.get("feature_permissions", {})
+
+    # Check for write access:
+    # 1. Legacy: "write" in top-level permissions array
+    # 2. Admin: "full_access" in top-level permissions
+    # 3. RBAC: Any feature has "create" or "modify" permission
+    has_write_permission = (
+        "write" in permissions
+        or "full_access" in permissions
+        or any(
+            "create" in perms or "modify" in perms
+            for perms in feature_permissions.values()
+        )
+    )
+
+    # Check for admin access:
+    # 1. "full_access" in top-level permissions
+    # 2. Role is "Admin" (case-insensitive)
+    is_admin = "full_access" in permissions or role.lower() == "admin"
 
     return JsonResponse(
         {
             "user": {"email": request.user.email, "role": role},
-            "can_write": can_write,
+            "can_write": has_write_permission,
             "is_admin": is_admin,
-            "permissions": permissions,  # Include raw permissions for debugging
+            "permissions": permissions,  # Legacy permissions for debugging
+            "features": feature_permissions,  # RBAC feature permissions
         }
     )
