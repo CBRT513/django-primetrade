@@ -145,10 +145,35 @@ def user_context(request):
     Security (Phase 2 Fix):
     - All authenticated users (Admin, Office, Client) can access
     - Required for client dashboard to load
+
+    Permission Logic (RBAC Dec 2025):
+    - can_write: true if user has "create" or "modify" for any feature
+    - is_admin: true if role is "Admin" or has "full_access" permission
     """
     app_role = request.session.get('primetrade_role', {})
     user_role = app_role.get('role', 'viewer')
     permissions = app_role.get('permissions', ['read'])
+
+    # Get feature permissions from session (RBAC system)
+    feature_permissions = request.session.get('feature_permissions', {})
+
+    # Check for write access:
+    # 1. Legacy: "write" in top-level permissions array
+    # 2. Admin: "full_access" in top-level permissions
+    # 3. RBAC: Any feature has "create" or "modify" permission
+    has_write_permission = (
+        'write' in permissions
+        or 'full_access' in permissions
+        or any(
+            'create' in perms or 'modify' in perms
+            for perms in feature_permissions.values()
+        )
+    )
+
+    # Check for admin access:
+    # 1. "full_access" in top-level permissions
+    # 2. Role is "Admin" (case-insensitive)
+    is_admin = 'full_access' in permissions or user_role.lower() == 'admin'
 
     return Response({
         'user': {
@@ -157,8 +182,8 @@ def user_context(request):
             'permissions': permissions,
             'is_authenticated': True
         },
-        'can_write': 'write' in permissions or 'full_access' in permissions,
-        'is_admin': 'full_access' in permissions
+        'can_write': has_write_permission,
+        'is_admin': is_admin
     })
 
 # Product endpoints
