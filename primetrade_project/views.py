@@ -1,12 +1,18 @@
 import os
+from datetime import timedelta
+
 from django.http import Http404, HttpResponseRedirect, FileResponse
 from django.contrib.auth.decorators import login_required
 from django.core.files.storage import default_storage
 from django.views.static import serve
 from django.views.decorators.csrf import ensure_csrf_cookie
+from django.shortcuts import render
 from django.conf import settings
+from django.utils import timezone
+
 from primetrade_project.decorators import require_role
 from bol_system.permissions import feature_permission_required
+from bol_system.models import BOL, Release, ReleaseLoad, Customer
 
 
 @login_required
@@ -14,12 +20,54 @@ from bol_system.permissions import feature_permission_required
 @ensure_csrf_cookie
 def dashboard(request):
     """
-    Main dashboard view with RBAC enforcement.
+    Staff dashboard with operational overview.
 
     Requires 'dashboard:view' permission from SSO RBAC.
+    Shows BOLs, releases, schedule, and customers.
     """
-    file_path = os.path.join(settings.BASE_DIR, 'static', 'index.html')
-    return serve(request, 'index.html', document_root=os.path.join(settings.BASE_DIR, 'static'))
+    today = timezone.now().date()
+    week_start = today - timedelta(days=today.weekday())  # Monday
+    week_end = week_start + timedelta(days=6)  # Sunday
+
+    # Summary stats
+    total_bols = BOL.objects.count()
+    pending_releases = Release.objects.filter(status='OPEN').count()
+    week_bols = BOL.objects.filter(
+        created_at__date__gte=week_start,
+        created_at__date__lte=week_end
+    ).count()
+    total_customers = Customer.objects.filter(is_active=True).count()
+
+    # Upcoming schedule (release loads with dates in next 7 days)
+    upcoming_schedule = ReleaseLoad.objects.select_related(
+        'release', 'release__customer_ref', 'release__carrier_ref'
+    ).filter(
+        date__gte=today,
+        date__lte=today + timedelta(days=7),
+        status='PENDING'
+    ).order_by('date', 'seq')[:10]
+
+    # Recent BOLs
+    recent_bols = BOL.objects.select_related(
+        'customer', 'carrier', 'product'
+    ).order_by('-created_at')[:5]
+
+    # Recent releases
+    recent_releases = Release.objects.select_related(
+        'customer_ref', 'carrier_ref'
+    ).order_by('-created_at')[:5]
+
+    context = {
+        'total_bols': total_bols,
+        'pending_releases': pending_releases,
+        'week_bols': week_bols,
+        'total_customers': total_customers,
+        'upcoming_schedule': upcoming_schedule,
+        'recent_bols': recent_bols,
+        'recent_releases': recent_releases,
+    }
+
+    return render(request, 'staff_dashboard.html', context)
 
 
 # =============================================================================
