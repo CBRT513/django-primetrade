@@ -224,7 +224,7 @@ class ProductListView(generics.ListCreateAPIView):
             if pid:
                 # Update existing product
                 try:
-                    prod = Product.objects.get(id=pid)
+                    prod = Product.objects.get(id=pid, **get_tenant_filter(request))
                 except Product.DoesNotExist:
                     return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
                 if name:
@@ -294,7 +294,7 @@ def customer_list(request):
         if cust_id:
             # Update existing customer
             try:
-                cust = Customer.objects.get(id=cust_id)
+                cust = Customer.objects.get(id=cust_id, **get_tenant_filter(request))
                 cust.customer = customer_name
                 cust.address = address
                 cust.address2 = address2
@@ -360,7 +360,7 @@ def customer_detail(request, customer_id: int):
 def customer_shiptos(request, customer_id: int):
     try:
         try:
-            customer = Customer.objects.get(id=customer_id)
+            customer = Customer.objects.get(id=customer_id, **get_tenant_filter(request))
         except Customer.DoesNotExist:
             return Response({'error': 'Customer not found'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -439,6 +439,10 @@ def customer_branding(request):
       - customer_id: optional customer ID to get specific branding
       - customer_name: optional customer name to lookup branding
     If no params provided, returns default PrimeTrade branding.
+
+    SECURITY NOTE: This endpoint intentionally does NOT use tenant filtering.
+    It's a public endpoint for fetching non-sensitive branding data (logos, colors).
+    No sensitive business data is exposed through this endpoint.
     """
     try:
         customer_id = request.GET.get('customer_id')
@@ -504,7 +508,7 @@ def lot_list(request):
         product_obj = None
         if product_id:
             try:
-                product_obj = Product.objects.get(id=product_id)
+                product_obj = Product.objects.get(id=product_id, **get_tenant_filter(request))
             except Product.DoesNotExist:
                 pass
 
@@ -542,7 +546,7 @@ def carrier_list(request):
             if carrier_id:
                 # Update existing carrier
                 try:
-                    carrier = Carrier.objects.get(id=carrier_id)
+                    carrier = Carrier.objects.get(id=carrier_id, **get_tenant_filter(request))
                     carrier.carrier_name = data.get('carrier_name', carrier.carrier_name)
                     carrier.contact_name = data.get('contact_name', '')
                     carrier.phone = data.get('phone', '')
@@ -658,21 +662,22 @@ def preview_bol(request):
             except ReleaseLoad.DoesNotExist:
                 pass  # Continue without release data
 
-        # Get related objects for display names
+        # Get related objects for display names (tenant-scoped)
         try:
-            product = Product.objects.get(id=data['productId'])
+            product = Product.objects.get(id=data['productId'], **get_tenant_filter(request))
         except Product.DoesNotExist:
             return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
 
         try:
-            carrier = Carrier.objects.get(id=data.get('carrierId', ''))
+            carrier = Carrier.objects.get(id=data.get('carrierId', ''), **get_tenant_filter(request))
         except Carrier.DoesNotExist:
             return Response({'error': 'Carrier not found'}, status=status.HTTP_404_NOT_FOUND)
 
         truck = None
         if data.get('truckId'):
             try:
-                truck = Truck.objects.get(id=data.get('truckId'))
+                # Truck inherits tenant through carrier relationship
+                truck = Truck.objects.get(id=data.get('truckId'), carrier__tenant=getattr(request, 'tenant', None))
             except Truck.DoesNotExist:
                 return Response({'error': 'Truck not found'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -791,7 +796,7 @@ def confirm_bol(request):
             product = getattr(getattr(release_obj, 'lot_ref', None), 'product', None)
             if not product and data.get('productId'):
                 try:
-                    product = Product.objects.get(id=data['productId'])
+                    product = Product.objects.get(id=data['productId'], **get_tenant_filter(request))
                 except Product.DoesNotExist:
                     return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
             if not product:
@@ -800,7 +805,7 @@ def confirm_bol(request):
             # Carrier: prefer payload carrierId override, else release.carrier_ref must exist
             if data.get('carrierId'):
                 try:
-                    carrier = Carrier.objects.get(id=data.get('carrierId'))
+                    carrier = Carrier.objects.get(id=data.get('carrierId'), **get_tenant_filter(request))
                 except Carrier.DoesNotExist:
                     return Response({'error': 'Carrier not found'}, status=status.HTTP_404_NOT_FOUND)
             else:
@@ -808,25 +813,26 @@ def confirm_bol(request):
                 if not carrier:
                     return Response({'error': 'Carrier is required'}, status=status.HTTP_400_BAD_REQUEST)
         else:
-            # Legacy resolution
+            # Legacy resolution (tenant-scoped)
             try:
-                product = Product.objects.get(id=data['productId'])
+                product = Product.objects.get(id=data['productId'], **get_tenant_filter(request))
             except Product.DoesNotExist:
                 return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
             try:
-                carrier = Carrier.objects.get(id=data.get('carrierId', ''))
+                carrier = Carrier.objects.get(id=data.get('carrierId', ''), **get_tenant_filter(request))
             except Carrier.DoesNotExist:
                 return Response({'error': 'Carrier not found'}, status=status.HTTP_404_NOT_FOUND)
             if data.get('customerId'):
                 try:
-                    customer = Customer.objects.get(id=data.get('customerId'))
+                    customer = Customer.objects.get(id=data.get('customerId'), **get_tenant_filter(request))
                 except Customer.DoesNotExist:
                     return Response({'error': 'Customer not found'}, status=status.HTTP_404_NOT_FOUND)
 
         truck = None
         if data.get('truckId'):
             try:
-                truck = Truck.objects.get(id=data.get('truckId'))
+                # Truck inherits tenant through carrier relationship
+                truck = Truck.objects.get(id=data.get('truckId'), carrier__tenant=getattr(request, 'tenant', None))
             except Truck.DoesNotExist:
                 return Response({'error': 'Truck not found'}, status=status.HTTP_404_NOT_FOUND)
 
@@ -1811,7 +1817,7 @@ def bol_history(request):
 @feature_permission_required('bol', 'view')
 def bol_detail(request, bol_id):
     try:
-        bol = BOL.objects.get(id=bol_id)
+        bol = BOL.objects.get(id=bol_id, **get_tenant_filter(request))
         # Convert S3 path to full URL (only if not already a URL)
         pdf_url = bol.pdf_url if (bol.pdf_url and bol.pdf_url.startswith('http')) else (default_storage.url(bol.pdf_url) if bol.pdf_url else None)
 
@@ -1851,7 +1857,7 @@ def set_official_weight(request, bol_id):
     Auto-calculates variance and logs who/when.
     """
     try:
-        bol = BOL.objects.get(id=bol_id)
+        bol = BOL.objects.get(id=bol_id, **get_tenant_filter(request))
 
         # Validate input
         weight_tons = request.data.get('officialWeightTons')
@@ -1925,7 +1931,7 @@ def regenerate_bol_pdf(request, bol_id):
     Useful when BOL data changes after creation or PDF is corrupted.
     """
     try:
-        bol = BOL.objects.get(id=bol_id)
+        bol = BOL.objects.get(id=bol_id, **get_tenant_filter(request))
 
         # Regenerate PDF
         try:
@@ -1981,7 +1987,7 @@ def download_bol_pdf(request, bol_id):
         }
     """
     try:
-        bol = BOL.objects.get(id=bol_id)
+        bol = BOL.objects.get(id=bol_id, **get_tenant_filter(request))
 
         # Generate signed URL (prefers pdf_key; falls back to legacy pdf_url)
         from django.core.files.storage import default_storage
