@@ -290,5 +290,29 @@ class CrossTenantAccessAttemptTests(TenantIsolationTestCase):
         filter_dict = get_tenant_filter(request)
         self.assertEqual(filter_dict, {})
 
-        # In production, endpoints should reject requests without tenant
-        # or return empty results for tenant-scoped data
+
+class ClientInventoryTenantIsolationTests(TenantIsolationTestCase):
+    """Test client_inventory endpoint respects tenant isolation."""
+
+    def test_client_inventory_filtered_by_tenant(self):
+        """Client inventory only shows current tenant's products."""
+        request = self.factory.get('/api/client/inventory/')
+        request.tenant = self.tenant_a
+
+        # Simulate what client_inventory does
+        products = Product.objects.filter(is_active=True, **get_tenant_filter(request))
+
+        self.assertEqual(products.count(), 1)
+        self.assertEqual(products.first(), self.product_a)
+        self.assertNotIn(self.product_b, products)
+
+    def test_client_inventory_excludes_other_tenant(self):
+        """Client inventory excludes other tenant's products."""
+        request = self.factory.get('/api/client/inventory/')
+        request.tenant = self.tenant_b
+
+        products = Product.objects.filter(is_active=True, **get_tenant_filter(request))
+
+        self.assertEqual(products.count(), 1)
+        self.assertEqual(products.first(), self.product_b)
+        self.assertNotIn(self.product_a, products)

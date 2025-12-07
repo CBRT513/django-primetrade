@@ -2481,12 +2481,12 @@ def client_pending_loads(request):
 @feature_permission_required('client_portal', 'view')
 def client_inventory(request):
     """
-    Return all products with balances (single-tenant, read-only).
+    Return all products with balances (tenant-scoped, read-only).
 
     Shows all active products with start/shipped/remaining tons.
     Uses same format as /api/balances/ for frontend compatibility.
     """
-    products = Product.objects.filter(is_active=True).order_by('name')
+    products = Product.objects.filter(is_active=True, **get_tenant_filter(request)).order_by('name')
 
     # Match /api/balances/ field names for frontend compatibility
     return Response([
