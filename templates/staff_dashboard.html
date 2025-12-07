@@ -78,6 +78,24 @@
             text-transform: uppercase;
         }
 
+        .brand-pipe {
+            color: #2563EB;
+            font-size: 1.75rem;
+            font-weight: 300;
+            margin: 0 16px;
+            line-height: 1;
+        }
+
+        .brand-logo {
+            height: 32px;
+            width: auto;
+        }
+
+        .header-title {
+            flex-grow: 1;
+            text-align: center;
+        }
+
         .user-menu {
             display: flex;
             align-items: center;
@@ -445,10 +463,12 @@
         <div class="header-inner">
             <a href="{% url 'home' %}" class="logo">
                 <img src="{% static 'cbrt-logo.jpg' %}" alt="CBRT" class="logo-img">
-                <div>
-                    <div class="logo-sub">Staff Portal</div>
-                </div>
+                <span class="brand-pipe">|</span>
+                <img src="{% static 'images/primetrade_logo.png' %}" alt="PrimeTrade" class="brand-logo">
             </a>
+            <div class="header-title">
+                <span class="logo-sub">Staff Portal</span>
+            </div>
             <div class="user-menu">
                 <span class="user-name">{{ user.email }}</span>
                 <a href="{% url 'sso_logout' %}" class="btn-logout">Sign Out</a>
