@@ -1004,10 +1004,13 @@ def approve_release(request):
         if not release_number:
             return Response({'error': 'releaseNumber required'}, status=status.HTTP_400_BAD_REQUEST)
 
-        # Handle duplicate release numbers
-        existing_active = Release.objects.filter(release_number=release_number).exclude(status='CANCELLED').first()
+        # Handle duplicate release numbers (per-tenant uniqueness)
+        existing_active = Release.objects.filter(
+            release_number=release_number,
+            **get_tenant_filter(request)
+        ).exclude(status='CANCELLED').first()
         if existing_active:
-            # Block duplicates for active (non-cancelled) releases
+            # Block duplicates for active (non-cancelled) releases within same tenant
             audit(request, 'RELEASE_APPROVE_DUPLICATE', existing_active, f"Duplicate attempt: {release_number}", {'releaseNumber': release_number})
             return Response(
                 {
@@ -1018,8 +1021,12 @@ def approve_release(request):
                 status=status.HTTP_409_CONFLICT
             )
 
-        # If there's a cancelled release with this number, delete it to allow re-creation
-        cancelled_release = Release.objects.filter(release_number=release_number, status='CANCELLED').first()
+        # If there's a cancelled release with this number in same tenant, delete it to allow re-creation
+        cancelled_release = Release.objects.filter(
+            release_number=release_number,
+            status='CANCELLED',
+            **get_tenant_filter(request)
+        ).first()
         if cancelled_release:
             logger.info(f"Deleting cancelled release {release_number} (ID: {cancelled_release.id}) to allow re-creation by {request.user.username}")
             audit(request, 'RELEASE_DELETED', cancelled_release, f"Deleted cancelled release {release_number} for re-creation")

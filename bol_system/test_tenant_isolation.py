@@ -316,3 +316,92 @@ class ClientInventoryTenantIsolationTests(TenantIsolationTestCase):
         self.assertEqual(products.count(), 1)
         self.assertEqual(products.first(), self.product_b)
         self.assertNotIn(self.product_a, products)
+
+
+class ReleaseNumberTenantIsolationTests(TenantIsolationTestCase):
+    """Test release number uniqueness is per-tenant."""
+
+    def test_release_number_query_scoped_to_tenant(self):
+        """Release number duplicate check is scoped to current tenant."""
+        from bol_system.models import Release
+
+        # Create a release in tenant A
+        Release.objects.create(
+            tenant=self.tenant_a,
+            release_number='REL-001',
+            customer_id_text='Customer A',
+            status='OPEN'
+        )
+
+        request = self.factory.get('/')
+        request.tenant = self.tenant_b
+
+        # Query for same release number in tenant B should return nothing
+        existing = Release.objects.filter(
+            release_number='REL-001',
+            **get_tenant_filter(request)
+        ).exclude(status='CANCELLED').first()
+
+        self.assertIsNone(existing)
+
+    def test_same_release_number_allowed_different_tenants(self):
+        """Same release number can exist in different tenants."""
+        from bol_system.models import Release
+
+        # Create release with same number in both tenants
+        release_a = Release.objects.create(
+            tenant=self.tenant_a,
+            release_number='REL-SHARED',
+            customer_id_text='Customer A',
+            status='OPEN'
+        )
+        release_b = Release.objects.create(
+            tenant=self.tenant_b,
+            release_number='REL-SHARED',
+            customer_id_text='Customer B',
+            status='OPEN'
+        )
+
+        # Both should exist
+        self.assertEqual(Release.objects.filter(release_number='REL-SHARED').count(), 2)
+
+        # Each tenant only sees their own
+        request_a = self.factory.get('/')
+        request_a.tenant = self.tenant_a
+        releases_a = Release.objects.filter(
+            release_number='REL-SHARED',
+            **get_tenant_filter(request_a)
+        )
+        self.assertEqual(releases_a.count(), 1)
+        self.assertEqual(releases_a.first(), release_a)
+
+        request_b = self.factory.get('/')
+        request_b.tenant = self.tenant_b
+        releases_b = Release.objects.filter(
+            release_number='REL-SHARED',
+            **get_tenant_filter(request_b)
+        )
+        self.assertEqual(releases_b.count(), 1)
+        self.assertEqual(releases_b.first(), release_b)
+
+    def test_duplicate_blocked_within_same_tenant(self):
+        """Duplicate release number is blocked within same tenant."""
+        from bol_system.models import Release
+
+        Release.objects.create(
+            tenant=self.tenant_a,
+            release_number='REL-DUP',
+            customer_id_text='Customer A',
+            status='OPEN'
+        )
+
+        request = self.factory.get('/')
+        request.tenant = self.tenant_a
+
+        # Check for duplicate should find it
+        existing = Release.objects.filter(
+            release_number='REL-DUP',
+            **get_tenant_filter(request)
+        ).exclude(status='CANCELLED').first()
+
+        self.assertIsNotNone(existing)

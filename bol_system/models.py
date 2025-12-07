@@ -377,7 +377,8 @@ class Release(TimestampedModel):
         ("CANCELLED", "Cancelled"),
     )
 
-    release_number = models.CharField(max_length=20, unique=True, db_index=True)
+    # Note: uniqueness is per-tenant, enforced via unique_together in Meta
+    release_number = models.CharField(max_length=20, db_index=True)
     release_date = models.DateField(null=True, blank=True)
 
     customer_id_text = models.CharField(max_length=200)  # e.g., "ST. MARYS"
@@ -419,6 +420,8 @@ class Release(TimestampedModel):
 
     class Meta:
         ordering = ['-created_at']
+        # Release number is unique per-tenant, not globally
+        unique_together = [['tenant', 'release_number']]
 
     def __str__(self):
         return f"Release {self.release_number} ({self.customer_id_text})"
