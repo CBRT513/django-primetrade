@@ -65,6 +65,33 @@ security_logger = logging.getLogger("django.security")
 APP_SLUG = "primetrade"
 
 
+def has_full_access(request) -> bool:
+    """
+    Check if user has full_access permission (Admin wildcard).
+
+    This is a wildcard permission that grants all feature permissions.
+    Checked BEFORE specific feature permissions.
+
+    Returns:
+        bool: True if user has full_access
+    """
+    # Check session-based role data
+    app_roles = request.session.get("application_roles", {})
+    app_data = app_roles.get(APP_SLUG, {})
+    permissions = app_data.get("permissions", [])
+
+    if "full_access" in permissions:
+        return True
+
+    # Also check primetrade_role (legacy format)
+    role_info = request.session.get("primetrade_role", {})
+    legacy_perms = role_info.get("permissions", [])
+    if "full_access" in legacy_perms:
+        return True
+
+    return False
+
+
 def get_feature_permissions(request):
     """
     Extract feature permissions from request.
@@ -100,6 +127,12 @@ def has_permission(request, feature: str, permission: str) -> bool:
         if has_permission(request, 'bol', 'modify'):
             bol.save()
     """
+    # FIRST: Check for full_access wildcard (Admin users)
+    if has_full_access(request):
+        logger.debug(f"[RBAC] full_access granted for {feature}:{permission}")
+        return True
+
+    # Then check specific feature permissions
     feature_perms = get_feature_permissions(request)
     permissions = feature_perms.get(feature, [])
     return permission in permissions
@@ -121,6 +154,10 @@ def has_any_permission(request, feature: str, permissions: list) -> bool:
         if has_any_permission(request, 'bol', ['create', 'modify']):
             show_edit_button = True
     """
+    # FIRST: Check for full_access wildcard (Admin users)
+    if has_full_access(request):
+        return True
+
     feature_perms = get_feature_permissions(request)
     user_perms = feature_perms.get(feature, [])
     return any(p in user_perms for p in permissions)
@@ -142,6 +179,10 @@ def has_all_permissions(request, feature: str, permissions: list) -> bool:
         if has_all_permissions(request, 'bol', ['view', 'export']):
             allow_export = True
     """
+    # FIRST: Check for full_access wildcard (Admin users)
+    if has_full_access(request):
+        return True
+
     feature_perms = get_feature_permissions(request)
     user_perms = feature_perms.get(feature, [])
     return all(p in user_perms for p in permissions)
