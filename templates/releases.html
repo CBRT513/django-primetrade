@@ -1,408 +1,553 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Releases</title>
-  <link rel="stylesheet" href="/static/css/cbrt-brand.css">
-  <style>
-    .summary { display:flex; gap: 1rem; align-items:center; flex-wrap: wrap; }
-    .summary .badge { background: var(--surface-elevated); border:1px solid var(--border); padding: .35rem .6rem; border-radius: 8px; }
-    table { width:100%; }
-    th, td { white-space: nowrap; }
-    .progress-bar {
-      width: 100px;
-      height: 20px;
-      background: #e5e7eb;
-      border-radius: 10px;
-      overflow: hidden;
-      display: inline-block;
-      vertical-align: middle;
-      margin-right: .5rem;
-    }
-    .progress-fill {
-      height: 100%;
-      background: linear-gradient(90deg, #10b981, #059669);
-      transition: width 0.3s;
-    }
-    .urgency-badge {
-      display: inline-block;
-      padding: .2rem .5rem;
-      border-radius: 4px;
-      font-size: .75rem;
-      font-weight: 600;
-      margin-left: .5rem;
-    }
-    .urgency-badge.overdue { background: #dc2626; color: white; }
-    .urgency-badge.due-soon { background: #f59e0b; color: white; }
-    .urgency-badge.upcoming { background: #10b981; color: white; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Releases | PrimeTrade</title>
+    <style>
+        :root {
+            --brand-primary: #005500;
+            --brand-dark: #004400;
+            --brand-light: #e8f5e9;
+            --text-primary: #1a1a1a;
+            --text-secondary: #666;
+            --text-muted: #999;
+            --bg-white: #fff;
+            --bg-light: #f9fafb;
+            --border-color: #e5e5e5;
+            --success: #28a745;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+            --danger: #dc2626;
+        }
 
-    /* Status filter tabs */
-    .status-tabs {
-      display: flex;
-      gap: 0.5rem;
-      margin-left: auto;
-    }
-    .status-tab {
-      padding: 0.5rem 1rem;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: 0.875rem;
-      font-weight: 500;
-      color: var(--text-secondary);
-      transition: all 0.2s;
-    }
-    .status-tab:hover {
-      background: var(--surface-elevated);
-    }
-    .status-tab.active {
-      background: var(--primary);
-      color: white;
-      border-color: var(--primary);
-    }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    /* Status badge in table */
-    .status-badge {
-      display: inline-block;
-      padding: 0.2rem 0.5rem;
-      border-radius: 4px;
-      font-size: 0.75rem;
-      font-weight: 600;
-    }
-    .status-badge.open { background: #dbeafe; color: #1e40af; }
-    .status-badge.complete { background: #dcfce7; color: #166534; }
-    .status-badge.cancelled { background: #fee2e2; color: #991b1b; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-light);
+            color: var(--text-primary);
+            line-height: 1.5;
+            min-height: 100vh;
+        }
 
-    /* Data table controls */
-    .table-controls {
-      display: flex;
-      gap: 1rem;
-      margin-top: 0.75rem;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-    .search-box {
-      flex: 1;
-      min-width: 200px;
-      padding: 0.5rem 1rem;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font-size: 1rem;
-      background: var(--surface);
-    }
-    .search-box:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
-    }
-    .page-size-select {
-      padding: 0.5rem;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font-size: 0.875rem;
-      background: var(--surface);
-    }
-    th.sortable {
-      cursor: pointer;
-      user-select: none;
-    }
-    th.sortable:hover {
-      background: rgba(0,0,0,0.05);
-    }
-    th.sortable::after {
-      content: ' ↕';
-      opacity: 0.5;
-    }
-    th.sortable.asc::after {
-      content: ' ↑';
-      opacity: 1;
-    }
-    th.sortable.desc::after {
-      content: ' ↓';
-      opacity: 1;
-    }
-    .pagination {
-      display: flex;
-      gap: 0.5rem;
-      justify-content: center;
-      align-items: center;
-      margin-top: 1rem;
-    }
-    .pagination button {
-      padding: 0.5rem 1rem;
-      border: 1px solid var(--border);
-      background: var(--surface);
-      border-radius: 6px;
-      cursor: pointer;
-      color: var(--text-primary);
-    }
-    .pagination button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-    .pagination button:hover:not(:disabled) {
-      background: var(--surface-elevated);
-    }
-    .pagination .page-info {
-      color: var(--text-secondary);
-      font-size: 0.875rem;
-    }
-  </style>
+        /* Header */
+        .header {
+            background: var(--bg-white);
+            border-bottom: 1px solid var(--border-color);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .header-inner {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 0 24px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            height: 64px;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            text-decoration: none;
+        }
+
+        .logo-img { height: 36px; width: auto; }
+        .brand-pipe { color: #2563EB; font-size: 1.75rem; font-weight: 300; margin: 0 16px; }
+        .brand-logo { height: 32px; width: auto; }
+        .logo-sub { font-size: 11px; color: var(--text-secondary); font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase; }
+
+        .user-menu { display: flex; align-items: center; gap: 16px; }
+        .user-name { font-size: 14px; color: var(--text-secondary); }
+        .btn-logout {
+            padding: 8px 16px;
+            background: var(--bg-light);
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            color: var(--text-primary);
+            font-size: 14px;
+            text-decoration: none;
+            transition: all 0.2s;
+        }
+        .btn-logout:hover { background: var(--bg-white); border-color: var(--brand-primary); color: var(--brand-primary); }
+
+        /* Navigation */
+        .nav { background: var(--bg-white); border-bottom: 1px solid var(--border-color); }
+        .nav-inner { max-width: 1400px; margin: 0 auto; padding: 0 24px; display: flex; gap: 4px; }
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 14px 20px;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
+            transition: all 0.2s;
+        }
+        .nav-link:hover { color: var(--brand-primary); background: var(--brand-light); }
+        .nav-link.active { color: var(--brand-primary); border-bottom-color: var(--brand-primary); }
+        .nav-icon { width: 18px; height: 18px; opacity: 0.7; }
+
+        /* Main Content */
+        .main { max-width: 1400px; margin: 0 auto; padding: 32px 24px; }
+
+        /* Page Header */
+        .page-header { margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+        .page-title { font-size: 28px; font-weight: 700; color: var(--text-primary); }
+        .page-subtitle { font-size: 15px; color: var(--text-secondary); }
+
+        /* Cards */
+        .card {
+            background: var(--bg-white);
+            border-radius: 12px;
+            border: 1px solid var(--border-color);
+            overflow: hidden;
+            margin-bottom: 24px;
+        }
+        .card-header {
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 12px;
+        }
+        .card-title { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+
+        /* Status Tabs */
+        .status-tabs { display: flex; gap: 8px; }
+        .status-tab {
+            padding: 8px 16px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-white);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-secondary);
+            transition: all 0.2s;
+        }
+        .status-tab:hover { background: var(--bg-light); border-color: var(--brand-primary); }
+        .status-tab.active { background: var(--brand-primary); color: white; border-color: var(--brand-primary); }
+
+        /* Table Controls */
+        .table-controls { padding: 16px 20px; display: flex; gap: 12px; flex-wrap: wrap; align-items: center; border-bottom: 1px solid var(--border-color); }
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+            padding: 10px 14px;
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            font-size: 14px;
+            background: var(--bg-white);
+        }
+        .search-box:focus { outline: none; border-color: var(--brand-primary); box-shadow: 0 0 0 3px rgba(0, 85, 0, 0.1); }
+        .page-size-select { padding: 10px 14px; border: 1px solid var(--border-color); border-radius: 8px; font-size: 13px; background: var(--bg-white); }
+
+        /* Tables */
+        .table-wrapper { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        th {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-secondary);
+            background: var(--bg-light);
+        }
+        td { font-size: 14px; }
+        tr:last-child td { border-bottom: none; }
+        tbody tr:hover { background: var(--bg-light); }
+
+        th.sortable { cursor: pointer; user-select: none; }
+        th.sortable:hover { background: #e9ecef; }
+        th.sortable::after { content: ' \2195'; opacity: 0.5; }
+        th.sortable.asc::after { content: ' \2191'; opacity: 1; }
+        th.sortable.desc::after { content: ' \2193'; opacity: 1; }
+
+        /* Status Badges */
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.3px;
+        }
+        .badge-open { background: #dbeafe; color: #1e40af; }
+        .badge-complete { background: #dcfce7; color: #166534; }
+        .badge-cancelled { background: #fee2e2; color: #991b1b; }
+
+        .urgency-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            margin-left: 6px;
+        }
+        .urgency-badge.overdue { background: #dc2626; color: white; }
+        .urgency-badge.due-soon { background: #f59e0b; color: white; }
+        .urgency-badge.upcoming { background: #10b981; color: white; }
+
+        /* Progress Bar */
+        .progress-bar {
+            width: 80px;
+            height: 8px;
+            background: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+            display: inline-block;
+            vertical-align: middle;
+            margin-right: 8px;
+        }
+        .progress-fill { height: 100%; background: linear-gradient(90deg, #10b981, #059669); transition: width 0.3s; }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 13px;
+            font-weight: 500;
+            text-decoration: none;
+            border: none;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        .btn-primary { background: var(--brand-primary); color: white; }
+        .btn-primary:hover { background: var(--brand-dark); }
+        .btn-secondary { background: var(--bg-light); color: var(--text-primary); border: 1px solid var(--border-color); }
+        .btn-secondary:hover { border-color: var(--brand-primary); color: var(--brand-primary); }
+
+        /* Links */
+        a { color: var(--brand-primary); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        /* Pagination */
+        .pagination { display: flex; gap: 8px; justify-content: center; align-items: center; padding: 16px 20px; border-top: 1px solid var(--border-color); }
+        .pagination button {
+            padding: 8px 14px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-white);
+            border-radius: 6px;
+            cursor: pointer;
+            color: var(--text-primary);
+            font-size: 13px;
+        }
+        .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
+        .pagination button:hover:not(:disabled) { background: var(--bg-light); border-color: var(--brand-primary); }
+        .pagination .page-info { color: var(--text-secondary); font-size: 13px; }
+
+        /* Info Banner */
+        .info-banner {
+            margin: 16px 20px;
+            padding: 12px 16px;
+            background: #f0f9ff;
+            border-left: 4px solid var(--brand-primary);
+            border-radius: 4px;
+            font-size: 13px;
+        }
+
+        /* Empty State */
+        .empty-state { text-align: center; padding: 48px 24px; color: var(--text-muted); }
+
+        /* Footer */
+        .footer { text-align: center; padding: 24px; color: var(--text-muted); font-size: 13px; border-top: 1px solid var(--border-color); background: var(--bg-white); margin-top: 32px; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header-inner, .nav-inner, .main { padding-left: 16px; padding-right: 16px; }
+            .nav-link { padding: 12px 14px; font-size: 13px; }
+            .page-title { font-size: 22px; }
+            th, td { padding: 10px 12px; }
+        }
+    </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="cbrt-header" style="position: relative;">
-      <div class="company-info">
-        <img src="/static/cbrt-logo-optimized.svg" alt="CBRT" class="company-logo">
-        <div>
-          <h1 class="company-name">Releases</h1>
-          <p class="company-tagline">View and manage releases</p>
+    <header class="header">
+        <div class="header-inner">
+            <a href="/" class="logo">
+                <img src="/static/cbrt-logo.jpg" alt="CBRT" class="logo-img">
+                <span class="brand-pipe">|</span>
+                <img src="/static/images/primetrade_logo.png" alt="PrimeTrade" class="brand-logo">
+            </a>
+            <div style="flex-grow: 1; text-align: center;">
+                <span class="logo-sub">Staff Portal</span>
+            </div>
+            <div class="user-menu">
+                <a href="/auth/logout/" class="btn-logout">Sign Out</a>
+            </div>
         </div>
-      </div>
-      <div class="user-actions" style="position: absolute; top: 20px; right: 20px; display:flex; gap:.5rem;">
-        <a href="/" class="btn">Home</a>
-        <a href="/loading-schedule.html" class="btn">Loading Schedule</a>
-        <a href="/releases.html" class="btn">Upload Release</a>
-        <a href="/auth/logout/" class="btn" style="background: #dc3545; color: white; padding: 8px 20px;">Logout</a>
-      </div>
-    </div>
+    </header>
 
-    <div class="card">
-      <div class="summary">
-        <button id="refresh" class="btn btn-secondary btn-sm">Refresh</button>
-        <span id="count" class="badge">0 releases</span>
-        <div class="status-tabs">
-          <button class="status-tab active" data-status="OPEN">Open</button>
-          <button class="status-tab" data-status="COMPLETE">Complete</button>
-          <button class="status-tab" data-status="CANCELLED">Cancelled</button>
-          <button class="status-tab" data-status="ALL">All</button>
+    <nav class="nav">
+        <div class="nav-inner">
+            <a href="/" class="nav-link">
+                <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                Dashboard
+            </a>
+            <a href="/open-releases/" class="nav-link active">
+                <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+                Releases
+            </a>
+            <a href="/loading-schedule.html" class="nav-link">
+                <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/></svg>
+                Schedule
+            </a>
+            <a href="/products.html" class="nav-link">
+                <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                Products
+            </a>
+            <a href="/customers.html" class="nav-link">
+                <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>
+                Customers
+            </a>
+            <a href="/carriers.html" class="nav-link">
+                <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                Carriers
+            </a>
+            <a href="/admin/" class="nav-link" target="_blank">
+                <svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                Admin
+            </a>
         </div>
-      </div>
-      <div style="margin-top: 0.75rem; padding: 0.75rem; background: #f0f9ff; border-left: 4px solid #059669; border-radius: 4px; font-size: 0.9rem;">
-        <strong>Weight Display:</strong>
-        <span style="color: #059669; font-weight: 600;">🟢 Green</span> = Official (certified scale),
-        <span style="color: #f59e0b; font-weight: 600;">🟠 Amber</span> = Planned (estimate).
-        Mix shows: <span style="color: #059669;">Official</span>/<span style="color: #f59e0b;">Planned</span>/Total
-      </div>
-      <div class="table-controls">
-        <input type="text" id="releaseSearch" class="search-box" placeholder="Search release#, customer...">
-        <select id="releasePageSize" class="page-size-select">
-          <option value="10">10 per page</option>
-          <option value="25">25 per page</option>
-          <option value="50">50 per page</option>
-          <option value="100">100 per page</option>
-        </select>
-      </div>
-      <div class="table-container" style="margin-top:.75rem;">
-        <table id="tbl">
-          <thead>
-            <tr>
-              <th class="sortable" data-sort="releaseNumber">Release #</th>
-              <th class="sortable" data-sort="customer">Customer</th>
-              <th class="sortable" data-sort="status">Status</th>
-              <th class="sortable" data-sort="loadsShipped">Loads</th>
-              <th class="sortable" data-sort="tonsShipped">Tons<br/><span style="font-size: 0.85em; font-weight: 400; color: #6b7280;">(Shipped / Total)</span></th>
-              <th class="sortable" data-sort="nextScheduledDate">Next Load</th>
-              <th class="sortable" data-sort="lastShippedDate">Last Shipped</th>
-            </tr>
-          </thead>
-          <tbody></tbody>
-        </table>
-        <div class="pagination" id="releasePagination"></div>
-      </div>
-    </div>
-  </div>
+    </nav>
 
-  <script>
-    function fmtDate(d) {
-      if (!d) return '';
-      try {
-        if (/^\d{4}-\d{2}-\d{2}$/.test(d)) { const [y,m,dd] = d.split('-'); return `${m}/${dd}/${y}`; }
-        const dt = new Date(d); if (!isNaN(dt)) return `${String(dt.getMonth()+1).padStart(2,'0')}/${String(dt.getDate()).padStart(2,'0')}/${dt.getFullYear()}`;
-      } catch(e) {}
-      return String(d);
-    }
+    <main class="main">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Releases</h1>
+                <p class="page-subtitle">View and manage customer releases</p>
+            </div>
+            <a href="/releases.html" class="btn btn-primary">
+                <svg style="width:16px;height:16px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-8l-4-4m0 0L8 8m4-4v12"/></svg>
+                Upload Release
+            </a>
+        </div>
 
-    // Table state
-    let allReleases = [];
-    let filteredReleases = [];
-    let currentPage = 1;
-    let pageSize = 10;
-    let sortColumn = 'releaseNumber';
-    let sortDirection = 'asc';
-    let currentStatus = 'OPEN';
+        <div class="card">
+            <div class="card-header">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <h2 class="card-title">All Releases</h2>
+                    <span id="count" class="badge badge-open">0 releases</span>
+                </div>
+                <div class="status-tabs">
+                    <button class="status-tab active" data-status="OPEN">Open</button>
+                    <button class="status-tab" data-status="COMPLETE">Complete</button>
+                    <button class="status-tab" data-status="CANCELLED">Cancelled</button>
+                    <button class="status-tab" data-status="ALL">All</button>
+                </div>
+            </div>
 
-    async function load(status) {
-      currentStatus = status || currentStatus;
-      const res = await fetch(`/api/releases/?status=${currentStatus}`, { credentials: 'same-origin' });
-      if (!res.ok) throw new Error(await res.text());
-      allReleases = await res.json();
-      // Add computed tonsShipped for sorting
-      allReleases.forEach(r => {
-        r.tonsShipped = Number(r.tonsOfficial || 0) + Number(r.tonsPlanned || 0);
-      });
-      updateCount();
-      applyFilters();
-    }
+            <div class="info-banner">
+                <strong>Weight Display:</strong>
+                <span style="color: #059669; font-weight: 600;">Green</span> = Official (certified scale),
+                <span style="color: #f59e0b; font-weight: 600;">Amber</span> = Planned (estimate)
+            </div>
 
-    function updateCount() {
-      const statusLabel = currentStatus === 'ALL' ? '' : currentStatus.toLowerCase();
-      document.getElementById('count').textContent = `${allReleases.length} ${statusLabel} release${allReleases.length !== 1 ? 's' : ''}`;
-    }
+            <div class="table-controls">
+                <input type="text" id="releaseSearch" class="search-box" placeholder="Search release #, customer...">
+                <select id="releasePageSize" class="page-size-select">
+                    <option value="10">10 per page</option>
+                    <option value="25">25 per page</option>
+                    <option value="50">50 per page</option>
+                    <option value="100">100 per page</option>
+                </select>
+                <button id="refresh" class="btn btn-secondary">
+                    <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                    Refresh
+                </button>
+            </div>
 
-    function applyFilters() {
-      const searchQuery = (document.getElementById('releaseSearch').value || '').toLowerCase();
+            <div class="table-wrapper">
+                <table id="tbl">
+                    <thead>
+                        <tr>
+                            <th class="sortable" data-sort="releaseNumber">Release #</th>
+                            <th class="sortable" data-sort="customer">Customer</th>
+                            <th class="sortable" data-sort="status">Status</th>
+                            <th class="sortable" data-sort="loadsShipped">Loads</th>
+                            <th class="sortable" data-sort="tonsShipped">Tons (Shipped / Total)</th>
+                            <th class="sortable" data-sort="nextScheduledDate">Next Load</th>
+                            <th class="sortable" data-sort="lastShippedDate">Last Shipped</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </div>
+            <div class="pagination" id="releasePagination"></div>
+        </div>
+    </main>
 
-      filteredReleases = allReleases.filter(r => {
-        if (searchQuery) {
-          return (r.releaseNumber || '').toLowerCase().includes(searchQuery) ||
-                 (r.customer || '').toLowerCase().includes(searchQuery);
-        }
-        return true;
-      });
+    <footer class="footer">
+        Cincinnati Barge &amp; Rail Terminal &copy; 2025 | <a href="https://barge2rail.com">barge2rail.com</a>
+    </footer>
 
-      currentPage = 1;
-      renderReleases();
-    }
-
-    function renderReleases() {
-      const tbody = document.querySelector('#tbl tbody');
-
-      if (filteredReleases.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;">No releases found</td></tr>';
-        document.getElementById('releasePagination').innerHTML = '';
-        return;
-      }
-
-      // Sort
-      const sorted = [...filteredReleases].sort((a, b) => {
-        let aVal = a[sortColumn] || '';
-        let bVal = b[sortColumn] || '';
-        if (['loadsShipped', 'totalLoads', 'tonsShipped', 'totalTons'].includes(sortColumn)) {
-          aVal = Number(aVal) || 0;
-          bVal = Number(bVal) || 0;
-        }
-        if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
-        if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
-        return 0;
-      });
-
-      // Paginate
-      const totalPages = Math.ceil(sorted.length / pageSize);
-      currentPage = Math.min(currentPage, totalPages);
-      const start = (currentPage - 1) * pageSize;
-      const pageData = sorted.slice(start, start + pageSize);
-
-      tbody.innerHTML = pageData.map(r => {
-        // Progress bar for loads
-        const progress = r.totalLoads > 0 ? (r.loadsShipped / r.totalLoads * 100) : 0;
-        const loadsDisplay = `
-          <div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div></div>
-          ${r.loadsShipped} / ${r.totalLoads}
-        `;
-
-        // Build tons display with color coding
-        const official = Number(r.tonsOfficial || 0);
-        const planned = Number(r.tonsPlanned || 0);
-        const total = Number(r.totalTons || 0);
-
-        let tonsDisplay = '';
-        if (official > 0 && planned > 0) {
-          tonsDisplay = `<span style="color: #059669; font-weight: 600;">${official.toFixed(3)}</span>/<span style="color: #f59e0b; font-weight: 600;">${planned.toFixed(3)}</span>/<span style="font-weight: 600;">${total.toFixed(3)}</span>`;
-        } else if (official > 0) {
-          tonsDisplay = `<span style="color: #059669; font-weight: 700;">${official.toFixed(3)}</span> / ${total.toFixed(3)}`;
-        } else if (planned > 0) {
-          tonsDisplay = `<span style="color: #f59e0b; font-weight: 700;">${planned.toFixed(3)}</span> / ${total.toFixed(3)}`;
-        } else {
-          tonsDisplay = `0.000 / ${total.toFixed(3)}`;
+    <script>
+        function fmtDate(d) {
+            if (!d) return '';
+            try {
+                if (/^\d{4}-\d{2}-\d{2}$/.test(d)) { const [y,m,dd] = d.split('-'); return `${m}/${dd}/${y}`; }
+                const dt = new Date(d); if (!isNaN(dt)) return `${String(dt.getMonth()+1).padStart(2,'0')}/${String(dt.getDate()).padStart(2,'0')}/${dt.getFullYear()}`;
+            } catch(e) {}
+            return String(d);
         }
 
-        // Urgency badge for next load (only for open releases)
-        let urgencyBadge = '';
-        if (r.status === 'OPEN') {
-          if (r.isOverdue) {
-            const daysOverdue = Math.abs(r.daysUntilNextLoad);
-            urgencyBadge = `<span class="urgency-badge overdue">${daysOverdue}d overdue</span>`;
-          } else if (r.daysUntilNextLoad !== null && r.daysUntilNextLoad <= 2) {
-            urgencyBadge = `<span class="urgency-badge due-soon">${r.daysUntilNextLoad === 0 ? 'Today' : r.daysUntilNextLoad === 1 ? 'Tomorrow' : 'Soon'}</span>`;
-          } else if (r.daysUntilNextLoad !== null) {
-            urgencyBadge = `<span class="urgency-badge upcoming">In ${r.daysUntilNextLoad}d</span>`;
-          }
+        let allReleases = [];
+        let filteredReleases = [];
+        let currentPage = 1;
+        let pageSize = 10;
+        let sortColumn = 'releaseNumber';
+        let sortDirection = 'asc';
+        let currentStatus = 'OPEN';
+
+        async function load(status) {
+            currentStatus = status || currentStatus;
+            const res = await fetch(`/api/releases/?status=${currentStatus}`, { credentials: 'same-origin' });
+            if (!res.ok) throw new Error(await res.text());
+            allReleases = await res.json();
+            allReleases.forEach(r => { r.tonsShipped = Number(r.tonsOfficial || 0) + Number(r.tonsPlanned || 0); });
+            updateCount();
+            applyFilters();
         }
 
-        // Status badge
-        const statusClass = (r.status || 'open').toLowerCase();
-        const statusBadge = `<span class="status-badge ${statusClass}">${r.status || 'OPEN'}</span>`;
-
-        return `<tr>
-          <td><a href="/api/releases/${r.id}/view/">${r.releaseNumber}</a></td>
-          <td>${r.customer||''}</td>
-          <td>${statusBadge}</td>
-          <td>${loadsDisplay}</td>
-          <td>${tonsDisplay}</td>
-          <td>${fmtDate(r.nextScheduledDate)}${urgencyBadge}</td>
-          <td>${fmtDate(r.lastShippedDate)}</td>
-        </tr>`;
-      }).join('');
-
-      // Pagination
-      const paginationEl = document.getElementById('releasePagination');
-      if (totalPages > 1) {
-        paginationEl.innerHTML = `
-          <button onclick="releasePage(1)" ${currentPage === 1 ? 'disabled' : ''}>First</button>
-          <button onclick="releasePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>Prev</button>
-          <span class="page-info">Page ${currentPage} of ${totalPages} (${filteredReleases.length} total)</span>
-          <button onclick="releasePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>
-          <button onclick="releasePage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}>Last</button>
-        `;
-      } else {
-        paginationEl.innerHTML = `<span class="page-info">${filteredReleases.length} total</span>`;
-      }
-    }
-
-    window.releasePage = function(page) {
-      currentPage = page;
-      renderReleases();
-    };
-
-    // Status tabs
-    document.querySelectorAll('.status-tab').forEach(tab => {
-      tab.addEventListener('click', function() {
-        document.querySelectorAll('.status-tab').forEach(t => t.classList.remove('active'));
-        this.classList.add('active');
-        load(this.dataset.status).catch(err => alert(err.message || String(err)));
-      });
-    });
-
-    // Search
-    document.getElementById('releaseSearch').addEventListener('input', applyFilters);
-
-    // Page size
-    document.getElementById('releasePageSize').addEventListener('change', function() {
-      pageSize = parseInt(this.value);
-      currentPage = 1;
-      renderReleases();
-    });
-
-    // Sortable columns
-    document.querySelectorAll('#tbl th.sortable').forEach(th => {
-      th.addEventListener('click', function() {
-        const col = this.dataset.sort;
-        if (sortColumn === col) {
-          sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-        } else {
-          sortColumn = col;
-          sortDirection = 'asc';
+        function updateCount() {
+            const statusLabel = currentStatus === 'ALL' ? '' : currentStatus.toLowerCase();
+            document.getElementById('count').textContent = `${allReleases.length} ${statusLabel} release${allReleases.length !== 1 ? 's' : ''}`;
         }
-        document.querySelectorAll('#tbl th.sortable').forEach(t => t.classList.remove('asc', 'desc'));
-        this.classList.add(sortDirection);
-        renderReleases();
-      });
-    });
 
-    document.getElementById('refresh').addEventListener('click', () => load().catch(err=>alert(err.message||String(err))));
-    load().catch(err=>alert(err.message||String(err)));
-  </script>
+        function applyFilters() {
+            const searchQuery = (document.getElementById('releaseSearch').value || '').toLowerCase();
+            filteredReleases = allReleases.filter(r => {
+                if (searchQuery) {
+                    return (r.releaseNumber || '').toLowerCase().includes(searchQuery) ||
+                           (r.customer || '').toLowerCase().includes(searchQuery);
+                }
+                return true;
+            });
+            currentPage = 1;
+            renderReleases();
+        }
+
+        function renderReleases() {
+            const tbody = document.querySelector('#tbl tbody');
+            if (filteredReleases.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="empty-state">No releases found</td></tr>';
+                document.getElementById('releasePagination').innerHTML = '';
+                return;
+            }
+
+            const sorted = [...filteredReleases].sort((a, b) => {
+                let aVal = a[sortColumn] || '';
+                let bVal = b[sortColumn] || '';
+                if (['loadsShipped', 'totalLoads', 'tonsShipped', 'totalTons'].includes(sortColumn)) {
+                    aVal = Number(aVal) || 0;
+                    bVal = Number(bVal) || 0;
+                }
+                if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+                if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+                return 0;
+            });
+
+            const totalPages = Math.ceil(sorted.length / pageSize);
+            currentPage = Math.min(currentPage, totalPages);
+            const start = (currentPage - 1) * pageSize;
+            const pageData = sorted.slice(start, start + pageSize);
+
+            tbody.innerHTML = pageData.map(r => {
+                const progress = r.totalLoads > 0 ? (r.loadsShipped / r.totalLoads * 100) : 0;
+                const loadsDisplay = `<div class="progress-bar"><div class="progress-fill" style="width:${progress}%"></div></div>${r.loadsShipped} / ${r.totalLoads}`;
+
+                const official = Number(r.tonsOfficial || 0);
+                const planned = Number(r.tonsPlanned || 0);
+                const total = Number(r.totalTons || 0);
+                let tonsDisplay = '';
+                if (official > 0 && planned > 0) {
+                    tonsDisplay = `<span style="color: #059669; font-weight: 600;">${official.toFixed(2)}</span>/<span style="color: #f59e0b; font-weight: 600;">${planned.toFixed(2)}</span>/<span style="font-weight: 600;">${total.toFixed(2)}</span>`;
+                } else if (official > 0) {
+                    tonsDisplay = `<span style="color: #059669; font-weight: 700;">${official.toFixed(2)}</span> / ${total.toFixed(2)}`;
+                } else if (planned > 0) {
+                    tonsDisplay = `<span style="color: #f59e0b; font-weight: 700;">${planned.toFixed(2)}</span> / ${total.toFixed(2)}`;
+                } else {
+                    tonsDisplay = `0.00 / ${total.toFixed(2)}`;
+                }
+
+                let urgencyBadge = '';
+                if (r.status === 'OPEN') {
+                    if (r.isOverdue) {
+                        urgencyBadge = `<span class="urgency-badge overdue">${Math.abs(r.daysUntilNextLoad)}d overdue</span>`;
+                    } else if (r.daysUntilNextLoad !== null && r.daysUntilNextLoad <= 2) {
+                        urgencyBadge = `<span class="urgency-badge due-soon">${r.daysUntilNextLoad === 0 ? 'Today' : r.daysUntilNextLoad === 1 ? 'Tomorrow' : 'Soon'}</span>`;
+                    } else if (r.daysUntilNextLoad !== null) {
+                        urgencyBadge = `<span class="urgency-badge upcoming">In ${r.daysUntilNextLoad}d</span>`;
+                    }
+                }
+
+                const statusClass = (r.status || 'open').toLowerCase();
+                return `<tr>
+                    <td><a href="/api/releases/${r.id}/view/">${r.releaseNumber}</a></td>
+                    <td>${r.customer||''}</td>
+                    <td><span class="badge badge-${statusClass}">${r.status || 'OPEN'}</span></td>
+                    <td>${loadsDisplay}</td>
+                    <td>${tonsDisplay}</td>
+                    <td>${fmtDate(r.nextScheduledDate)}${urgencyBadge}</td>
+                    <td>${fmtDate(r.lastShippedDate)}</td>
+                </tr>`;
+            }).join('');
+
+            const paginationEl = document.getElementById('releasePagination');
+            if (totalPages > 1) {
+                paginationEl.innerHTML = `
+                    <button onclick="releasePage(1)" ${currentPage === 1 ? 'disabled' : ''}>First</button>
+                    <button onclick="releasePage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>Prev</button>
+                    <span class="page-info">Page ${currentPage} of ${totalPages} (${filteredReleases.length} total)</span>
+                    <button onclick="releasePage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>
+                    <button onclick="releasePage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}>Last</button>
+                `;
+            } else {
+                paginationEl.innerHTML = `<span class="page-info">${filteredReleases.length} total</span>`;
+            }
+        }
+
+        window.releasePage = function(page) { currentPage = page; renderReleases(); };
+
+        document.querySelectorAll('.status-tab').forEach(tab => {
+            tab.addEventListener('click', function() {
+                document.querySelectorAll('.status-tab').forEach(t => t.classList.remove('active'));
+                this.classList.add('active');
+                load(this.dataset.status).catch(err => alert(err.message || String(err)));
+            });
+        });
+
+        document.getElementById('releaseSearch').addEventListener('input', applyFilters);
+        document.getElementById('releasePageSize').addEventListener('change', function() { pageSize = parseInt(this.value); currentPage = 1; renderReleases(); });
+        document.querySelectorAll('#tbl th.sortable').forEach(th => {
+            th.addEventListener('click', function() {
+                const col = this.dataset.sort;
+                if (sortColumn === col) { sortDirection = sortDirection === 'asc' ? 'desc' : 'asc'; }
+                else { sortColumn = col; sortDirection = 'asc'; }
+                document.querySelectorAll('#tbl th.sortable').forEach(t => t.classList.remove('asc', 'desc'));
+                this.classList.add(sortDirection);
+                renderReleases();
+            });
+        });
+
+        document.getElementById('refresh').addEventListener('click', () => load().catch(err=>alert(err.message||String(err))));
+        load().catch(err=>alert(err.message||String(err)));
+    </script>
 </body>
 </html>

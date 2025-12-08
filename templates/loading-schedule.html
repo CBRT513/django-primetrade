@@ -1,244 +1,308 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Loading Schedule</title>
-  <link rel="stylesheet" href="/static/css/cbrt-brand.css">
-  <style>
-    .summary { display:flex; gap: 1rem; align-items:center; margin-bottom: 1rem; }
-    .summary .badge { background: var(--surface-elevated); border:1px solid var(--border); padding: .35rem .6rem; border-radius: 8px; }
-    .filter-btn { padding: .35rem .8rem; border-radius: 6px; border: 1px solid var(--border); background: white; cursor: pointer; }
-    .filter-btn.active { background: var(--primary-color); color: white; }
-    .section { margin-bottom: 2rem; }
-    .section-header {
-      background: var(--surface-elevated);
-      padding: .75rem 1rem;
-      border-radius: 8px;
-      margin-bottom: .5rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      font-weight: 600;
-    }
-    .section-header.overdue { background: #fee2e2; border-left: 4px solid #dc2626; }
-    .section-header.today { background: #fef3c7; border-left: 4px solid #f59e0b; }
-    .section-header.this-week { background: #dbeafe; border-left: 4px solid #2563eb; }
-    .section-header.next-week { background: #f3f4f6; border-left: 4px solid #6b7280; }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Loading Schedule | PrimeTrade</title>
+    <style>
+        :root {
+            --brand-primary: #005500;
+            --brand-dark: #004400;
+            --brand-light: #e8f5e9;
+            --text-primary: #1a1a1a;
+            --text-secondary: #666;
+            --text-muted: #999;
+            --bg-white: #fff;
+            --bg-light: #f9fafb;
+            --border-color: #e5e5e5;
+            --success: #28a745;
+            --warning: #f59e0b;
+            --info: #3b82f6;
+            --danger: #dc2626;
+        }
 
-    table { width:100%; }
-    th, td { white-space: nowrap; text-align: left; padding: .5rem; }
-    th { background: var(--surface-elevated); font-weight: 600; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    tr.overdue { background: #fef2f2; }
-    tr.today { background: #fffbeb; }
-    tr.this-week { background: #eff6ff; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-light);
+            color: var(--text-primary);
+            line-height: 1.5;
+            min-height: 100vh;
+        }
 
-    .urgency-badge {
-      display: inline-block;
-      padding: .2rem .5rem;
-      border-radius: 4px;
-      font-size: .75rem;
-      font-weight: 600;
-    }
-    .urgency-badge.overdue { background: #dc2626; color: white; }
-    .urgency-badge.today { background: #f59e0b; color: white; }
-    .urgency-badge.this-week { background: #2563eb; color: white; }
-    .urgency-badge.next-week { background: #6b7280; color: white; }
-    .urgency-badge.later { background: #e5e7eb; color: #374151; }
+        /* Header */
+        .header { background: var(--bg-white); border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 100; }
+        .header-inner { max-width: 1400px; margin: 0 auto; padding: 0 24px; display: flex; align-items: center; justify-content: space-between; height: 64px; }
+        .logo { display: flex; align-items: center; gap: 12px; text-decoration: none; }
+        .logo-img { height: 36px; width: auto; }
+        .brand-pipe { color: #2563EB; font-size: 1.75rem; font-weight: 300; margin: 0 16px; }
+        .brand-logo { height: 32px; width: auto; }
+        .logo-sub { font-size: 11px; color: var(--text-secondary); font-weight: 500; letter-spacing: 0.5px; text-transform: uppercase; }
+        .user-menu { display: flex; align-items: center; gap: 16px; }
+        .btn-logout { padding: 8px 16px; background: var(--bg-light); border: 1px solid var(--border-color); border-radius: 6px; color: var(--text-primary); font-size: 14px; text-decoration: none; transition: all 0.2s; }
+        .btn-logout:hover { background: var(--bg-white); border-color: var(--brand-primary); color: var(--brand-primary); }
 
-    .btn-create-bol {
-      background: #10b981;
-      color: white;
-      border: none;
-      padding: .4rem .8rem;
-      border-radius: 6px;
-      cursor: pointer;
-      font-size: .9rem;
-    }
-    .btn-create-bol:hover { background: #059669; }
+        /* Navigation */
+        .nav { background: var(--bg-white); border-bottom: 1px solid var(--border-color); }
+        .nav-inner { max-width: 1400px; margin: 0 auto; padding: 0 24px; display: flex; gap: 4px; }
+        .nav-link { display: flex; align-items: center; gap: 8px; padding: 14px 20px; color: var(--text-secondary); text-decoration: none; font-size: 14px; font-weight: 500; border-bottom: 2px solid transparent; transition: all 0.2s; }
+        .nav-link:hover { color: var(--brand-primary); background: var(--brand-light); }
+        .nav-link.active { color: var(--brand-primary); border-bottom-color: var(--brand-primary); }
+        .nav-icon { width: 18px; height: 18px; opacity: 0.7; }
 
-    .progress-text { font-size: .85rem; color: #6b7280; }
-  </style>
+        /* Main Content */
+        .main { max-width: 1400px; margin: 0 auto; padding: 32px 24px; }
+
+        /* Page Header */
+        .page-header { margin-bottom: 24px; display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 16px; }
+        .page-title { font-size: 28px; font-weight: 700; color: var(--text-primary); }
+        .page-subtitle { font-size: 15px; color: var(--text-secondary); }
+
+        /* Cards */
+        .card { background: var(--bg-white); border-radius: 12px; border: 1px solid var(--border-color); overflow: hidden; margin-bottom: 24px; }
+        .card-header { padding: 16px 20px; border-bottom: 1px solid var(--border-color); display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 12px; }
+        .card-title { font-size: 16px; font-weight: 600; color: var(--text-primary); }
+
+        /* Filter Tabs */
+        .filter-tabs { display: flex; gap: 8px; }
+        .filter-tab { padding: 8px 16px; border: 1px solid var(--border-color); background: var(--bg-white); border-radius: 6px; cursor: pointer; font-size: 13px; font-weight: 500; color: var(--text-secondary); transition: all 0.2s; }
+        .filter-tab:hover { background: var(--bg-light); border-color: var(--brand-primary); }
+        .filter-tab.active { background: var(--brand-primary); color: white; border-color: var(--brand-primary); }
+
+        /* Section Headers */
+        .section { margin-bottom: 24px; }
+        .section-header { padding: 12px 20px; border-radius: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; align-items: center; font-weight: 600; font-size: 14px; }
+        .section-header.overdue { background: #fef2f2; border-left: 4px solid #dc2626; color: #991b1b; }
+        .section-header.today { background: #fffbeb; border-left: 4px solid #f59e0b; color: #92400e; }
+        .section-header.this-week { background: #eff6ff; border-left: 4px solid #3b82f6; color: #1e40af; }
+        .section-header.next-week { background: var(--bg-light); border-left: 4px solid #6b7280; color: #374151; }
+        .section-count { font-size: 13px; font-weight: 500; opacity: 0.8; }
+
+        /* Tables */
+        .table-wrapper { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px 16px; text-align: left; border-bottom: 1px solid var(--border-color); }
+        th { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-secondary); background: var(--bg-light); }
+        td { font-size: 14px; }
+        tr:last-child td { border-bottom: none; }
+        tbody tr:hover { background: var(--bg-light); }
+
+        tr.row-overdue { background: #fef2f2; }
+        tr.row-today { background: #fffbeb; }
+        tr.row-this-week { background: #eff6ff; }
+
+        /* Urgency Badges */
+        .urgency-badge { display: inline-block; padding: 4px 10px; border-radius: 20px; font-size: 11px; font-weight: 600; }
+        .urgency-badge.overdue { background: #dc2626; color: white; }
+        .urgency-badge.today { background: #f59e0b; color: white; }
+        .urgency-badge.this-week { background: #3b82f6; color: white; }
+        .urgency-badge.next-week { background: #6b7280; color: white; }
+        .urgency-badge.later { background: #e5e7eb; color: #374151; }
+
+        /* Buttons */
+        .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 16px; border-radius: 6px; font-size: 13px; font-weight: 500; text-decoration: none; border: none; cursor: pointer; transition: all 0.2s; }
+        .btn-primary { background: var(--brand-primary); color: white; }
+        .btn-primary:hover { background: var(--brand-dark); }
+        .btn-secondary { background: var(--bg-light); color: var(--text-primary); border: 1px solid var(--border-color); }
+        .btn-secondary:hover { border-color: var(--brand-primary); color: var(--brand-primary); }
+        .btn-success { background: #10b981; color: white; }
+        .btn-success:hover { background: #059669; }
+        .btn-sm { padding: 6px 12px; font-size: 12px; }
+
+        /* Links */
+        a { color: var(--brand-primary); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        /* Empty State */
+        .empty-state { text-align: center; padding: 48px 24px; color: var(--text-muted); }
+
+        /* Footer */
+        .footer { text-align: center; padding: 24px; color: var(--text-muted); font-size: 13px; border-top: 1px solid var(--border-color); background: var(--bg-white); margin-top: 32px; }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .header-inner, .nav-inner, .main { padding-left: 16px; padding-right: 16px; }
+            .nav-link { padding: 12px 14px; font-size: 13px; }
+            .page-title { font-size: 22px; }
+            th, td { padding: 10px 12px; }
+        }
+    </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="cbrt-header" style="position: relative;">
-      <div class="company-info">
-        <img src="/static/cbrt-logo-optimized.svg" alt="CBRT" class="company-logo">
-        <div>
-          <h1 class="company-name">Loading Schedule</h1>
-          <p class="company-tagline">Pending shipments by week</p>
+    <header class="header">
+        <div class="header-inner">
+            <a href="/" class="logo">
+                <img src="/static/cbrt-logo.jpg" alt="CBRT" class="logo-img">
+                <span class="brand-pipe">|</span>
+                <img src="/static/images/primetrade_logo.png" alt="PrimeTrade" class="brand-logo">
+            </a>
+            <div style="flex-grow: 1; text-align: center;"><span class="logo-sub">Staff Portal</span></div>
+            <div class="user-menu"><a href="/auth/logout/" class="btn-logout">Sign Out</a></div>
         </div>
-      </div>
-      <div class="user-actions" style="position: absolute; top: 20px; right: 20px; display:flex; gap:.5rem;">
-        <a href="/" class="btn">Home</a>
-        <a href="/open_releases.html" class="btn">Open Releases</a>
-        <a href="/auth/logout/" class="btn" style="background: #dc3545; color: white; padding: 8px 20px;">Logout</a>
-      </div>
-    </div>
+    </header>
 
-    <div class="card">
-      <div class="summary">
-        <button id="refresh" class="btn btn-secondary btn-sm">Refresh</button>
-        <span id="count" class="badge">0 pending loads</span>
-        <div style="flex: 1;"></div>
-        <button class="filter-btn active" data-filter="all">All</button>
-        <button class="filter-btn" data-filter="overdue">Overdue Only</button>
-        <button class="filter-btn" data-filter="this-week">This Week</button>
-      </div>
-
-      <div id="overdue-section" class="section" style="display:none;">
-        <div class="section-header overdue">
-          <span>⚠️ Overdue</span>
-          <span class="progress-text" id="overdue-count"></span>
+    <nav class="nav">
+        <div class="nav-inner">
+            <a href="/" class="nav-link"><svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>Dashboard</a>
+            <a href="/open-releases/" class="nav-link"><svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>Releases</a>
+            <a href="/loading-schedule.html" class="nav-link active"><svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6.75 3v2.25M17.25 3v2.25M3 18.75V7.5a2.25 2.25 0 012.25-2.25h13.5A2.25 2.25 0 0121 7.5v11.25m-18 0A2.25 2.25 0 005.25 21h13.5A2.25 2.25 0 0021 18.75m-18 0v-7.5A2.25 2.25 0 015.25 9h13.5A2.25 2.25 0 0121 11.25v7.5"/></svg>Schedule</a>
+            <a href="/products.html" class="nav-link"><svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>Products</a>
+            <a href="/customers.html" class="nav-link"><svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"/></svg>Customers</a>
+            <a href="/carriers.html" class="nav-link"><svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>Carriers</a>
+            <a href="/admin/" class="nav-link" target="_blank"><svg class="nav-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>Admin</a>
         </div>
-        <table><thead><tr>
-          <th>Release #</th><th>Load #</th><th>Date</th><th>Days</th><th>Customer</th><th>Tons</th><th>Carrier</th><th>Action</th>
-        </tr></thead><tbody id="overdue-tbody"></tbody></table>
-      </div>
+    </nav>
 
-      <div id="today-section" class="section" style="display:none;">
-        <div class="section-header today">
-          <span>📅 Today</span>
-          <span class="progress-text" id="today-count"></span>
+    <main class="main">
+        <div class="page-header">
+            <div>
+                <h1 class="page-title">Loading Schedule</h1>
+                <p class="page-subtitle">Pending shipments organized by urgency</p>
+            </div>
         </div>
-        <table><thead><tr>
-          <th>Release #</th><th>Load #</th><th>Date</th><th>Days</th><th>Customer</th><th>Tons</th><th>Carrier</th><th>Action</th>
-        </tr></thead><tbody id="today-tbody"></tbody></table>
-      </div>
 
-      <div id="this-week-section" class="section" style="display:none;">
-        <div class="section-header this-week">
-          <span>📆 This Week</span>
-          <span class="progress-text" id="this-week-count"></span>
+        <div class="card">
+            <div class="card-header">
+                <div style="display: flex; align-items: center; gap: 12px;">
+                    <h2 class="card-title">Pending Loads</h2>
+                    <span id="count" style="font-size: 13px; color: var(--text-secondary);">0 loads</span>
+                </div>
+                <div style="display: flex; gap: 8px; align-items: center;">
+                    <div class="filter-tabs">
+                        <button class="filter-tab active" data-filter="all">All</button>
+                        <button class="filter-tab" data-filter="overdue">Overdue Only</button>
+                        <button class="filter-tab" data-filter="this-week">This Week</button>
+                    </div>
+                    <button id="refresh" class="btn btn-secondary btn-sm">
+                        <svg style="width:14px;height:14px;" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
+                        Refresh
+                    </button>
+                </div>
+            </div>
+
+            <div style="padding: 20px;">
+                <div id="overdue-section" class="section" style="display:none;">
+                    <div class="section-header overdue"><span>Overdue</span><span class="section-count" id="overdue-count"></span></div>
+                    <div class="card" style="margin-bottom: 0;"><div class="table-wrapper">
+                        <table><thead><tr><th>Release #</th><th>Load #</th><th>Date</th><th>Days</th><th>Customer</th><th>Tons</th><th>Carrier</th><th>Action</th></tr></thead><tbody id="overdue-tbody"></tbody></table>
+                    </div></div>
+                </div>
+
+                <div id="today-section" class="section" style="display:none;">
+                    <div class="section-header today"><span>Today</span><span class="section-count" id="today-count"></span></div>
+                    <div class="card" style="margin-bottom: 0;"><div class="table-wrapper">
+                        <table><thead><tr><th>Release #</th><th>Load #</th><th>Date</th><th>Days</th><th>Customer</th><th>Tons</th><th>Carrier</th><th>Action</th></tr></thead><tbody id="today-tbody"></tbody></table>
+                    </div></div>
+                </div>
+
+                <div id="this-week-section" class="section" style="display:none;">
+                    <div class="section-header this-week"><span>This Week</span><span class="section-count" id="this-week-count"></span></div>
+                    <div class="card" style="margin-bottom: 0;"><div class="table-wrapper">
+                        <table><thead><tr><th>Release #</th><th>Load #</th><th>Date</th><th>Days</th><th>Customer</th><th>Tons</th><th>Carrier</th><th>Action</th></tr></thead><tbody id="this-week-tbody"></tbody></table>
+                    </div></div>
+                </div>
+
+                <div id="next-week-section" class="section" style="display:none;">
+                    <div class="section-header next-week"><span>Next Week</span><span class="section-count" id="next-week-count"></span></div>
+                    <div class="card" style="margin-bottom: 0;"><div class="table-wrapper">
+                        <table><thead><tr><th>Release #</th><th>Load #</th><th>Date</th><th>Days</th><th>Customer</th><th>Tons</th><th>Carrier</th><th>Action</th></tr></thead><tbody id="next-week-tbody"></tbody></table>
+                    </div></div>
+                </div>
+
+                <div id="later-section" class="section" style="display:none;">
+                    <div class="section-header" style="background: var(--bg-light); border-left: 4px solid #9ca3af;"><span>Later</span><span class="section-count" id="later-count"></span></div>
+                    <div class="card" style="margin-bottom: 0;"><div class="table-wrapper">
+                        <table><thead><tr><th>Release #</th><th>Load #</th><th>Date</th><th>Days</th><th>Customer</th><th>Tons</th><th>Carrier</th><th>Action</th></tr></thead><tbody id="later-tbody"></tbody></table>
+                    </div></div>
+                </div>
+
+                <div id="empty-state" class="empty-state" style="display:none;">No pending loads found</div>
+            </div>
         </div>
-        <table><thead><tr>
-          <th>Release #</th><th>Load #</th><th>Date</th><th>Days</th><th>Customer</th><th>Tons</th><th>Carrier</th><th>Action</th>
-        </tr></thead><tbody id="this-week-tbody"></tbody></table>
-      </div>
+    </main>
 
-      <div id="next-week-section" class="section" style="display:none;">
-        <div class="section-header next-week">
-          <span>📋 Next Week</span>
-          <span class="progress-text" id="next-week-count"></span>
-        </div>
-        <table><thead><tr>
-          <th>Release #</th><th>Load #</th><th>Date</th><th>Days</th><th>Customer</th><th>Tons</th><th>Carrier</th><th>Action</th>
-        </tr></thead><tbody id="next-week-tbody"></tbody></table>
-      </div>
+    <footer class="footer">
+        Cincinnati Barge &amp; Rail Terminal &copy; 2025 | <a href="https://barge2rail.com">barge2rail.com</a>
+    </footer>
 
-      <div id="later-section" class="section" style="display:none;">
-        <div class="section-header">
-          <span>📅 Later</span>
-          <span class="progress-text" id="later-count"></span>
-        </div>
-        <table><thead><tr>
-          <th>Release #</th><th>Load #</th><th>Date</th><th>Days</th><th>Customer</th><th>Tons</th><th>Carrier</th><th>Action</th>
-        </tr></thead><tbody id="later-tbody"></tbody></table>
-      </div>
-    </div>
-  </div>
+    <script>
+        let allLoads = [];
+        let currentFilter = 'all';
 
-  <script>
-    let allLoads = [];
-    let currentFilter = 'all';
-
-    function fmtDate(d) {
-      if (!d) return '';
-      try {
-        if (/^\d{4}-\d{2}-\d{2}$/.test(d)) {
-          const [y,m,dd] = d.split('-');
-          return `${m}/${dd}/${y}`;
+        function fmtDate(d) {
+            if (!d) return '';
+            try { if (/^\d{4}-\d{2}-\d{2}$/.test(d)) { const [y,m,dd] = d.split('-'); return `${m}/${dd}/${y}`; } } catch(e) {}
+            return String(d);
         }
-      } catch(e) {}
-      return String(d);
-    }
 
-    function formatDaysUntil(days) {
-      if (days < 0) return `${Math.abs(days)}d overdue`;
-      if (days === 0) return 'TODAY';
-      if (days === 1) return 'Tomorrow';
-      return `In ${days}d`;
-    }
-
-    function createBOL(loadId, loadLabel) {
-      // Navigate to office.html with loadId parameter
-      window.location.href = `/office.html?loadId=${loadId}&label=${encodeURIComponent(loadLabel)}`;
-    }
-
-    function renderLoadRow(load) {
-      const daysText = formatDaysUntil(load.daysUntil);
-      return `<tr class="${load.urgency}">
-        <td><a href="/api/releases/${load.releaseId}/view/">${load.releaseNumber}</a></td>
-        <td>${load.seq}</td>
-        <td>${fmtDate(load.scheduledDate)}</td>
-        <td><span class="urgency-badge ${load.urgency}">${daysText}</span></td>
-        <td>${load.customer.name || ''}</td>
-        <td>${load.plannedTons.toFixed(2)}</td>
-        <td>${load.carrier.name || ''}</td>
-        <td><button class="btn-create-bol" onclick="createBOL(${load.loadId}, '${load.label}')">Create BOL</button></td>
-      </tr>`;
-    }
-
-    function render() {
-      const groups = {
-        overdue: [],
-        today: [],
-        'this-week': [],
-        'next-week': [],
-        later: []
-      };
-
-      allLoads.forEach(load => {
-        if (groups[load.urgency]) {
-          groups[load.urgency].push(load);
+        function formatDaysUntil(days) {
+            if (days < 0) return `${Math.abs(days)}d overdue`;
+            if (days === 0) return 'TODAY';
+            if (days === 1) return 'Tomorrow';
+            return `In ${days}d`;
         }
-      });
 
-      // Apply filter
-      const visibleGroups = currentFilter === 'all' ?
-        ['overdue', 'today', 'this-week', 'next-week', 'later'] :
-        currentFilter === 'overdue' ? ['overdue'] :
-        currentFilter === 'this-week' ? ['overdue', 'today', 'this-week'] :
-        [];
+        function createBOL(loadId, loadLabel) {
+            window.location.href = `/office.html?loadId=${loadId}&label=${encodeURIComponent(loadLabel)}`;
+        }
 
-      // Render each section
-      Object.keys(groups).forEach(urgency => {
-        const section = document.getElementById(`${urgency}-section`);
-        const tbody = document.getElementById(`${urgency}-tbody`);
-        const count = document.getElementById(`${urgency}-count`);
+        function renderLoadRow(load) {
+            const daysText = formatDaysUntil(load.daysUntil);
+            return `<tr class="row-${load.urgency}">
+                <td><a href="/api/releases/${load.releaseId}/view/">${load.releaseNumber}</a></td>
+                <td>${load.seq}</td>
+                <td>${fmtDate(load.scheduledDate)}</td>
+                <td><span class="urgency-badge ${load.urgency}">${daysText}</span></td>
+                <td>${load.customer.name || ''}</td>
+                <td>${load.plannedTons.toFixed(2)}</td>
+                <td>${load.carrier.name || ''}</td>
+                <td><button class="btn btn-success btn-sm" onclick="createBOL(${load.loadId}, '${load.label}')">Create BOL</button></td>
+            </tr>`;
+        }
 
-        const loads = groups[urgency];
-        const visible = visibleGroups.includes(urgency);
+        function render() {
+            const groups = { overdue: [], today: [], 'this-week': [], 'next-week': [], later: [] };
+            allLoads.forEach(load => { if (groups[load.urgency]) groups[load.urgency].push(load); });
 
-        section.style.display = (visible && loads.length > 0) ? 'block' : 'none';
-        if (count) count.textContent = `${loads.length} load${loads.length !== 1 ? 's' : ''}`;
-        if (tbody) tbody.innerHTML = loads.map(renderLoadRow).join('');
-      });
+            const visibleGroups = currentFilter === 'all' ? ['overdue', 'today', 'this-week', 'next-week', 'later'] :
+                currentFilter === 'overdue' ? ['overdue'] : currentFilter === 'this-week' ? ['overdue', 'today', 'this-week'] : [];
 
-      const totalCount = allLoads.length;
-      document.getElementById('count').textContent = `${totalCount} pending load${totalCount !== 1 ? 's' : ''}`;
-    }
+            let hasVisible = false;
+            Object.keys(groups).forEach(urgency => {
+                const section = document.getElementById(`${urgency}-section`);
+                const tbody = document.getElementById(`${urgency}-tbody`);
+                const count = document.getElementById(`${urgency}-count`);
+                const loads = groups[urgency];
+                const visible = visibleGroups.includes(urgency) && loads.length > 0;
+                section.style.display = visible ? 'block' : 'none';
+                if (visible) hasVisible = true;
+                if (count) count.textContent = `${loads.length} load${loads.length !== 1 ? 's' : ''}`;
+                if (tbody) tbody.innerHTML = loads.map(renderLoadRow).join('');
+            });
 
-    async function load() {
-      const res = await fetch('/api/releases/pending-loads/', { credentials: 'same-origin' });
-      if (!res.ok) throw new Error(await res.text());
-      allLoads = await res.json();
-      render();
-    }
+            document.getElementById('empty-state').style.display = hasVisible ? 'none' : 'block';
+            document.getElementById('count').textContent = `${allLoads.length} pending load${allLoads.length !== 1 ? 's' : ''}`;
+        }
 
-    // Filter buttons
-    document.querySelectorAll('.filter-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentFilter = btn.dataset.filter;
-        render();
-      });
-    });
+        async function load() {
+            const res = await fetch('/api/releases/pending-loads/', { credentials: 'same-origin' });
+            if (!res.ok) throw new Error(await res.text());
+            allLoads = await res.json();
+            render();
+        }
 
-    document.getElementById('refresh').addEventListener('click', () => load().catch(err=>alert(err.message||String(err))));
-    load().catch(err=>alert(err.message||String(err)));
-  </script>
+        document.querySelectorAll('.filter-tab').forEach(btn => {
+            btn.addEventListener('click', () => {
+                document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+                currentFilter = btn.dataset.filter;
+                render();
+            });
+        });
+
+        document.getElementById('refresh').addEventListener('click', () => load().catch(err=>alert(err.message||String(err))));
+        load().catch(err=>alert(err.message||String(err)));
+    </script>
 </body>
 </html>
