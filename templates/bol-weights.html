@@ -1,375 +1,618 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>BOL Weight Management</title>
-  <link rel="stylesheet" href="/static/css/cbrt-brand.css">
-  <style>
-    .wrap { max-width: 1200px; }
-    .page-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 2rem;
-      padding: 1.5rem;
-      background: var(--surface);
-      border-radius: 12px;
-      box-shadow: var(--shadow-md);
-    }
-    .nav-links {
-      display: flex;
-      gap: 1rem;
-    }
-    .nav-links a {
-      color: white !important;
-      background: var(--primary) !important;
-      border: 1px solid var(--primary) !important;
-      padding: 0.5rem 1rem;
-      text-decoration: none;
-      border-radius: 6px;
-      font-weight: 500;
-    }
-    .nav-links a:hover {
-      background: var(--primary-dark, #2c5f4f) !important;
-      border-color: var(--primary-dark, #2c5f4f) !important;
-    }
-    .bol-table {
-      width: 100%;
-      border-collapse: collapse;
-      background: var(--surface);
-      border-radius: 12px;
-      overflow: hidden;
-      box-shadow: var(--shadow-lg);
-    }
-    .bol-table th {
-      background: var(--primary);
-      color: white;
-      padding: 0.5rem 0.75rem;
-      text-align: left;
-      font-weight: 600;
-      font-size: 0.875rem;
-    }
-    .bol-table td {
-      padding: 0.5rem 0.75rem;
-      border-bottom: 1px solid var(--border);
-      font-size: 0.875rem;
-    }
-    .bol-table tr:last-child td {
-      border-bottom: none;
-    }
-    .bol-table tr:hover {
-      background: rgba(var(--primary-rgb), 0.05);
-    }
-    .weight-cell {
-      font-family: 'Courier New', monospace;
-      font-weight: 600;
-    }
-    .variance-good {
-      color: #10b981;
-    }
-    .variance-warning {
-      color: #f59e0b;
-    }
-    .variance-critical {
-      color: #ef4444;
-      font-weight: 700;
-    }
-    .official-weight-badge {
-      display: inline-block;
-      padding: 0.25rem 0.75rem;
-      border-radius: 6px;
-      font-size: 0.875rem;
-      font-weight: 600;
-      background: #10b981;
-      color: white;
-    }
-    .pending-weight-badge {
-      display: inline-block;
-      padding: 0.25rem 0.75rem;
-      border-radius: 6px;
-      font-size: 0.875rem;
-      font-weight: 600;
-      background: #f59e0b;
-      color: white;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BOL Weight Management - Primetrade</title>
+    <style>
+        :root {
+            --brand-primary: #005500;
+            --brand-dark: #004400;
+            --brand-light: #e8f5e9;
+            --text-primary: #1a1a1a;
+            --text-secondary: #666;
+            --text-muted: #999;
+            --bg-white: #fff;
+            --bg-light: #f9fafb;
+            --border-color: #e5e5e5;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.07);
+        }
 
-    /* Weight Entry Modal */
-    .modal-overlay {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.7);
-      z-index: 1000;
-      align-items: center;
-      justify-content: center;
-    }
-    .modal-overlay.active {
-      display: flex;
-    }
-    .modal-content {
-      background: white;
-      border-radius: 12px;
-      width: 90%;
-      max-width: 500px;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    }
-    .modal-header {
-      padding: 1.5rem;
-      border-bottom: 1px solid #e0e0e0;
-    }
-    .modal-header h3 {
-      margin: 0;
-      color: var(--primary);
-    }
-    .modal-body {
-      padding: 1.5rem;
-    }
-    .modal-footer {
-      padding: 1.5rem;
-      border-top: 1px solid #e0e0e0;
-      display: flex;
-      gap: 1rem;
-      justify-content: flex-end;
-    }
-    .info-row {
-      display: flex;
-      justify-content: space-between;
-      padding: 0.75rem;
-      background: var(--surface-light, #f8f9fa);
-      border-radius: 6px;
-      margin-bottom: 1rem;
-    }
-    .info-label {
-      font-weight: 600;
-      color: var(--text-secondary);
-    }
-    .info-value {
-      font-weight: 600;
-      font-family: 'Courier New', monospace;
-    }
-    .ta-r { text-align: right; }
-    .ta-c { text-align: center; }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
-    /* Data table controls */
-    .table-controls {
-      display: flex;
-      gap: 1rem;
-      margin-bottom: 1rem;
-      flex-wrap: wrap;
-      align-items: center;
-    }
-    .search-box {
-      flex: 1;
-      min-width: 200px;
-      padding: 0.5rem 1rem;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font-size: 1rem;
-      background: var(--surface);
-    }
-    .search-box:focus {
-      outline: none;
-      border-color: var(--primary);
-      box-shadow: 0 0 0 3px rgba(var(--primary-rgb), 0.1);
-    }
-    .page-size-select {
-      padding: 0.5rem;
-      border: 1px solid var(--border);
-      border-radius: 8px;
-      font-size: 0.875rem;
-      background: var(--surface);
-    }
-    th.sortable {
-      cursor: pointer;
-      user-select: none;
-    }
-    th.sortable:hover {
-      background: rgba(255,255,255,0.1);
-    }
-    th.sortable::after {
-      content: ' ↕';
-      opacity: 0.5;
-    }
-    th.sortable.asc::after {
-      content: ' ↑';
-      opacity: 1;
-    }
-    th.sortable.desc::after {
-      content: ' ↓';
-      opacity: 1;
-    }
-    .pagination {
-      display: flex;
-      gap: 0.5rem;
-      justify-content: center;
-      align-items: center;
-      margin-top: 1rem;
-      padding: 1rem;
-      background: white;
-      border-radius: 8px;
-    }
-    .pagination button {
-      padding: 0.5rem 1rem;
-      border: 1px solid #e5e7eb;
-      background: white;
-      border-radius: 6px;
-      cursor: pointer;
-      color: #1f2937;
-    }
-    .pagination button:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
-    }
-    .pagination button:hover:not(:disabled) {
-      background: #f3f4f6;
-    }
-    .pagination .page-info {
-      color: #4b5563;
-      font-size: 0.875rem;
-    }
-  </style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-light);
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        .header {
+            background: var(--bg-white);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+        }
+
+        .header-inner {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo { height: 40px; width: auto; }
+
+        .company-name {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .company-tagline {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .user-section {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .btn-logout {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .btn-logout:hover { background: #c82333; }
+
+        .nav {
+            background: var(--bg-white);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .nav-inner {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            gap: 0;
+            padding: 0 2rem;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.875rem 1rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
+            transition: all 0.15s;
+        }
+
+        .nav-link:hover {
+            color: var(--brand-primary);
+            background: var(--bg-light);
+        }
+
+        .nav-link svg { width: 18px; height: 18px; }
+
+        .main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .page-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .page-subtitle {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .card {
+            background: var(--bg-white);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.5rem 0.875rem;
+            border-radius: 6px;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            text-decoration: none;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--brand-primary);
+            color: white;
+        }
+
+        .btn-primary:hover { background: var(--brand-dark); }
+
+        .btn-secondary {
+            background: var(--bg-light);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover { background: var(--border-color); }
+
+        .table-controls {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+            align-items: center;
+        }
+
+        .search-box {
+            flex: 1;
+            min-width: 200px;
+            padding: 0.625rem 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.875rem;
+            background: var(--bg-white);
+        }
+
+        .search-box:focus {
+            outline: none;
+            border-color: var(--brand-primary);
+            box-shadow: 0 0 0 3px rgba(0, 85, 0, 0.1);
+        }
+
+        .page-size-select {
+            padding: 0.625rem 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.875rem;
+            background: var(--bg-white);
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+            background: var(--bg-white);
+            padding: 0.625rem 0.75rem;
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--brand-primary);
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            text-align: left;
+            padding: 0.75rem 1rem;
+            font-size: 0.6875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-light);
+        }
+
+        thead th.sortable {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        thead th.sortable:hover { background: #f1f5f9; }
+
+        thead th.sortable::after {
+            content: ' \2195';
+            opacity: 0.4;
+        }
+
+        thead th.sortable.asc::after {
+            content: ' \2191';
+            opacity: 1;
+        }
+
+        thead th.sortable.desc::after {
+            content: ' \2193';
+            opacity: 1;
+        }
+
+        tbody td {
+            padding: 0.75rem 1rem;
+            font-size: 0.875rem;
+            border-bottom: 1px solid var(--border-color);
+            vertical-align: middle;
+        }
+
+        tbody tr:hover { background: var(--bg-light); }
+
+        .ta-r { text-align: right; }
+        .ta-c { text-align: center; }
+
+        .weight-cell {
+            font-family: 'Courier New', monospace;
+            font-weight: 600;
+        }
+
+        .variance-good { color: #10b981; }
+        .variance-warning { color: #f59e0b; }
+        .variance-critical { color: #ef4444; font-weight: 700; }
+
+        .badge {
+            display: inline-flex;
+            align-items: center;
+            padding: 0.25rem 0.625rem;
+            border-radius: 100px;
+            font-size: 0.6875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.25px;
+        }
+
+        .badge-official {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        .badge-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .pagination {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: center;
+            align-items: center;
+            margin-top: 1rem;
+            padding: 1rem;
+        }
+
+        .pagination button {
+            padding: 0.5rem 0.875rem;
+            border: 1px solid var(--border-color);
+            background: var(--bg-white);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8125rem;
+            color: var(--text-primary);
+        }
+
+        .pagination button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .pagination button:hover:not(:disabled) {
+            background: var(--bg-light);
+        }
+
+        .pagination .page-info {
+            color: var(--text-muted);
+            font-size: 0.8125rem;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active { display: flex; }
+
+        .modal {
+            background: var(--bg-white);
+            border-radius: 8px;
+            width: 90%;
+            max-width: 500px;
+            box-shadow: var(--shadow-md);
+        }
+
+        .modal-header {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .modal-header h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .modal-body { padding: 1.25rem; }
+
+        .modal-footer {
+            padding: 1rem 1.25rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+        }
+
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 0.75rem;
+            background: var(--bg-light);
+            border-radius: 6px;
+            margin-bottom: 0.75rem;
+        }
+
+        .info-label {
+            font-weight: 500;
+            color: var(--text-secondary);
+            font-size: 0.875rem;
+        }
+
+        .info-value {
+            font-weight: 600;
+            font-family: 'Courier New', monospace;
+            font-size: 0.875rem;
+        }
+
+        .form-group { margin-bottom: 1rem; }
+
+        .form-group label {
+            display: block;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 0.375rem;
+        }
+
+        input {
+            width: 100%;
+            padding: 0.625rem 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            background: var(--bg-white);
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--brand-primary);
+            box-shadow: 0 0 0 3px rgba(0, 85, 0, 0.1);
+        }
+
+        .helper-text {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        .footer {
+            max-width: 1400px;
+            margin: 2rem auto 0;
+            padding: 1.5rem 2rem;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .footer p {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        a { color: #2563eb; }
+        a:hover { text-decoration: underline; }
+    </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="page-header">
-      <div>
-        <h1 style="margin: 0 0 0.5rem 0;">BOL Weight Management</h1>
-        <p style="margin: 0; color: var(--text-secondary);">Enter official certified scale weights for shipped BOLs</p>
-      </div>
-      <div class="nav-links">
-        <a href="/" class="btn">Home</a>
-        <a href="/office.html" class="btn">Create BOL</a>
-      </div>
+    <header class="header">
+        <div class="header-inner">
+            <div class="logo-section">
+                <img src="/static/cbrt-logo-optimized.svg" alt="CBRT" class="logo">
+                <div>
+                    <div class="company-name">Cincinnati Barge & Rail Terminal</div>
+                    <div class="company-tagline">Weight Management</div>
+                </div>
+            </div>
+            <div class="user-section">
+                <a href="/" class="btn btn-secondary">Dashboard</a>
+                <a href="/office.html" class="btn btn-secondary">Create BOL</a>
+                <a href="/auth/logout/" class="btn-logout">Logout</a>
+            </div>
+        </div>
+    </header>
+
+    <nav class="nav">
+        <div class="nav-inner">
+            <a href="/" class="nav-link">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                Dashboard
+            </a>
+            <a href="/open-releases/" class="nav-link">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                Releases
+            </a>
+            <a href="/loading-schedule/" class="nav-link">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                Schedule
+            </a>
+            <a href="/products.html" class="nav-link">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                Products
+            </a>
+            <a href="/customers.html" class="nav-link">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                Customers
+            </a>
+            <a href="/carriers.html" class="nav-link">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                Carriers
+            </a>
+        </div>
+    </nav>
+
+    <main class="main">
+        <div class="page-header">
+            <h1 class="page-title">BOL Weight Management</h1>
+            <p class="page-subtitle">Enter official certified scale weights for shipped BOLs</p>
+        </div>
+
+        <div class="table-controls">
+            <input type="text" id="bolSearch" class="search-box" placeholder="Search BOL#, customer, product...">
+            <label class="checkbox-label">
+                <input type="checkbox" id="showAll" onchange="applyFilters()">
+                <span>Show all (including official)</span>
+            </label>
+            <select id="bolPageSize" class="page-size-select">
+                <option value="10">10 per page</option>
+                <option value="25">25 per page</option>
+                <option value="50">50 per page</option>
+                <option value="100">100 per page</option>
+            </select>
+        </div>
+
+        <div class="card">
+            <table>
+                <thead>
+                    <tr>
+                        <th class="sortable" data-sort="bolNo">BOL #</th>
+                        <th class="sortable" data-sort="date">Date</th>
+                        <th class="sortable" data-sort="buyerName">Customer</th>
+                        <th class="sortable" data-sort="productName">Product</th>
+                        <th class="sortable ta-r" data-sort="cbrtWeightTons">CBRT Weight</th>
+                        <th class="sortable ta-r" data-sort="officialWeightTons">Official</th>
+                        <th class="sortable ta-r" data-sort="variancePercent">Variance</th>
+                        <th class="ta-c">Status</th>
+                        <th class="ta-c">Action</th>
+                    </tr>
+                </thead>
+                <tbody id="bolTableBody">
+                    <tr><td colspan="9" class="ta-c" style="padding: 2rem; color: var(--text-muted);">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="pagination" id="bolPagination"></div>
+    </main>
+
+    <!-- Weight Entry Modal -->
+    <div class="modal-overlay" id="weightModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Enter Official Weight</h3>
+            </div>
+            <div class="modal-body">
+                <div class="info-row">
+                    <span class="info-label">BOL Number:</span>
+                    <span class="info-value" id="modalBOLNumber"></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Customer:</span>
+                    <span class="info-value" id="modalCustomer"></span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">CBRT Weight:</span>
+                    <span class="info-value" id="modalCBRTWeight"></span>
+                </div>
+                <div class="form-group">
+                    <label>Official Weight (lbs) *</label>
+                    <input type="number" id="officialWeightInput" step="1" min="1" placeholder="Enter weight in pounds from scale ticket" autofocus />
+                    <p class="helper-text">Enter the weight in pounds from the certified scale ticket</p>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeWeightModal()" class="btn btn-secondary">Cancel</button>
+                <button onclick="submitOfficialWeight()" class="btn btn-primary">Submit Weight</button>
+            </div>
+        </div>
     </div>
 
-    <div class="table-controls">
-      <input type="text" id="bolSearch" class="search-box" placeholder="Search BOL#, customer, product...">
-      <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer; font-size: 0.9rem; background: white; padding: 0.5rem 0.75rem; border-radius: 8px; border: 1px solid #e5e7eb;">
-        <input type="checkbox" id="showAll" onchange="applyFilters()" style="width: 16px; height: 16px; cursor: pointer;">
-        <span style="color: #1f2937;">Show all (including official)</span>
-      </label>
-      <select id="bolPageSize" class="page-size-select">
-        <option value="10">10 per page</option>
-        <option value="25">25 per page</option>
-        <option value="50">50 per page</option>
-        <option value="100">100 per page</option>
-      </select>
-    </div>
+    <footer class="footer">
+        <p>&copy; 2024 Cincinnati Barge & Rail Terminal. All rights reserved.</p>
+    </footer>
 
-    <table class="bol-table">
-      <thead>
-        <tr>
-          <th class="sortable" data-sort="bolNo">BOL #</th>
-          <th class="sortable" data-sort="date">Date</th>
-          <th class="sortable" data-sort="buyerName">Customer</th>
-          <th class="sortable" data-sort="productName">Product</th>
-          <th class="sortable ta-r" data-sort="cbrtWeightTons"><span style="color: #f59e0b;">🟠 CBRT</span></th>
-          <th class="sortable ta-r" data-sort="officialWeightTons"><span style="color: #059669;">🟢 Official</span></th>
-          <th class="sortable ta-r" data-sort="variancePercent">Variance</th>
-          <th class="ta-c">Status</th>
-          <th class="ta-c">Action</th>
-        </tr>
-      </thead>
-      <tbody id="bolTableBody">
-        <tr>
-          <td colspan="9" class="ta-c">Loading...</td>
-        </tr>
-      </tbody>
-    </table>
-    <div class="pagination" id="bolPagination"></div>
-  </div>
-
-  <!-- Weight Entry Modal -->
-  <div class="modal-overlay" id="weightModal">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>Enter Official Weight</h3>
-      </div>
-      <div class="modal-body">
-        <div class="info-row">
-          <span class="info-label">BOL Number:</span>
-          <span class="info-value" id="modalBOLNumber"></span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">Customer:</span>
-          <span class="info-value" id="modalCustomer"></span>
-        </div>
-        <div class="info-row">
-          <span class="info-label">CBRT Weight:</span>
-          <span class="info-value" id="modalCBRTWeight"></span>
-        </div>
-
-        <div class="form-group">
-          <label>Official Weight (lbs) *</label>
-          <input
-            type="number"
-            id="officialWeightInput"
-            step="1"
-            min="1"
-            placeholder="Enter weight in pounds from scale ticket"
-            autofocus
-          />
-          <div class="truck-helper">Enter the weight in pounds from the certified scale ticket</div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button onclick="closeWeightModal()" class="btn-secondary">Cancel</button>
-        <button onclick="submitOfficialWeight()" class="btn">Submit Weight</button>
-      </div>
-    </div>
-  </div>
-
-  <script>
+    <script>
     let currentBOL = null;
-    let bolCache = {}; // Cache BOLs by ID for modal access
+    let bolCache = {};
 
-    // Get CSRF token from cookie
     function getCookie(name) {
-      let cookieValue = null;
-      if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-          const cookie = cookies[i].trim();
-          if (cookie.substring(0, name.length + 1) === (name + '=')) {
-            cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-            break;
-          }
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
         }
-      }
-      return cookieValue;
+        return cookieValue;
     }
 
     async function getJSON(url) {
-      const res = await fetch(url, { credentials: 'include' });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `HTTP ${res.status}`);
-      }
-      return res.json();
+        const res = await fetch(url, { credentials: 'include' });
+        if (!res.ok) throw new Error(await res.text() || `HTTP ${res.status}`);
+        return res.json();
     }
 
     async function postJSON(url, data) {
-      const csrftoken = getCookie('csrftoken');
-      const res = await fetch(url, {
-        method: 'POST',
-        credentials: 'include',
-        headers: {
-          'Content-Type': 'application/json',
-          'X-CSRFToken': csrftoken
-        },
-        body: JSON.stringify(data)
-      });
-      if (!res.ok) {
-        const text = await res.text();
-        throw new Error(text || `HTTP ${res.status}`);
-      }
-      return res.json();
+        const res = await fetch(url, {
+            method: 'POST',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json', 'X-CSRFToken': getCookie('csrftoken') },
+            body: JSON.stringify(data)
+        });
+        if (!res.ok) throw new Error(await res.text() || `HTTP ${res.status}`);
+        return res.json();
     }
 
-    // Table state
     let allBOLs = [];
     let filteredBOLs = [];
     let currentPage = 1;
@@ -378,219 +621,174 @@
     let sortDirection = 'desc';
 
     async function loadBOLs() {
-      try {
-        const data = await getJSON('/api/history');
-        allBOLs = data.rows || [];
-        bolCache = {};
-        allBOLs.forEach(row => { bolCache[row.id] = row; });
-        applyFilters();
-      } catch (err) {
-        console.error('Error loading BOLs:', err);
-        document.getElementById('bolTableBody').innerHTML =
-          `<tr><td colspan="9" class="ta-c" style="color: red;">Error: ${err.message}</td></tr>`;
-      }
+        try {
+            const data = await getJSON('/api/history');
+            allBOLs = data.rows || [];
+            bolCache = {};
+            allBOLs.forEach(row => { bolCache[row.id] = row; });
+            applyFilters();
+        } catch (err) {
+            document.getElementById('bolTableBody').innerHTML = `<tr><td colspan="9" class="ta-c" style="color: #dc2626;">Error: ${err.message}</td></tr>`;
+        }
     }
 
     function applyFilters() {
-      const showAll = document.getElementById('showAll').checked;
-      const searchQuery = (document.getElementById('bolSearch').value || '').toLowerCase();
-
-      filteredBOLs = allBOLs.filter(row => {
-        // Filter by official weight status
-        if (!showAll && row.officialWeightTons) return false;
-        // Filter by search
-        if (searchQuery) {
-          return (row.bolNo || '').toLowerCase().includes(searchQuery) ||
-                 (row.buyerName || '').toLowerCase().includes(searchQuery) ||
-                 (row.productName || '').toLowerCase().includes(searchQuery) ||
-                 (row.date || '').toLowerCase().includes(searchQuery);
-        }
-        return true;
-      });
-
-      currentPage = 1;
-      renderBOLs();
+        const showAll = document.getElementById('showAll').checked;
+        const searchQuery = (document.getElementById('bolSearch').value || '').toLowerCase();
+        filteredBOLs = allBOLs.filter(row => {
+            if (!showAll && row.officialWeightTons) return false;
+            if (searchQuery) {
+                return (row.bolNo || '').toLowerCase().includes(searchQuery) ||
+                       (row.buyerName || '').toLowerCase().includes(searchQuery) ||
+                       (row.productName || '').toLowerCase().includes(searchQuery) ||
+                       (row.date || '').toLowerCase().includes(searchQuery);
+            }
+            return true;
+        });
+        currentPage = 1;
+        renderBOLs();
     }
 
     function renderBOLs() {
-      const tbody = document.getElementById('bolTableBody');
-
-      if (filteredBOLs.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" class="ta-c">No BOLs found</td></tr>';
-        document.getElementById('bolPagination').innerHTML = '';
-        return;
-      }
-
-      // Sort
-      const sorted = [...filteredBOLs].sort((a, b) => {
-        let aVal = a[sortColumn] || '';
-        let bVal = b[sortColumn] || '';
-        if (['cbrtWeightTons', 'officialWeightTons', 'varianceTons', 'variancePercent'].includes(sortColumn)) {
-          aVal = Number(aVal) || 0;
-          bVal = Number(bVal) || 0;
-        }
-        if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
-        if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
-        return 0;
-      });
-
-      // Paginate
-      const totalPages = Math.ceil(sorted.length / pageSize);
-      currentPage = Math.min(currentPage, totalPages);
-      const start = (currentPage - 1) * pageSize;
-      const pageData = sorted.slice(start, start + pageSize);
-
-      let html = '';
-      pageData.forEach(row => {
-        const hasOfficialWeight = row.officialWeightTons !== null && row.officialWeightTons !== undefined;
-        const hasStampedPdf = row.stampedPdfUrl && row.stampedPdfUrl !== '';
-        const cbrtWeight = Number(row.cbrtWeightTons || 0).toFixed(2);
-        const officialWeight = hasOfficialWeight ? Number(row.officialWeightTons).toFixed(2) : '-';
-
-        let varianceHTML = '-';
-        let varianceClass = '';
-        if (hasOfficialWeight) {
-          const variance = Number(row.varianceTons || 0);
-          const variancePercent = Number(row.variancePercent || 0);
-          const absPercent = Math.abs(variancePercent);
-          if (absPercent >= 5 || Math.abs(variance) >= 0.5) varianceClass = 'variance-critical';
-          else if (absPercent >= 2 || Math.abs(variance) >= 0.2) varianceClass = 'variance-warning';
-          else varianceClass = 'variance-good';
-          const sign = variance >= 0 ? '+' : '';
-          varianceHTML = `<span class="${varianceClass}">${sign}${variance.toFixed(2)}t (${sign}${variancePercent.toFixed(1)}%)</span>`;
+        const tbody = document.getElementById('bolTableBody');
+        if (filteredBOLs.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="9" class="ta-c" style="padding: 2rem; color: var(--text-muted);">No BOLs found</td></tr>';
+            document.getElementById('bolPagination').innerHTML = '';
+            return;
         }
 
-        const statusBadge = hasOfficialWeight ? '<span class="official-weight-badge">Official</span>' : '<span class="pending-weight-badge">Pending</span>';
-        const actionButton = hasOfficialWeight ? '-' : `<button class="btn btn-sm" onclick="openWeightModal(${row.id})">Enter Weight</button>`;
-        const pdfUrl = hasStampedPdf ? row.stampedPdfUrl : (row.pdfUrl || '#');
+        const sorted = [...filteredBOLs].sort((a, b) => {
+            let aVal = a[sortColumn] || '';
+            let bVal = b[sortColumn] || '';
+            if (['cbrtWeightTons', 'officialWeightTons', 'varianceTons', 'variancePercent'].includes(sortColumn)) {
+                aVal = Number(aVal) || 0;
+                bVal = Number(bVal) || 0;
+            }
+            if (aVal < bVal) return sortDirection === 'asc' ? -1 : 1;
+            if (aVal > bVal) return sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
 
-        html += `
-          <tr>
-            <td><a href="${pdfUrl}" target="_blank">${row.bolNo || '-'}</a></td>
-            <td>${row.date || '-'}</td>
-            <td>${row.buyerName || '-'}</td>
-            <td>${row.productName || '-'}</td>
-            <td class="ta-r weight-cell" style="color: #f59e0b;">${cbrtWeight}</td>
-            <td class="ta-r weight-cell" style="color: #059669; font-weight: 700;">${officialWeight}</td>
-            <td class="ta-r" style="white-space: nowrap;">${varianceHTML}</td>
-            <td class="ta-c">${statusBadge}</td>
-            <td class="ta-c">${actionButton}</td>
-          </tr>`;
-      });
-      tbody.innerHTML = html;
+        const totalPages = Math.ceil(sorted.length / pageSize);
+        currentPage = Math.min(currentPage, totalPages);
+        const start = (currentPage - 1) * pageSize;
+        const pageData = sorted.slice(start, start + pageSize);
 
-      // Pagination
-      const paginationEl = document.getElementById('bolPagination');
-      if (totalPages > 1) {
-        paginationEl.innerHTML = `
-          <button onclick="bolPage(1)" ${currentPage === 1 ? 'disabled' : ''}>First</button>
-          <button onclick="bolPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>Prev</button>
-          <span class="page-info">Page ${currentPage} of ${totalPages} (${filteredBOLs.length} total)</span>
-          <button onclick="bolPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>
-          <button onclick="bolPage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}>Last</button>
-        `;
-      } else {
-        paginationEl.innerHTML = `<span class="page-info">${filteredBOLs.length} total</span>`;
-      }
+        let html = '';
+        pageData.forEach(row => {
+            const hasOfficialWeight = row.officialWeightTons !== null && row.officialWeightTons !== undefined;
+            const hasStampedPdf = row.stampedPdfUrl && row.stampedPdfUrl !== '';
+            const cbrtWeight = Number(row.cbrtWeightTons || 0).toFixed(2);
+            const officialWeight = hasOfficialWeight ? Number(row.officialWeightTons).toFixed(2) : '-';
+
+            let varianceHTML = '-';
+            if (hasOfficialWeight) {
+                const variance = Number(row.varianceTons || 0);
+                const variancePercent = Number(row.variancePercent || 0);
+                const absPercent = Math.abs(variancePercent);
+                let varianceClass = 'variance-good';
+                if (absPercent >= 5 || Math.abs(variance) >= 0.5) varianceClass = 'variance-critical';
+                else if (absPercent >= 2 || Math.abs(variance) >= 0.2) varianceClass = 'variance-warning';
+                const sign = variance >= 0 ? '+' : '';
+                varianceHTML = `<span class="${varianceClass}">${sign}${variance.toFixed(2)}t (${sign}${variancePercent.toFixed(1)}%)</span>`;
+            }
+
+            const statusBadge = hasOfficialWeight ? '<span class="badge badge-official">Official</span>' : '<span class="badge badge-pending">Pending</span>';
+            const actionButton = hasOfficialWeight ? '-' : `<button class="btn btn-primary" onclick="openWeightModal(${row.id})">Enter Weight</button>`;
+            const pdfUrl = hasStampedPdf ? row.stampedPdfUrl : (row.pdfUrl || '#');
+
+            html += `
+                <tr>
+                    <td><a href="${pdfUrl}" target="_blank">${row.bolNo || '-'}</a></td>
+                    <td>${row.date || '-'}</td>
+                    <td>${row.buyerName || '-'}</td>
+                    <td>${row.productName || '-'}</td>
+                    <td class="ta-r weight-cell" style="color: #f59e0b;">${cbrtWeight}</td>
+                    <td class="ta-r weight-cell" style="color: #059669;">${officialWeight}</td>
+                    <td class="ta-r" style="white-space: nowrap;">${varianceHTML}</td>
+                    <td class="ta-c">${statusBadge}</td>
+                    <td class="ta-c">${actionButton}</td>
+                </tr>`;
+        });
+        tbody.innerHTML = html;
+
+        const paginationEl = document.getElementById('bolPagination');
+        if (totalPages > 1) {
+            paginationEl.innerHTML = `
+                <button onclick="bolPage(1)" ${currentPage === 1 ? 'disabled' : ''}>First</button>
+                <button onclick="bolPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>Prev</button>
+                <span class="page-info">Page ${currentPage} of ${totalPages} (${filteredBOLs.length} total)</span>
+                <button onclick="bolPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>Next</button>
+                <button onclick="bolPage(${totalPages})" ${currentPage === totalPages ? 'disabled' : ''}>Last</button>
+            `;
+        } else {
+            paginationEl.innerHTML = `<span class="page-info">${filteredBOLs.length} total</span>`;
+        }
     }
 
-    window.bolPage = function(page) {
-      currentPage = page;
-      renderBOLs();
-    };
+    window.bolPage = function(page) { currentPage = page; renderBOLs(); };
 
-    // Search
     document.getElementById('bolSearch').addEventListener('input', applyFilters);
-
-    // Page size
     document.getElementById('bolPageSize').addEventListener('change', function() {
-      pageSize = parseInt(this.value);
-      currentPage = 1;
-      renderBOLs();
+        pageSize = parseInt(this.value);
+        currentPage = 1;
+        renderBOLs();
     });
 
-    // Sortable columns
-    document.querySelectorAll('.bol-table th.sortable').forEach(th => {
-      th.addEventListener('click', function() {
-        const col = this.dataset.sort;
-        if (sortColumn === col) {
-          sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
-        } else {
-          sortColumn = col;
-          sortDirection = 'asc';
-        }
-        document.querySelectorAll('.bol-table th.sortable').forEach(t => t.classList.remove('asc', 'desc'));
-        this.classList.add(sortDirection);
-        renderBOLs();
-      });
+    document.querySelectorAll('th.sortable').forEach(th => {
+        th.addEventListener('click', function() {
+            const col = this.dataset.sort;
+            if (sortColumn === col) {
+                sortDirection = sortDirection === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortColumn = col;
+                sortDirection = 'asc';
+            }
+            document.querySelectorAll('th.sortable').forEach(t => t.classList.remove('asc', 'desc'));
+            this.classList.add(sortDirection);
+            renderBOLs();
+        });
     });
 
     function openWeightModal(bolId) {
-      const bol = bolCache[bolId];
-      if (!bol) {
-        console.error('BOL not found in cache:', bolId);
-        return;
-      }
-
-      currentBOL = bol;
-      document.getElementById('modalBOLNumber').textContent = bol.bolNo || '-';
-      document.getElementById('modalCustomer').textContent = bol.buyerName || '-';
-      document.getElementById('modalCBRTWeight').textContent = Number(bol.cbrtWeightTons || 0).toFixed(2) + ' tons';
-      document.getElementById('officialWeightInput').value = '';
-      document.getElementById('weightModal').classList.add('active');
-
-      // Focus input after a brief delay to ensure modal is visible
-      setTimeout(() => document.getElementById('officialWeightInput').focus(), 100);
+        const bol = bolCache[bolId];
+        if (!bol) return;
+        currentBOL = bol;
+        document.getElementById('modalBOLNumber').textContent = bol.bolNo || '-';
+        document.getElementById('modalCustomer').textContent = bol.buyerName || '-';
+        document.getElementById('modalCBRTWeight').textContent = Number(bol.cbrtWeightTons || 0).toFixed(2) + ' tons';
+        document.getElementById('officialWeightInput').value = '';
+        document.getElementById('weightModal').classList.add('active');
+        setTimeout(() => document.getElementById('officialWeightInput').focus(), 100);
     }
 
     function closeWeightModal() {
-      document.getElementById('weightModal').classList.remove('active');
-      currentBOL = null;
+        document.getElementById('weightModal').classList.remove('active');
+        currentBOL = null;
     }
 
     async function submitOfficialWeight() {
-      if (!currentBOL) return;
-
-      const weightLbs = document.getElementById('officialWeightInput').value;
-      if (!weightLbs || Number(weightLbs) <= 0) {
-        alert('Please enter a valid weight greater than 0');
-        return;
-      }
-
-      // Convert pounds to short tons (divide by 2000)
-      const weightTons = Number(weightLbs) / 2000;
-
-      try {
-        const result = await postJSON(`/api/bol/${currentBOL.id}/set-official-weight/`, {
-          officialWeightTons: weightTons
-        });
-
-        alert(`Official weight set successfully!\n\nBOL: ${result.bolNumber}\nOfficial: ${result.officialWeightTons} tons (${weightLbs} lbs)\nVariance: ${result.varianceTons >= 0 ? '+' : ''}${result.varianceTons} tons (${result.variancePercent >= 0 ? '+' : ''}${result.variancePercent}%)`);
-
-        closeWeightModal();
-        loadBOLs();
-      } catch (err) {
-        console.error('Error submitting weight:', err);
-        alert('Error: ' + err.message);
-      }
+        if (!currentBOL) return;
+        const weightLbs = document.getElementById('officialWeightInput').value;
+        if (!weightLbs || Number(weightLbs) <= 0) {
+            alert('Please enter a valid weight greater than 0');
+            return;
+        }
+        const weightTons = Number(weightLbs) / 2000;
+        try {
+            const result = await postJSON(`/api/bol/${currentBOL.id}/set-official-weight/`, { officialWeightTons: weightTons });
+            alert(`Official weight set!\n\nBOL: ${result.bolNumber}\nOfficial: ${result.officialWeightTons} tons (${weightLbs} lbs)\nVariance: ${result.varianceTons >= 0 ? '+' : ''}${result.varianceTons} tons (${result.variancePercent >= 0 ? '+' : ''}${result.variancePercent}%)`);
+            closeWeightModal();
+            loadBOLs();
+        } catch (err) {
+            alert('Error: ' + err.message);
+        }
     }
 
-    // Allow Enter key to submit in modal
-    document.getElementById('officialWeightInput').addEventListener('keypress', (e) => {
-      if (e.key === 'Enter') {
-        submitOfficialWeight();
-      }
-    });
+    document.getElementById('officialWeightInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') submitOfficialWeight(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && document.getElementById('weightModal').classList.contains('active')) closeWeightModal(); });
 
-    // Close modal on Escape key
-    document.addEventListener('keydown', (e) => {
-      if (e.key === 'Escape' && document.getElementById('weightModal').classList.contains('active')) {
-        closeWeightModal();
-      }
-    });
-
-    // Load BOLs on page load
     loadBOLs();
-  </script>
+    </script>
 </body>
 </html>

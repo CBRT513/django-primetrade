@@ -1,743 +1,756 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Create BOL</title>
-  <link rel="stylesheet" href="/static/css/cbrt-brand.css">
-  <style>
-    .wrap { max-width: 820px; }
-    .page-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: 2rem;
-      padding: 1.5rem;
-      background: var(--surface);
-      border-radius: 12px;
-      box-shadow: var(--shadow-md);
-    }
-    .nav-links {
-      display: flex;
-      gap: 1rem;
-      margin-bottom: 1.5rem;
-    }
-    .nav-links a {
-      color: white !important;
-      background: rgba(255, 255, 255, 0.1) !important;
-      border: 1px solid rgba(255, 255, 255, 0.2) !important;
-    }
-    .nav-links a:hover {
-      background: rgba(255, 255, 255, 0.2) !important;
-      border-color: rgba(255, 255, 255, 0.3) !important;
-    }
-    .form-container {
-      background: var(--surface);
-      border-radius: 16px;
-      padding: 2rem;
-      box-shadow: var(--shadow-lg);
-      border: 1px solid var(--border);
-    }
-    .truck-helper {
-      font-size: 0.875rem;
-      color: var(--text-secondary);
-      margin-top: 0.25rem;
-    }
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create BOL - Primetrade</title>
+    <style>
+        :root {
+            --brand-primary: #005500;
+            --brand-dark: #004400;
+            --brand-light: #e8f5e9;
+            --text-primary: #1a1a1a;
+            --text-secondary: #666;
+            --text-muted: #999;
+            --bg-white: #fff;
+            --bg-light: #f9fafb;
+            --border-color: #e5e5e5;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.07);
+        }
 
-    /* Preview Modal Styles */
-    .modal-overlay {
-      display: none;
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.7);
-      z-index: 1000;
-      align-items: center;
-      justify-content: center;
-    }
-    .modal-overlay.active {
-      display: flex;
-    }
-    .modal-content {
-      background: white;
-      border-radius: 12px;
-      width: 90%;
-      max-width: 900px;
-      max-height: 90vh;
-      display: flex;
-      flex-direction: column;
-      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
-    }
-    .modal-header {
-      padding: 1.5rem;
-      border-bottom: 1px solid #e0e0e0;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-    .modal-header h3 {
-      margin: 0;
-      color: var(--primary);
-    }
-    .modal-body {
-      flex: 1;
-      overflow: auto;
-      padding: 0;
-    }
-    .modal-body iframe {
-      width: 100%;
-      height: 600px;
-      border: none;
-    }
-    .modal-footer {
-      padding: 1.5rem;
-      border-top: 1px solid #e0e0e0;
-      display: flex;
-      gap: 1rem;
-      justify-content: flex-end;
-    }
-  </style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-light);
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        .header {
+            background: var(--bg-white);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+        }
+
+        .header-inner {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo { height: 40px; width: auto; }
+
+        .company-name {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .company-tagline {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .user-section {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .username {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .btn-logout {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .btn-logout:hover { background: #c82333; }
+
+        .nav {
+            background: var(--bg-white);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .nav-inner {
+            max-width: 900px;
+            margin: 0 auto;
+            display: flex;
+            gap: 0;
+            padding: 0 2rem;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.875rem 1rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
+            transition: all 0.15s;
+        }
+
+        .nav-link:hover {
+            color: var(--brand-primary);
+            background: var(--bg-light);
+        }
+
+        .nav-link svg { width: 18px; height: 18px; }
+
+        .main {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .page-header { margin-bottom: 1.5rem; }
+
+        .page-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .card {
+            background: var(--bg-white);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .card-body { padding: 1.5rem; }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.625rem 1rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            text-decoration: none;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--brand-primary);
+            color: white;
+        }
+
+        .btn-primary:hover { background: var(--brand-dark); }
+
+        .btn-secondary {
+            background: var(--bg-light);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover { background: var(--border-color); }
+
+        .btn-sm {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.8125rem;
+        }
+
+        .form-group { margin-bottom: 1rem; }
+
+        .form-group label {
+            display: block;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 0.375rem;
+        }
+
+        input, select, textarea {
+            width: 100%;
+            padding: 0.625rem 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            background: var(--bg-white);
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+
+        input:focus, select:focus, textarea:focus {
+            outline: none;
+            border-color: var(--brand-primary);
+            box-shadow: 0 0 0 3px rgba(0, 85, 0, 0.1);
+        }
+
+        input::placeholder, textarea::placeholder { color: var(--text-muted); }
+
+        input[readonly], textarea[readonly] {
+            background: var(--bg-light);
+            color: var(--text-secondary);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .status {
+            padding: 0.75rem 1rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            margin-top: 1rem;
+        }
+
+        .status:empty { display: none; }
+
+        .status a { color: inherit; text-decoration: underline; }
+
+        .helper-text {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        /* Modal */
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .modal-overlay.active { display: flex; }
+
+        .modal {
+            background: var(--bg-white);
+            border-radius: 8px;
+            width: 90%;
+            max-width: 900px;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+            box-shadow: var(--shadow-md);
+        }
+
+        .modal-sm { max-width: 500px; }
+
+        .modal-header {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .modal-header h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .modal-body {
+            flex: 1;
+            overflow: auto;
+            padding: 1.25rem;
+        }
+
+        .modal-body iframe {
+            width: 100%;
+            height: 550px;
+            border: none;
+        }
+
+        .modal-footer {
+            padding: 1rem 1.25rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            gap: 0.75rem;
+            justify-content: flex-end;
+        }
+
+        .footer {
+            max-width: 900px;
+            margin: 2rem auto 0;
+            padding: 1.5rem 2rem;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .footer p {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+    </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="page-header">
-      <h2 style="margin:0;">Create BOL</h2>
-      <div style="display: flex; align-items: center; gap: 15px;">
-        <span id="usernameDisplay" style="color: #fff; font-weight: 500;">Loading...</span>
-<a href="/auth/logout/" class="btn" style="background: #dc3545; color: white; padding: 8px 20px;">Logout</a>
-      </div>
-    </div>
-    <div class="nav-links">
-      <a href="/">Home</a>
-      <a href="/products.html">Products</a>
-      <a href="/customers.html">Customers</a>
-      <a href="/carriers.html">Carriers</a>
-    </div>
-    <div class="form-container">
-      <form id="f">
-        <div class="grid">
-          <div class="form-group">
-            <label>Release Load *</label>
-            <select id="releaseLoad"></select>
-          </div>
-          <div class="form-group">
-            <label>Date *
-            <input type="date" name="date" required />
-          </div>
-          <div class="form-group">
-            <label>Product *</label>
-            <select name="productId" id="product" required></select>
-          </div>
+    <header class="header">
+        <div class="header-inner">
+            <div class="logo-section">
+                <img src="/static/cbrt-logo-optimized.svg" alt="CBRT" class="logo">
+                <div>
+                    <div class="company-name">Cincinnati Barge & Rail Terminal</div>
+                    <div class="company-tagline">Create BOL</div>
+                </div>
+            </div>
+            <div class="user-section">
+                <span id="usernameDisplay" class="username">Loading...</span>
+                <a href="/auth/logout/" class="btn-logout">Logout</a>
+            </div>
         </div>
-        
-        <div class="form-group">
-          <label>Customer *</label>
-          <select name="customerId" id="customer" onchange="updateCustomerAddress()" required disabled>
-            <option value="">Select a customer...</option>
-          </select>
+    </header>
+
+    <nav class="nav">
+        <div class="nav-inner">
+            <a href="/" class="nav-link">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                Dashboard
+            </a>
+            <a href="/open-releases/" class="nav-link">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                Releases
+            </a>
+            <a href="/products.html" class="nav-link">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                Products
+            </a>
+            <a href="/customers.html" class="nav-link">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                Customers
+            </a>
+            <a href="/carriers.html" class="nav-link">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                Carriers
+            </a>
         </div>
-        
-        <div class="form-group">
-          <label>Customer PO #</label>
-          <input name="customerPO" id="customerPO" placeholder="Optional" readonly />
-        </div>
-        
-        <div class="form-group">
-          <label>Ship-To Address *</label>
-          <textarea name="shipTo" rows="3" id="shipToAddress" required readonly></textarea>
-        </div>
-        <input type="hidden" name="buyerName" id="buyerName" />
-        
-        <div class="form-group">
-          <label>Carrier *</label>
-          <div style="display: flex; gap: 0.5rem; align-items: center;">
-            <select name="carrierId" id="carrier" onchange="updateTruckOptions()" required style="flex: 1;">
-              <option value="">Select a carrier...</option>
-            </select>
-            <button type="button" onclick="refreshCarriers()" class="btn btn-sm" title="Refresh carriers/trucks">
-              &#x21BB;
-            </button>
-          </div>
+    </nav>
+
+    <main class="main">
+        <div class="page-header">
+            <h1 class="page-title">Create Bill of Lading</h1>
         </div>
 
-        <div class="grid">
-          <div class="form-group">
-            <label>Truck Number *</label>
-            <select name="truckNo" id="truckNo" required>
-              <option value="">Select truck number...</option>
-            </select>
-          </div>
-          <div class="form-group">
-            <label>Trailer Number</label>
-            <input name="trailerNo" id="trailerNo" placeholder="Enter trailer number" />
-          </div>
-        </div>
-        
-        <div class="grid">
-          <div class="form-group">
-            <label>Net Weight (lbs) *</label>
-            <input type="number" step="1" name="netWeightLbs" id="netWeightLbs" placeholder="0" required />
-            <div class="truck-helper" id="weightTonsDisplay"></div>
-          </div>
-          <div class="form-group">
-            <label>Notes</label>
-            <input name="notes" placeholder="Optional notes" />
-          </div>
-        </div>
-        
-        <button type="submit" class="btn btn-accent">Preview BOL</button>
-        <span id="status" class="status"></span>
-      </form>
-    </div>
-  </div>
+        <div class="card">
+            <div class="card-body">
+                <form id="f">
+                    <div class="grid">
+                        <div class="form-group">
+                            <label>Release Load *</label>
+                            <select id="releaseLoad"></select>
+                        </div>
+                        <div class="form-group">
+                            <label>Date *</label>
+                            <input type="date" name="date" required />
+                        </div>
+                        <div class="form-group">
+                            <label>Product *</label>
+                            <select name="productId" id="product" required></select>
+                        </div>
+                    </div>
 
-  <!-- Preview Modal -->
-  <div id="previewModal" class="modal-overlay">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h3>BOL Preview</h3>
-        <button onclick="closePreviewModal()" class="btn btn-secondary">×</button>
-      </div>
-      <div class="modal-body">
-        <iframe id="pdfPreview"></iframe>
-      </div>
-      <div class="modal-footer">
-        <button onclick="closePreviewModal()" class="btn btn-secondary">Edit</button>
-        <button onclick="approveBOL()" class="btn btn-accent">Approve & Save</button>
-      </div>
-    </div>
-  </div>
+                    <div class="form-group">
+                        <label>Customer *</label>
+                        <select name="customerId" id="customer" onchange="updateCustomerAddress()" required disabled>
+                            <option value="">Select a customer...</option>
+                        </select>
+                    </div>
 
-  <!-- Add Truck Modal -->
-  <div id="addTruckModal" class="modal-overlay">
-    <div class="modal-content" style="max-width: 500px;">
-      <div class="modal-header">
-        <h3>Add New Truck</h3>
-        <button onclick="closeAddTruckModal()" class="btn btn-secondary">×</button>
-      </div>
-      <div class="modal-body">
-        <div class="form-group">
-          <label>Truck Number *</label>
-          <input type="text" id="newTruckNumber" placeholder="Enter truck number" required />
-        </div>
-        <div class="form-group">
-          <label>Trailer Number</label>
-          <input type="text" id="newTrailerNumber" placeholder="Enter trailer number (optional)" />
-        </div>
-        <div id="addTruckStatus" class="status"></div>
-      </div>
-      <div class="modal-footer">
-        <button onclick="closeAddTruckModal()" class="btn btn-secondary">Cancel</button>
-        <button onclick="saveNewTruck()" class="btn btn-accent">Add Truck</button>
-      </div>
-    </div>
-  </div>
+                    <div class="form-group">
+                        <label>Customer PO #</label>
+                        <input name="customerPO" id="customerPO" placeholder="Optional" readonly />
+                    </div>
 
-  <script src="/static/js/utils.js?v=2"></script>
-  <script>
+                    <div class="form-group">
+                        <label>Ship-To Address *</label>
+                        <textarea name="shipTo" rows="3" id="shipToAddress" required readonly></textarea>
+                    </div>
+                    <input type="hidden" name="buyerName" id="buyerName" />
+
+                    <div class="form-group">
+                        <label>Carrier *</label>
+                        <div style="display: flex; gap: 0.5rem; align-items: center;">
+                            <select name="carrierId" id="carrier" onchange="updateTruckOptions()" required style="flex: 1;">
+                                <option value="">Select a carrier...</option>
+                            </select>
+                            <button type="button" onclick="refreshCarriers()" class="btn btn-secondary btn-sm" title="Refresh carriers/trucks">&#x21BB;</button>
+                        </div>
+                    </div>
+
+                    <div class="grid">
+                        <div class="form-group">
+                            <label>Truck Number *</label>
+                            <select name="truckNo" id="truckNo" required>
+                                <option value="">Select truck number...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label>Trailer Number</label>
+                            <input name="trailerNo" id="trailerNo" placeholder="Enter trailer number" />
+                        </div>
+                    </div>
+
+                    <div class="grid">
+                        <div class="form-group">
+                            <label>Net Weight (lbs) *</label>
+                            <input type="number" step="1" name="netWeightLbs" id="netWeightLbs" placeholder="0" required />
+                            <div class="helper-text" id="weightTonsDisplay"></div>
+                        </div>
+                        <div class="form-group">
+                            <label>Notes</label>
+                            <input name="notes" placeholder="Optional notes" />
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary">Preview BOL</button>
+                    <span id="status" class="status"></span>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <!-- Preview Modal -->
+    <div id="previewModal" class="modal-overlay">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>BOL Preview</h3>
+                <button onclick="closePreviewModal()" class="btn btn-secondary btn-sm">Close</button>
+            </div>
+            <div class="modal-body">
+                <iframe id="pdfPreview"></iframe>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closePreviewModal()" class="btn btn-secondary">Edit</button>
+                <button onclick="approveBOL()" class="btn btn-primary">Approve & Save</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Truck Modal -->
+    <div id="addTruckModal" class="modal-overlay">
+        <div class="modal modal-sm">
+            <div class="modal-header">
+                <h3>Add New Truck</h3>
+                <button onclick="closeAddTruckModal()" class="btn btn-secondary btn-sm">Close</button>
+            </div>
+            <div class="modal-body">
+                <div class="form-group">
+                    <label>Truck Number *</label>
+                    <input type="text" id="newTruckNumber" placeholder="Enter truck number" required />
+                </div>
+                <div class="form-group">
+                    <label>Trailer Number</label>
+                    <input type="text" id="newTrailerNumber" placeholder="Enter trailer number (optional)" />
+                </div>
+                <div id="addTruckStatus" class="status"></div>
+            </div>
+            <div class="modal-footer">
+                <button onclick="closeAddTruckModal()" class="btn btn-secondary">Cancel</button>
+                <button onclick="saveNewTruck()" class="btn btn-primary">Add Truck</button>
+            </div>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <p>&copy; 2024 Cincinnati Barge & Rail Terminal. All rights reserved.</p>
+    </footer>
+
+    <script src="/static/js/utils.js?v=2"></script>
+    <script>
     function qs(id){return document.getElementById(id)}
     async function getJSON(u){
-      const r=await fetch(u, {
-        credentials: 'same-origin'
-      });
-      if(!r.ok) throw new Error(await r.text());
-      return r.json();
+        const r=await fetch(u, { credentials: 'same-origin' });
+        if(!r.ok) throw new Error(await r.text());
+        return r.json();
     }
     async function postJSON(u, body){
-      const r=await fetch(u,{
-        method:"POST",
-        headers:{
-          'Content-Type':'application/json',
-          'X-CSRFToken': Utils.getCSRFToken()
-        },
-        credentials: 'same-origin',
-        body:JSON.stringify(body)
-      });
-      if(!r.ok) throw new Error(await r.text());
-      return r.json();
+        const r=await fetch(u,{
+            method:"POST",
+            headers:{
+                'Content-Type':'application/json',
+                'X-CSRFToken': Utils.getCSRFToken()
+            },
+            credentials: 'same-origin',
+            body:JSON.stringify(body)
+        });
+        if(!r.ok) throw new Error(await r.text());
+        return r.json();
+    }
+
+    function showStatus(msg, type) {
+        const s = qs("status");
+        s.innerHTML = msg;
+        s.style.background = type === 'error' ? '#fee2e2' : type === 'success' ? '#dcfce7' : '#f3f4f6';
+        s.style.color = type === 'error' ? '#dc2626' : type === 'success' ? '#166534' : '#374151';
     }
 
     let products = [];
     let customers = [];
     let carriers = [];
-    let pendingBOLData = null;  // Store form data between preview and approval
+    let pendingBOLData = null;
 
-    // Modal functions
     function showPreviewModal(pdfBase64) {
-      const modal = qs("previewModal");
-      const iframe = qs("pdfPreview");
-
-      // Convert base64 to blob URL
-      const blob = base64ToBlob(pdfBase64, 'application/pdf');
-      const blobUrl = URL.createObjectURL(blob);
-
-      // Load PDF in iframe
-      iframe.src = blobUrl;
-
-      // Show modal
-      modal.classList.add('active');
+        const modal = qs("previewModal");
+        const iframe = qs("pdfPreview");
+        const blob = base64ToBlob(pdfBase64, 'application/pdf');
+        const blobUrl = URL.createObjectURL(blob);
+        iframe.src = blobUrl;
+        modal.classList.add('active');
     }
 
     function closePreviewModal() {
-      const modal = qs("previewModal");
-      const iframe = qs("pdfPreview");
-
-      // Clear iframe
-      iframe.src = '';
-
-      // Hide modal
-      modal.classList.remove('active');
-
-      // Clear pending data
-      pendingBOLData = null;
+        const modal = qs("previewModal");
+        const iframe = qs("pdfPreview");
+        iframe.src = '';
+        modal.classList.remove('active');
+        pendingBOLData = null;
     }
 
     async function approveBOL() {
-      if (!pendingBOLData) {
-        alert('No BOL data to approve');
-        return;
-      }
-
-      const s = qs("status");
-      s.textContent = "Saving BOL...";
-
-      try {
-        const res = await postJSON("/api/bol/confirm/", pendingBOLData);
-        if (res && res.ok) {
-          closePreviewModal();
-
-          s.innerHTML = `✅ Created <b>${res.bolNo}</b> — <a target="_blank" href="${res.pdfUrl}">Open PDF</a>`;
-
-          // Open PDF in new tab automatically
-          window.open(res.pdfUrl, '_blank');
-
-          // Reset form
-          qs("f").reset();
-          qs("shipToAddress").value = "";
-          qs("buyerName").value = "";
-
-          // Set date to today again
-          const d = new Date();
-          const yyyy = d.getFullYear();
-          const mm = String(d.getMonth()+1).padStart(2,'0');
-          const dd = String(d.getDate()).padStart(2,'0');
-          document.querySelector('input[name=date]').value = `${yyyy}-${mm}-${dd}`;
-        } else {
-          s.textContent = "❌ " + (res.error || "Unknown error");
+        if (!pendingBOLData) { alert('No BOL data to approve'); return; }
+        const s = qs("status");
+        showStatus("Saving BOL...", "info");
+        try {
+            const res = await postJSON("/api/bol/confirm/", pendingBOLData);
+            if (res && res.ok) {
+                closePreviewModal();
+                showStatus(`Created <b>${res.bolNo}</b> — <a target="_blank" href="${res.pdfUrl}">Open PDF</a>`, 'success');
+                window.open(res.pdfUrl, '_blank');
+                qs("f").reset();
+                qs("shipToAddress").value = "";
+                qs("buyerName").value = "";
+                const d = new Date();
+                document.querySelector('input[name=date]').value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+            } else {
+                showStatus("Error: " + (res.error || "Unknown error"), 'error');
+            }
+        } catch (e) {
+            showStatus("Error: " + (e.message || String(e)), 'error');
         }
-      } catch (e) {
-        console.error('BOL approval error:', e);
-        s.textContent = "❌ " + (e.message || String(e));
-      }
     }
 
     function base64ToBlob(base64, mimeType) {
-      const byteCharacters = atob(base64);
-      const byteNumbers = new Array(byteCharacters.length);
-      for (let i = 0; i < byteCharacters.length; i++) {
-        byteNumbers[i] = byteCharacters.charCodeAt(i);
-      }
-      const byteArray = new Uint8Array(byteNumbers);
-      return new Blob([byteArray], { type: mimeType });
+        const byteCharacters = atob(base64);
+        const byteNumbers = new Array(byteCharacters.length);
+        for (let i = 0; i < byteCharacters.length; i++) {
+            byteNumbers[i] = byteCharacters.charCodeAt(i);
+        }
+        const byteArray = new Uint8Array(byteNumbers);
+        return new Blob([byteArray], { type: mimeType });
     }
 
     function updateCustomerAddress() {
-      const customerId = qs("customer").value;
-      const shipToField = qs("shipToAddress");
-      const buyerField = qs("buyerName");
-      
-      if (!customerId) {
-        shipToField.value = "";
-        buyerField.value = "";
-        return;
-      }
-      
-      // Find customer - convert IDs to strings for comparison
-      const customer = customers.find(c => String(c.id) === String(customerId));
-      if (customer) {
-        // Format the full address (Django uses snake_case)
-        const address = customer.address + "\n" + 
-                       customer.city + ", " + customer.state + " " + customer.zip;
-        shipToField.value = address;
-        buyerField.value = customer.customer;
-      }
-    }
-    
-    function updateTruckOptions() {
-      const carrierId = qs("carrier").value;
-      const truckNoField = qs("truckNo");
-      const trailerNoField = qs("trailerNo");
-
-      // Clear existing options
-      truckNoField.innerHTML = '<option value="">Select truck number...</option>';
-      trailerNoField.value = "";
-
-      if (!carrierId) return;
-
-      // Find carrier - convert IDs to strings for comparison
-      const carrier = carriers.find(c => String(c.id) === String(carrierId));
-      if (carrier && carrier.trucks) {
-        // Filter active trucks (Django uses snake_case: is_active)
-        const activeTrucks = carrier.trucks.filter(t => t.is_active !== false);
-
-        // Add trucks to dropdown
-        activeTrucks.forEach(truck => {
-          const option = document.createElement('option');
-          option.value = truck.truck_number;
-          option.textContent = `${truck.truck_number} / ${truck.trailer_number || 'N/A'}`;
-          option.dataset.trailerNumber = truck.trailer_number || '';
-          truckNoField.appendChild(option);
-        });
-
-        // Add "Add Truck/Trailer" option at the end
-        const addOption = document.createElement('option');
-        addOption.value = '__add_new__';
-        addOption.textContent = '+ Add Truck/Trailer';
-        truckNoField.appendChild(addOption);
-      }
-    }
-
-    // Refresh carriers and trucks
-    async function refreshCarriers() {
-      const currentCarrierId = qs("carrier").value;
-      try {
-        carriers = await getJSON("/api/carriers/");
-
-        // Rebuild carrier dropdown
-        const carrierSelect = qs("carrier");
-        const currentSelection = carrierSelect.value;
-        carrierSelect.innerHTML = '<option value="">Select a carrier...</option>';
-        carriers.forEach(c => {
-          const opt = new Option(c.carrier_name, c.id);
-          carrierSelect.add(opt);
-        });
-
-        // Restore selection
-        if (currentSelection) {
-          carrierSelect.value = currentSelection;
-          updateTruckOptions();
+        const customerId = qs("customer").value;
+        const shipToField = qs("shipToAddress");
+        const buyerField = qs("buyerName");
+        if (!customerId) { shipToField.value = ""; buyerField.value = ""; return; }
+        const customer = customers.find(c => String(c.id) === String(customerId));
+        if (customer) {
+            shipToField.value = customer.address + "\n" + customer.city + ", " + customer.state + " " + customer.zip;
+            buyerField.value = customer.customer;
         }
-
-        showStatus('✓ Carriers/trucks refreshed', 'success');
-        setTimeout(() => showStatus('', ''), 2000);
-      } catch (e) {
-        showStatus('Error refreshing carriers: ' + e.message, 'error');
-      }
     }
 
-    // Show add truck modal
+    function updateTruckOptions() {
+        const carrierId = qs("carrier").value;
+        const truckNoField = qs("truckNo");
+        const trailerNoField = qs("trailerNo");
+        truckNoField.innerHTML = '<option value="">Select truck number...</option>';
+        trailerNoField.value = "";
+        if (!carrierId) return;
+        const carrier = carriers.find(c => String(c.id) === String(carrierId));
+        if (carrier && carrier.trucks) {
+            const activeTrucks = carrier.trucks.filter(t => t.is_active !== false);
+            activeTrucks.forEach(truck => {
+                const option = document.createElement('option');
+                option.value = truck.truck_number;
+                option.textContent = `${truck.truck_number} / ${truck.trailer_number || 'N/A'}`;
+                option.dataset.trailerNumber = truck.trailer_number || '';
+                truckNoField.appendChild(option);
+            });
+            const addOption = document.createElement('option');
+            addOption.value = '__add_new__';
+            addOption.textContent = '+ Add Truck/Trailer';
+            truckNoField.appendChild(addOption);
+        }
+    }
+
+    async function refreshCarriers() {
+        try {
+            carriers = await getJSON("/api/carriers/");
+            const carrierSelect = qs("carrier");
+            const currentSelection = carrierSelect.value;
+            carrierSelect.innerHTML = '<option value="">Select a carrier...</option>';
+            carriers.forEach(c => { carrierSelect.add(new Option(c.carrier_name, c.id)); });
+            if (currentSelection) { carrierSelect.value = currentSelection; updateTruckOptions(); }
+            showStatus('Carriers/trucks refreshed', 'success');
+            setTimeout(() => showStatus('', ''), 2000);
+        } catch (e) {
+            showStatus('Error refreshing carriers: ' + e.message, 'error');
+        }
+    }
+
     function showAddTruckModal() {
-      const carrierId = qs("carrier").value;
-      if (!carrierId) {
-        showStatus('Please select a carrier first', 'error');
-        setTimeout(() => showStatus('', ''), 2000);
-        return;
-      }
-      qs("newTruckNumber").value = '';
-      qs("newTrailerNumber").value = '';
-      qs("addTruckStatus").textContent = '';
-      qs("addTruckModal").classList.add('active');
+        if (!qs("carrier").value) { showStatus('Please select a carrier first', 'error'); return; }
+        qs("newTruckNumber").value = '';
+        qs("newTrailerNumber").value = '';
+        qs("addTruckStatus").textContent = '';
+        qs("addTruckModal").classList.add('active');
     }
 
-    // Close add truck modal
-    function closeAddTruckModal() {
-      qs("addTruckModal").classList.remove('active');
-    }
+    function closeAddTruckModal() { qs("addTruckModal").classList.remove('active'); }
 
-    // Save new truck
     async function saveNewTruck() {
-      const carrierId = qs("carrier").value;
-      const truckNumber = qs("newTruckNumber").value.trim();
-      const trailerNumber = qs("newTrailerNumber").value.trim();
-      const statusEl = qs("addTruckStatus");
-
-      if (!truckNumber) {
-        statusEl.textContent = 'Truck number is required';
-        return;
-      }
-
-      const carrier = carriers.find(c => String(c.id) === String(carrierId));
-      if (!carrier) {
-        statusEl.textContent = 'Carrier not found';
-        return;
-      }
-
-      // Add truck to carrier
-      if (!carrier.trucks) carrier.trucks = [];
-      carrier.trucks.push({
-        truck_number: truckNumber,
-        trailer_number: trailerNumber,
-        is_active: true
-      });
-
-      try {
-        await postJSON('/api/carriers/', {
-          id: carrier.id,
-          carrier_name: carrier.carrier_name,
-          contact_name: carrier.contact_name,
-          phone: carrier.phone,
-          email: carrier.email,
-          is_active: carrier.is_active,
-          trucks: carrier.trucks
-        });
-
-        // Close modal
-        closeAddTruckModal();
-
-        // Refresh truck list and select the newly added truck
-        updateTruckOptions();
-        qs("truckNo").value = truckNumber;
-        qs("trailerNo").value = trailerNumber;
-
-        showStatus('✓ Truck added successfully', 'success');
-        setTimeout(() => showStatus('', ''), 2000);
-      } catch (e) {
-        statusEl.textContent = 'Error: ' + e.message;
-      }
+        const carrierId = qs("carrier").value;
+        const truckNumber = qs("newTruckNumber").value.trim();
+        const trailerNumber = qs("newTrailerNumber").value.trim();
+        const statusEl = qs("addTruckStatus");
+        if (!truckNumber) { statusEl.textContent = 'Truck number is required'; return; }
+        const carrier = carriers.find(c => String(c.id) === String(carrierId));
+        if (!carrier) { statusEl.textContent = 'Carrier not found'; return; }
+        if (!carrier.trucks) carrier.trucks = [];
+        carrier.trucks.push({ truck_number: truckNumber, trailer_number: trailerNumber, is_active: true });
+        try {
+            await postJSON('/api/carriers/', {
+                id: carrier.id, carrier_name: carrier.carrier_name, contact_name: carrier.contact_name,
+                phone: carrier.phone, email: carrier.email, is_active: carrier.is_active, trucks: carrier.trucks
+            });
+            closeAddTruckModal();
+            updateTruckOptions();
+            qs("truckNo").value = truckNumber;
+            qs("trailerNo").value = trailerNumber;
+            showStatus('Truck added successfully', 'success');
+            setTimeout(() => showStatus('', ''), 2000);
+        } catch (e) { statusEl.textContent = 'Error: ' + e.message; }
     }
 
-    // Handle truck selection (auto-fill trailer or open add modal)
     qs("truckNo").addEventListener('change', function() {
-      const selectedValue = this.value;
-      const trailerNoField = qs("trailerNo");
-
-      // Check if "Add Truck/Trailer" was selected
-      if (selectedValue === '__add_new__') {
-        showAddTruckModal();
-        // Reset to empty selection
-        this.value = '';
-        return;
-      }
-
-      // Auto-fill trailer number from selected truck
-      const selectedOption = this.options[this.selectedIndex];
-      if (selectedOption && selectedOption.dataset.trailerNumber) {
-        trailerNoField.value = selectedOption.dataset.trailerNumber;
-      } else {
-        trailerNoField.value = '';
-      }
+        if (this.value === '__add_new__') { showAddTruckModal(); this.value = ''; return; }
+        const selectedOption = this.options[this.selectedIndex];
+        qs("trailerNo").value = selectedOption?.dataset.trailerNumber || '';
     });
 
-    // Show tons equivalent as user types weight in lbs
     qs("netWeightLbs").addEventListener('input', function() {
-      const lbs = parseFloat(this.value) || 0;
-      const tons = (lbs / 2000).toFixed(2);
-      const display = qs("weightTonsDisplay");
-      if (lbs > 0) {
-        display.textContent = `≈ ${tons} tons`;
-        display.style.color = '#666';
-      } else {
-        display.textContent = '';
-      }
+        const lbs = parseFloat(this.value) || 0;
+        const tons = (lbs / 2000).toFixed(2);
+        qs("weightTonsDisplay").textContent = lbs > 0 ? `≈ ${tons} tons` : '';
     });
 
     (async () => {
-      // Load current user info
-      try {
-        const user = await getJSON("/api/auth/me/");
-        if (user && user.username) {
-          qs("usernameDisplay").textContent = `Welcome, ${user.username}`;
-        }
-      } catch (e) {
-        qs("usernameDisplay").textContent = "Welcome";
-      }
-
-      // Load products, customers, and carriers in parallel
-      const [productsData, customersData, carriersData] = await Promise.all([
-        getJSON("/api/products/"),
-        getJSON("/api/customers/"),
-        getJSON("/api/carriers/")
-      ]);
-      
-      products = productsData;
-      customers = customersData;
-      carriers = carriersData;
-
-      // Load pending release loads for selection
-      const loads = await getJSON('/api/releases/pending-loads/');
-      const loadSel = qs('releaseLoad');
-      if (loads.length === 0) {
-        loadSel.add(new Option('No pending loads', ''));
-        loadSel.disabled = true;
-      } else {
-        loadSel.add(new Option('Select release load…',''));
-        loads.forEach(ld => loadSel.add(new Option(`${ld.label} — ${ld.customer.name||''} — ${ld.scheduledDate||''} — ${Number(ld.plannedTons||0).toFixed(3)} NT`, ld.loadId)));
-      }
-
-      // Populate products dropdown (lock later on load select)
-      const productSel = qs("product");
-      products
-        .filter(p => p.is_active !== false)
-        .forEach(p => productSel.add(new Option(p.name, p.id)));
-
-      // Populate customers dropdown
-      const customerSel = qs("customer");
-      customers
-        .filter(c => c.is_active !== false)
-        .forEach(c => customerSel.add(new Option(c.customer, c.id)));
-      
-      // Populate carriers dropdown (Django uses snake_case: carrier_name, is_active)
-      const carrierSel = qs("carrier");
-      carriers
-        .filter(c => c.is_active !== false)
-        .forEach(c => carrierSel.add(new Option(c.carrier_name, c.id)));
-
-      // Check for productId in URL
-      const params = new URLSearchParams(location.search);
-      const pid = params.get("productId");
-      if (pid) productSel.value = pid;
-
-      // Check for loadId in URL (from release detail "Create BOL" button)
-      const loadIdParam = params.get("loadId");
-      if (loadIdParam) {
         try {
-          const loadData = await getJSON(`/api/releases/load/${loadIdParam}/`);
-          const load = loadData.load;
-          const release = loadData.release;
+            const user = await getJSON("/api/auth/me/");
+            if (user?.username) qs("usernameDisplay").textContent = `Welcome, ${user.username}`;
+        } catch (e) { qs("usernameDisplay").textContent = "Welcome"; }
 
-          // Auto-select the load in dropdown
-          loadSel.value = load.id;
+        const [productsData, customersData, carriersData] = await Promise.all([
+            getJSON("/api/products/"), getJSON("/api/customers/"), getJSON("/api/carriers/")
+        ]);
+        products = productsData; customers = customersData; carriers = carriersData;
 
-          // Pre-fill customer
-          if (release.customer_ref_id) {
-            qs('customer').value = release.customer_ref_id;
-          }
-
-          // Pre-fill ship-to address
-          const shipToLines = [
-            release.ship_to_name,
-            release.ship_to_street,
-            `${release.ship_to_city || ''}, ${release.ship_to_state || ''} ${release.ship_to_zip || ''}`
-          ].filter(Boolean);
-          qs('shipToAddress').value = shipToLines.join('\n');
-
-          // Pre-fill customer PO
-          if (release.customer_po) {
-            qs('customerPO').value = release.customer_po;
-          }
-
-          // Pre-fill product if available
-          if (release.lot_ref && release.lot_ref.product) {
-            productSel.value = release.lot_ref.product;
-            productSel.disabled = true;
-          }
-
-          // Pre-fill carrier if available
-          if (release.carrier_ref_id) {
-            carrierSel.value = release.carrier_ref_id;
-            // Manually trigger truck options update since onchange doesn't fire for programmatic changes
-            updateTruckOptions();
-          }
-
-          // Pre-fill buyer name from customer
-          if (release.customer_id_text) {
-            const buyerField = qs('buyerName');
-            if (buyerField) buyerField.value = release.customer_id_text;
-          }
-
-          // Show notice
-          const s = qs("status");
-          s.textContent = `Creating BOL for Release #${release.release_number}, Load #${load.seq}`;
-          s.className = 'status';
-        } catch (e) {
-          console.error('Failed to load release/load data:', e);
-          const s = qs("status");
-          s.textContent = `Error loading load data: ${e.message}`;
-          s.className = 'status error';
-        }
-      }
-
-      // Set today's date
-      const d = new Date(); 
-      const yyyy = d.getFullYear(); 
-      const mm = String(d.getMonth()+1).padStart(2,'0'); 
-      const dd = String(d.getDate()).padStart(2,'0');
-      document.querySelector('input[name=date]').value = `${yyyy}-${mm}-${dd}`;
-
-      // On release load select, auto-fill locked fields
-      loadSel.addEventListener('change', () => {
-        const id = loadSel.value;
-        const chosen = (window._loadsCache || []).find(x => String(x.loadId) === String(id));
-        if (!chosen) {
-          qs('customer').value = '';
-          qs('shipToAddress').value='';
-          qs('customerPO').value='';
-          productSel.disabled=false;
-          return;
-        }
-        // Cache product/customer
-        if (chosen.product?.id) { productSel.value = chosen.product.id; productSel.disabled = true; }
-        if (chosen.customer?.id) { qs('customer').value = chosen.customer.id; }
-        // Ship-to and buyer
-        const st = chosen.shipTo||{}; const lines = [st.name, st.street, st.street2, `${st.city||''}, ${st.state||''} ${st.zip||''}`].filter(Boolean);
-        qs('shipToAddress').value = lines.join('\n');
-        qs('customerPO').value = chosen.customerPO || '';
-        const buyer = (chosen.customer && chosen.customer.name) || '';
-        const buyerField = qs('buyerName'); if (buyerField) buyerField.value = buyer;
-        // Default carrier to planned one (editable)
-        const carrierSel = qs('carrier');
-        if (carrierSel && chosen.carrier && chosen.carrier.id) {
-          carrierSel.value = chosen.carrier.id;
-          // Manually trigger truck options update since onchange doesn't fire for programmatic changes
-          updateTruckOptions();
-        }
-        // Suggest planned tons (editable) - convert to LBS
-        const nt = document.querySelector('input[name=netWeightLbs]');
-        if (nt && chosen.plannedTons) {
-          nt.value = Math.round(Number(chosen.plannedTons||0) * 2000);
-          // Trigger the input event to update tons display
-          nt.dispatchEvent(new Event('input'));
-        }
-      });
-      window._loadsCache = await getJSON('/api/releases/pending-loads/');
-
-      // Form submission - preview first
-      qs("f").addEventListener("submit", async (ev) => {
-        ev.preventDefault();
-        const s = qs("status");
-        s.textContent = "Generating preview...";
-
-        const data = Object.fromEntries(new FormData(ev.target).entries());
-
-        // Convert LBS to tons for backend
-        if (data.netWeightLbs) {
-          data.netTons = (parseFloat(data.netWeightLbs) / 2000).toFixed(2);
-          delete data.netWeightLbs;
+        const loads = await getJSON('/api/releases/pending-loads/');
+        const loadSel = qs('releaseLoad');
+        if (loads.length === 0) { loadSel.add(new Option('No pending loads', '')); loadSel.disabled = true; }
+        else {
+            loadSel.add(new Option('Select release load…',''));
+            loads.forEach(ld => loadSel.add(new Option(`${ld.label} — ${ld.customer.name||''} — ${ld.scheduledDate||''} — ${Number(ld.plannedTons||0).toFixed(3)} NT`, ld.loadId)));
         }
 
-        // Ensure locked fields are present even if controls are disabled/readonly
-        if (!data.productId) { const ps = qs('product'); if (ps && ps.value) data.productId = ps.value; }
-        if (!data.buyerName) { const bf = qs('buyerName'); if (bf && bf.value) data.buyerName = bf.value; }
-        if (!data.shipTo) { const sa = qs('shipToAddress'); if (sa && sa.value) data.shipTo = sa.value; }
-        if (!data.date) { const de = document.querySelector('input[name=date]'); if (de && de.value) data.date = de.value; }
-        if (!data.customerPO) { const po = qs('customerPO'); if (po && po.value) data.customerPO = po.value; }
-        const prod = products.find(p => String(p.id) === String(data.productId));
-        data.productName = prod ? prod.name : "";
-        const loadSel2 = qs('releaseLoad'); if (loadSel2 && loadSel2.value) data.loadId = loadSel2.value;
+        const productSel = qs("product");
+        products.filter(p => p.is_active !== false).forEach(p => productSel.add(new Option(p.name, p.id)));
 
-        // Store data for later approval
-        pendingBOLData = data;
+        const customerSel = qs("customer");
+        customers.filter(c => c.is_active !== false).forEach(c => customerSel.add(new Option(c.customer, c.id)));
 
-        try {
-          const res = await postJSON("/api/bol/preview/", data);
-          if (res && res.ok && res.pdfBase64) {
-            s.textContent = "";
-            showPreviewModal(res.pdfBase64);
-          } else {
-            s.textContent = "❌ " + (res.error || "Preview failed");
-            pendingBOLData = null;
-          }
-        } catch (e) {
-          console.error('BOL preview error:', e);
-          s.textContent = "❌ " + (e.message || String(e));
-          pendingBOLData = null;
+        const carrierSel = qs("carrier");
+        carriers.filter(c => c.is_active !== false).forEach(c => carrierSel.add(new Option(c.carrier_name, c.id)));
+
+        const params = new URLSearchParams(location.search);
+        const pid = params.get("productId");
+        if (pid) productSel.value = pid;
+
+        const loadIdParam = params.get("loadId");
+        if (loadIdParam) {
+            try {
+                const loadData = await getJSON(`/api/releases/load/${loadIdParam}/`);
+                const load = loadData.load;
+                const release = loadData.release;
+                loadSel.value = load.id;
+                if (release.customer_ref_id) qs('customer').value = release.customer_ref_id;
+                const shipToLines = [release.ship_to_name, release.ship_to_street, `${release.ship_to_city||''}, ${release.ship_to_state||''} ${release.ship_to_zip||''}`].filter(Boolean);
+                qs('shipToAddress').value = shipToLines.join('\n');
+                if (release.customer_po) qs('customerPO').value = release.customer_po;
+                if (release.lot_ref?.product) { productSel.value = release.lot_ref.product; productSel.disabled = true; }
+                if (release.carrier_ref_id) { carrierSel.value = release.carrier_ref_id; updateTruckOptions(); }
+                if (release.customer_id_text) qs('buyerName').value = release.customer_id_text;
+                showStatus(`Creating BOL for Release #${release.release_number}, Load #${load.seq}`, 'info');
+            } catch (e) { showStatus(`Error loading load data: ${e.message}`, 'error'); }
         }
-      });
-    })().catch(e => {
-      console.error('Initialization error:', e);
-      alert('Error loading data: ' + e.message);
-    });
-  </script>
+
+        const d = new Date();
+        document.querySelector('input[name=date]').value = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+
+        loadSel.addEventListener('change', () => {
+            const id = loadSel.value;
+            const chosen = (window._loadsCache || []).find(x => String(x.loadId) === String(id));
+            if (!chosen) { qs('customer').value=''; qs('shipToAddress').value=''; qs('customerPO').value=''; productSel.disabled=false; return; }
+            if (chosen.product?.id) { productSel.value = chosen.product.id; productSel.disabled = true; }
+            if (chosen.customer?.id) qs('customer').value = chosen.customer.id;
+            const st = chosen.shipTo||{};
+            qs('shipToAddress').value = [st.name, st.street, st.street2, `${st.city||''}, ${st.state||''} ${st.zip||''}`].filter(Boolean).join('\n');
+            qs('customerPO').value = chosen.customerPO || '';
+            qs('buyerName').value = chosen.customer?.name || '';
+            if (chosen.carrier?.id) { qs('carrier').value = chosen.carrier.id; updateTruckOptions(); }
+            const nt = document.querySelector('input[name=netWeightLbs]');
+            if (nt && chosen.plannedTons) { nt.value = Math.round(Number(chosen.plannedTons)*2000); nt.dispatchEvent(new Event('input')); }
+        });
+        window._loadsCache = await getJSON('/api/releases/pending-loads/');
+
+        qs("f").addEventListener("submit", async (ev) => {
+            ev.preventDefault();
+            showStatus("Generating preview...", "info");
+            const data = Object.fromEntries(new FormData(ev.target).entries());
+            if (data.netWeightLbs) { data.netTons = (parseFloat(data.netWeightLbs)/2000).toFixed(2); delete data.netWeightLbs; }
+            if (!data.productId) { const ps = qs('product'); if (ps?.value) data.productId = ps.value; }
+            if (!data.buyerName) { const bf = qs('buyerName'); if (bf?.value) data.buyerName = bf.value; }
+            if (!data.shipTo) { const sa = qs('shipToAddress'); if (sa?.value) data.shipTo = sa.value; }
+            if (!data.date) { const de = document.querySelector('input[name=date]'); if (de?.value) data.date = de.value; }
+            if (!data.customerPO) { const po = qs('customerPO'); if (po?.value) data.customerPO = po.value; }
+            const prod = products.find(p => String(p.id) === String(data.productId));
+            data.productName = prod?.name || "";
+            const loadSel2 = qs('releaseLoad'); if (loadSel2?.value) data.loadId = loadSel2.value;
+            pendingBOLData = data;
+            try {
+                const res = await postJSON("/api/bol/preview/", data);
+                if (res?.ok && res.pdfBase64) { showStatus("", ""); showPreviewModal(res.pdfBase64); }
+                else { showStatus("Preview failed: " + (res.error || "Unknown error"), 'error'); pendingBOLData = null; }
+            } catch (e) { showStatus("Error: " + (e.message || String(e)), 'error'); pendingBOLData = null; }
+        });
+    })().catch(e => alert('Error loading data: ' + e.message));
+    </script>
 </body>
 </html>
