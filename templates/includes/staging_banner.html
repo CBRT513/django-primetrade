@@ -1,0 +1,21 @@
+{% if show_staging_banner %}
+<div class="staging-banner" style="
+    background: {% if is_staging %}#f59e0b{% else %}#3b82f6{% endif %};
+    color: white;
+    text-align: center;
+    padding: 8px 16px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.5px;
+    position: relative;
+    z-index: 1000;
+">
+    {% if is_staging %}
+    STAGING ENVIRONMENT - Data may be reset at any time
+    {% elif is_development %}
+    DEVELOPMENT - Local testing environment
+    {% else %}
+    {{ environment_name|upper }} ENVIRONMENT
+    {% endif %}
+</div>
+{% endif %}
