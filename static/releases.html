@@ -1,326 +1,901 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="utf-8" />
-  <title>Release Upload</title>
-  <link rel="stylesheet" href="/static/css/cbrt-brand.css">
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Release Upload - Primetrade</title>
+    <style>
+        :root {
+            --brand-primary: #005500;
+            --brand-dark: #004400;
+            --brand-light: #e8f5e9;
+            --text-primary: #1a1a1a;
+            --text-secondary: #666;
+            --text-muted: #999;
+            --bg-white: #fff;
+            --bg-light: #f9fafb;
+            --border-color: #e5e5e5;
+            --shadow-sm: 0 1px 2px rgba(0,0,0,0.05);
+            --shadow-md: 0 4px 6px rgba(0,0,0,0.07);
+            --error: #dc2626;
+            --success: #166534;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: var(--bg-light);
+            color: var(--text-primary);
+            line-height: 1.5;
+        }
+
+        /* Header */
+        .header {
+            background: var(--bg-white);
+            border-bottom: 1px solid var(--border-color);
+            padding: 1rem 2rem;
+        }
+
+        .header-inner {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .logo {
+            height: 40px;
+            width: auto;
+        }
+
+        .company-name {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .company-tagline {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .user-section {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+
+        .username {
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+        }
+
+        .btn-logout {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            cursor: pointer;
+            text-decoration: none;
+        }
+
+        .btn-logout:hover {
+            background: #c82333;
+        }
+
+        /* Navigation */
+        .nav {
+            background: var(--bg-white);
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .nav-inner {
+            max-width: 1400px;
+            margin: 0 auto;
+            display: flex;
+            gap: 0;
+            padding: 0 2rem;
+        }
+
+        .nav-link {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.875rem 1rem;
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 0.875rem;
+            font-weight: 500;
+            border-bottom: 2px solid transparent;
+            transition: all 0.15s;
+        }
+
+        .nav-link:hover {
+            color: var(--brand-primary);
+            background: var(--bg-light);
+        }
+
+        .nav-link.active {
+            color: var(--brand-primary);
+            border-bottom-color: var(--brand-primary);
+        }
+
+        .nav-link svg {
+            width: 18px;
+            height: 18px;
+        }
+
+        /* Main Content */
+        .main {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 2rem;
+        }
+
+        .page-header {
+            margin-bottom: 1.5rem;
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .page-subtitle {
+            font-size: 0.875rem;
+            color: var(--text-muted);
+            margin-top: 0.25rem;
+        }
+
+        /* Card */
+        .card {
+            background: var(--bg-white);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            box-shadow: var(--shadow-sm);
+        }
+
+        .card-header {
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .card-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-primary);
+        }
+
+        .card-body {
+            padding: 1.25rem;
+        }
+
+        /* Upload Form */
+        .upload-form {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            flex-wrap: wrap;
+        }
+
+        .file-input-wrapper {
+            position: relative;
+        }
+
+        .file-input-wrapper input[type="file"] {
+            font-size: 0.875rem;
+            color: var(--text-primary);
+        }
+
+        .checkbox-label {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            font-size: 0.875rem;
+            color: var(--text-secondary);
+            cursor: pointer;
+        }
+
+        .checkbox-label input[type="checkbox"] {
+            width: 16px;
+            height: 16px;
+            accent-color: var(--brand-primary);
+        }
+
+        /* Buttons */
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.625rem 1rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.15s;
+            text-decoration: none;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--brand-primary);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--brand-dark);
+        }
+
+        .btn-secondary {
+            background: var(--bg-light);
+            color: var(--text-secondary);
+            border: 1px solid var(--border-color);
+        }
+
+        .btn-secondary:hover {
+            background: var(--border-color);
+        }
+
+        .btn-danger {
+            background: #fee2e2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+
+        .btn-danger:hover {
+            background: #fecaca;
+        }
+
+        .btn-sm {
+            padding: 0.375rem 0.75rem;
+            font-size: 0.8125rem;
+        }
+
+        .btn-accent {
+            background: var(--brand-primary);
+            color: white;
+        }
+
+        .btn-accent:hover {
+            background: var(--brand-dark);
+        }
+
+        /* Status Messages */
+        .status {
+            padding: 0.875rem 1rem;
+            margin-bottom: 1rem;
+            border-radius: 6px;
+            font-size: 0.875rem;
+        }
+
+        .status.success {
+            background: #dcfce7;
+            color: #166534;
+            border: 1px solid #bbf7d0;
+        }
+
+        .status.error {
+            background: #fee2e2;
+            color: #dc2626;
+            border: 1px solid #fecaca;
+        }
+
+        .status:empty {
+            display: none;
+        }
+
+        /* Output Pre */
+        .output-pre {
+            margin-top: 1rem;
+            white-space: pre-wrap;
+            background: #1a1a2e;
+            color: #e2e8f0;
+            padding: 1rem;
+            border-radius: 6px;
+            max-height: 400px;
+            overflow: auto;
+            font-family: 'Monaco', 'Menlo', monospace;
+            font-size: 0.8125rem;
+            line-height: 1.6;
+        }
+
+        .output-pre:empty {
+            display: none;
+        }
+
+        /* Form Elements */
+        .form-group {
+            margin-bottom: 1rem;
+        }
+
+        .form-group label {
+            display: block;
+            font-size: 0.8125rem;
+            font-weight: 500;
+            color: var(--text-secondary);
+            margin-bottom: 0.375rem;
+        }
+
+        .form-control,
+        input[type="text"],
+        input[type="email"],
+        input[type="tel"],
+        input[type="number"],
+        input[type="date"],
+        select,
+        textarea {
+            width: 100%;
+            padding: 0.625rem 0.75rem;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.875rem;
+            color: var(--text-primary);
+            background: var(--bg-white);
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--brand-primary);
+            box-shadow: 0 0 0 3px rgba(0, 85, 0, 0.1);
+        }
+
+        input::placeholder,
+        textarea::placeholder {
+            color: var(--text-muted);
+        }
+
+        .dashboard-grid {
+            display: grid;
+            gap: 1rem;
+        }
+
+        /* Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        thead th {
+            text-align: left;
+            padding: 0.75rem 1rem;
+            font-size: 0.6875rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-muted);
+            border-bottom: 1px solid var(--border-color);
+            background: var(--bg-light);
+        }
+
+        tbody td {
+            padding: 0.75rem 1rem;
+            font-size: 0.875rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        /* Modal */
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.5);
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+            z-index: 1000;
+        }
+
+        .modal {
+            background: var(--bg-white);
+            border-radius: 8px;
+            width: min(980px, 95vw);
+            max-height: 90vh;
+            overflow: auto;
+            box-shadow: var(--shadow-md);
+            border: 1px solid var(--border-color);
+        }
+
+        .modal-sm {
+            width: min(500px, 95vw);
+        }
+
+        .modal-md {
+            width: min(600px, 95vw);
+        }
+
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1rem 1.25rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .modal-header h3 {
+            font-size: 1rem;
+            font-weight: 600;
+            margin: 0;
+        }
+
+        .modal-body {
+            padding: 1.25rem;
+        }
+
+        .modal-footer {
+            display: flex;
+            gap: 0.5rem;
+            justify-content: flex-end;
+            padding: 1rem 1.25rem;
+            border-top: 1px solid var(--border-color);
+        }
+
+        /* Schedule Entry */
+        .schedule-entry {
+            margin-top: 0.75rem;
+            padding: 0.75rem;
+            background: var(--bg-light);
+            border-radius: 6px;
+            border: 1px solid var(--border-color);
+        }
+
+        .schedule-entry-row {
+            display: flex;
+            gap: 0.5rem;
+            align-items: flex-end;
+            flex-wrap: wrap;
+        }
+
+        .schedule-entry-field {
+            flex: 1;
+            min-width: 120px;
+        }
+
+        .schedule-entry-field label {
+            font-size: 0.8125rem;
+            color: var(--text-secondary);
+            margin-bottom: 0.25rem;
+            display: block;
+        }
+
+        .schedule-hint {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-top: 0.5rem;
+        }
+
+        /* Table Container */
+        .table-container {
+            background: transparent;
+            border: none;
+        }
+
+        /* Footer */
+        .footer {
+            max-width: 1400px;
+            margin: 2rem auto 0;
+            padding: 1.5rem 2rem;
+            border-top: 1px solid var(--border-color);
+            text-align: center;
+        }
+
+        .footer p {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .upload-form {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            .modal {
+                width: 95vw;
+            }
+        }
+    </style>
 </head>
 <body>
-  <div class="wrap">
-    <div class="cbrt-header" style="position: relative;">
-      <div class="company-info">
-        <img src="/static/cbrt-logo-optimized.svg" alt="CBRT" class="company-logo">
-        <div>
-          <h1 class="company-name">Release Upload</h1>
-          <p class="company-tagline">Parse customer PDF to create a release</p>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-inner">
+            <div class="logo-section">
+                <img src="/static/cbrt-logo-optimized.svg" alt="CBRT" class="logo">
+                <div>
+                    <div class="company-name">Cincinnati Barge & Rail Terminal</div>
+                    <div class="company-tagline">Release Upload</div>
+                </div>
+            </div>
+            <div class="user-section">
+                <span id="usernameDisplay" class="username">Loading...</span>
+                <a href="/auth/logout/" class="btn-logout">Logout</a>
+            </div>
         </div>
-      </div>
-      <div class="user-actions" style="position: absolute; top: 20px; right: 20px; display:flex; gap:.5rem;">
-        <a href="/" class="btn">Home</a>
-        <a href="/open-releases/" class="btn">Open Releases</a>
-        <a href="/auth/logout/" class="btn" style="background: #dc3545; color: white; padding: 8px 20px;">Logout</a>
-      </div>
+    </header>
+
+    <!-- Navigation -->
+    <nav class="nav">
+        <div class="nav-inner">
+            <a href="/" class="nav-link">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+                Dashboard
+            </a>
+            <a href="/open-releases/" class="nav-link">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/></svg>
+                Releases
+            </a>
+            <a href="/loading-schedule/" class="nav-link">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+                Schedule
+            </a>
+            <a href="/products.html" class="nav-link">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4"/></svg>
+                Products
+            </a>
+            <a href="/customers.html" class="nav-link">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                Customers
+            </a>
+            <a href="/carriers.html" class="nav-link">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4"/></svg>
+                Carriers
+            </a>
+            <a href="/admin/" class="nav-link" target="_blank">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"/><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/></svg>
+                Admin
+            </a>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="main">
+        <div class="page-header">
+            <h1 class="page-title">Release Upload</h1>
+            <p class="page-subtitle">Parse customer PDF to create a release or enter manually</p>
+        </div>
+
+        <div class="card">
+            <div class="card-body">
+                <div id="status" class="status"></div>
+                <form id="uploadForm" class="upload-form">
+                    <div class="file-input-wrapper">
+                        <input type="file" id="file" accept="application/pdf" />
+                    </div>
+                    <label class="checkbox-label">
+                        <input type="checkbox" id="useAI" checked>
+                        Use AI parser (Gemini 1.5 Flash)
+                    </label>
+                    <button class="btn btn-primary" type="submit">Upload & Parse</button>
+                    <button class="btn btn-secondary" type="button" id="manualEntryBtn">Manual Entry</button>
+                </form>
+                <pre id="out" class="output-pre"></pre>
+            </div>
+        </div>
+    </main>
+
+    <!-- Review Modal -->
+    <div id="reviewModal" class="modal-backdrop">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Review Parsed Release</h3>
+                <button id="closeReview" class="btn btn-danger btn-sm" type="button">Close</button>
+            </div>
+            <div class="modal-body">
+                <div id="modalStatus" class="status"></div>
+                <form id="reviewForm" onsubmit="return false;">
+                    <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
+                        <div class="form-group">
+                            <label>Release #</label>
+                            <input id="releaseNumber" type="text" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Release Date</label>
+                            <input id="releaseDate" type="date">
+                        </div>
+                        <div class="form-group">
+                            <label>Customer ID</label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <input id="customerId" type="text" list="customerSuggestions" style="flex: 1;">
+                                <datalist id="customerSuggestions"></datalist>
+                                <button id="addCustomerBtn" class="btn btn-secondary btn-sm" type="button">Add</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Customer PO</label>
+                            <input id="customerPO" type="text">
+                        </div>
+                        <div class="form-group">
+                            <label>Carrier</label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <input id="carrier" type="text" list="carrierSuggestions" style="flex: 1;">
+                                <datalist id="carrierSuggestions"></datalist>
+                                <button id="addCarrierBtn" class="btn btn-secondary btn-sm" type="button">Add</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Quantity (Net Tons)</label>
+                            <input id="qtyTons" type="number" step="0.001">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Ship To</label>
+                        <div style="display:grid; grid-template-columns: 1fr 2fr; gap: 0.75rem; margin-bottom: 0.5rem;">
+                            <input id="shipToName" placeholder="Name" type="text">
+                            <input id="shipToStreet" placeholder="Street" type="text">
+                        </div>
+                        <div style="margin-bottom: 0.5rem;">
+                            <input id="shipToStreet2" placeholder="Address Line 2 (optional)" type="text">
+                        </div>
+                        <div style="display:grid; grid-template-columns: 1.5fr 0.5fr 0.5fr; gap: 0.75rem;">
+                            <input id="shipToCity" placeholder="City" type="text">
+                            <input id="shipToState" placeholder="State" maxlength="2" type="text">
+                            <input id="shipToZip" placeholder="Zip (5)" inputmode="numeric" pattern="\d{5}" type="text">
+                        </div>
+                    </div>
+
+                    <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
+                        <div class="form-group">
+                            <label>Lot</label>
+                            <div style="display: flex; gap: 0.5rem;">
+                                <input id="materialLot" type="text" list="lotSuggestions" style="flex: 1;">
+                                <datalist id="lotSuggestions"></datalist>
+                                <button id="addLotBtn" class="btn btn-secondary btn-sm" type="button">Add</button>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <label>Material Description</label>
+                            <input id="materialDescription" type="text">
+                        </div>
+                    </div>
+
+                    <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));">
+                        <div class="form-group">
+                            <label>C</label>
+                            <input id="chemC" type="number" step="0.001">
+                        </div>
+                        <div class="form-group">
+                            <label>Si</label>
+                            <input id="chemSi" type="number" step="0.001">
+                        </div>
+                        <div class="form-group">
+                            <label>S</label>
+                            <input id="chemS" type="number" step="0.001">
+                        </div>
+                        <div class="form-group">
+                            <label>P</label>
+                            <input id="chemP" type="number" step="0.001">
+                        </div>
+                        <div class="form-group">
+                            <label>Mn</label>
+                            <input id="chemMn" type="number" step="0.001">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Schedule</label>
+                        <div id="scheduleList" class="table-container"></div>
+                        <div id="manualScheduleEntry" class="schedule-entry">
+                            <div class="schedule-entry-row">
+                                <div class="schedule-entry-field">
+                                    <label>Date</label>
+                                    <input id="scheduleDate" type="date">
+                                </div>
+                                <div style="width: 80px;">
+                                    <label>Loads</label>
+                                    <input id="scheduleLoads" type="number" min="1" value="1">
+                                </div>
+                                <button id="addScheduleBtn" class="btn btn-secondary btn-sm" type="button">Add Load(s)</button>
+                                <button id="clearScheduleBtn" class="btn btn-danger btn-sm" type="button">Clear</button>
+                            </div>
+                            <p class="schedule-hint">Add delivery dates one at a time, or add multiple loads on the same date.</p>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label>Critical Delivery Instructions (AI-extracted)</label>
+                        <textarea id="specialInstructions" rows="3" placeholder="e.g., 'DELIVER TO PLANT ONE' - AI extracts only critical driver directives"></textarea>
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+                            AI identifies critical instructions (specific locations, call-ahead, special handling). Routine requirements (equipment type, weight limits) are ignored.
+                        </p>
+                    </div>
+
+                    <div class="form-group">
+                        <label>c/o Company (for Blind Shipping)</label>
+                        <input id="careOfCo" type="text" placeholder="PrimeTrade, LLC" value="PrimeTrade, LLC">
+                        <p style="font-size: 0.75rem; color: var(--text-muted); margin-top: 0.25rem;">
+                            This company name appears on the BOL "Ship From" section. Leave as PrimeTrade unless customer requires blind shipping.
+                        </p>
+                    </div>
+
+                    <div style="display:flex; gap: 0.5rem; justify-content:flex-end; margin-top: 1rem;">
+                        <button id="copyJson" class="btn btn-secondary btn-sm" type="button">Copy JSON</button>
+                        <button id="approveSave" class="btn btn-primary btn-sm" type="button">Approve & Save</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
 
-    <div class="card" style="padding: 1.5rem;">
-      <div id="status" class="status" style="min-height: 1.25rem; margin-bottom: 0.5rem; color: var(--text-secondary);"></div>
-      <form id="uploadForm">
-        <input type="file" id="file" accept="application/pdf" />
-        <label style="margin-left:0.75rem; font-size: 0.9rem;">
-          <input type="checkbox" id="useAI" checked style="margin-right:0.35rem;"> Use AI parser (Gemini 1.5 Flash)
-        </label>
-        <button class="btn btn-accent" type="submit">Upload & Parse</button>
-        <button class="btn btn-secondary" type="button" id="manualEntryBtn" style="margin-left: 0.5rem;">Manual Entry</button>
-      </form>
-      <pre id="out" style="margin-top:1rem; white-space: pre-wrap; background:#111; color:#eee; padding:1rem; border-radius:8px; max-height: 400px; overflow: auto;"></pre>
+    <!-- Add Customer Modal -->
+    <div id="addCustomerModal" class="modal-backdrop" style="z-index: 1001;">
+        <div class="modal modal-md">
+            <div class="modal-header">
+                <h3>Add New Customer</h3>
+                <button id="closeAddCustomer" class="btn btn-danger btn-sm" type="button">Close</button>
+            </div>
+            <div class="modal-body">
+                <div id="addCustomerStatus" class="status"></div>
+                <form id="addCustomerForm" onsubmit="return false;">
+                    <div class="form-group">
+                        <label>Customer Name *</label>
+                        <input id="newCustomerName" type="text" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Address *</label>
+                        <input id="newCustomerAddress" type="text" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Address Line 2</label>
+                        <input id="newCustomerAddress2" type="text">
+                    </div>
+                    <div class="dashboard-grid" style="grid-template-columns: 1.5fr 0.5fr 0.5fr;">
+                        <div class="form-group">
+                            <label>City *</label>
+                            <input id="newCustomerCity" type="text" required>
+                        </div>
+                        <div class="form-group">
+                            <label>State *</label>
+                            <input id="newCustomerState" type="text" maxlength="2" required>
+                        </div>
+                        <div class="form-group">
+                            <label>Zip *</label>
+                            <input id="newCustomerZip" type="text" pattern="\d{5}" required>
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="padding: 0; border: none; margin-top: 1rem;">
+                        <button id="saveCustomerBtn" class="btn btn-primary btn-sm" type="submit">Save Customer</button>
+                    </div>
+                </form>
+            </div>
+        </div>
     </div>
-  </div>
 
-  <!-- Review Modal -->
-  <div id="reviewModal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 1000;">
-    <div style="background: var(--surface, #fff); border-radius: 12px; width: min(980px, 95vw); max-height: 90vh; overflow: auto; box-shadow: var(--shadow-xl, 0 12px 24px rgba(0,0,0,.2)); border: 1px solid var(--border, #e5e7eb);">
-      <div style="display:flex;justify-content:space-between;align-items:center;padding: 1rem 1.25rem; border-bottom: 1px solid var(--border, #e5e7eb);">
-        <h3 style="margin: 0;">Review Parsed Release</h3>
-        <button id="closeReview" class="btn btn-danger btn-sm" type="button">Close</button>
-      </div>
-      <div style="padding: 1rem 1.25rem;">
-        <div id="modalStatus" class="status" style="margin-bottom:.5rem;"></div>
-        <form id="reviewForm" onsubmit="return false;">
-          <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
-            <div class="form-group">
-              <label>Release #</label>
-              <input id="releaseNumber" type="text" required>
+    <!-- Add Carrier Modal -->
+    <div id="addCarrierModal" class="modal-backdrop" style="z-index: 1001;">
+        <div class="modal modal-sm">
+            <div class="modal-header">
+                <h3>Add New Carrier</h3>
+                <button id="closeAddCarrier" class="btn btn-danger btn-sm" type="button">Close</button>
             </div>
-            <div class="form-group">
-              <label>Release Date</label>
-              <input id="releaseDate" type="date">
+            <div class="modal-body">
+                <div id="addCarrierStatus" class="status"></div>
+                <form id="addCarrierForm" onsubmit="return false;">
+                    <div class="form-group">
+                        <label>Carrier Name *</label>
+                        <input id="newCarrierName" type="text" required>
+                    </div>
+                    <div class="form-group">
+                        <label>Contact Name</label>
+                        <input id="newCarrierContact" type="text">
+                    </div>
+                    <div class="form-group">
+                        <label>Phone</label>
+                        <input id="newCarrierPhone" type="tel">
+                    </div>
+                    <div class="form-group">
+                        <label>Email</label>
+                        <input id="newCarrierEmail" type="email">
+                    </div>
+                    <div class="modal-footer" style="padding: 0; border: none; margin-top: 1rem;">
+                        <button id="saveCarrierBtn" class="btn btn-primary btn-sm" type="submit">Save Carrier</button>
+                    </div>
+                </form>
             </div>
-            <div class="form-group">
-              <label>Customer ID</label>
-              <div style="display: flex; gap: 0.5rem;">
-                <input id="customerId" type="text" list="customerSuggestions" style="flex: 1;">
-                <datalist id="customerSuggestions"></datalist>
-                <button id="addCustomerBtn" class="btn btn-sm" type="button" style="padding: 0.5rem 0.75rem;">Add</button>
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Customer PO</label>
-              <input id="customerPO" type="text">
-            </div>
-            <div class="form-group">
-              <label>Carrier</label>
-              <div style="display: flex; gap: 0.5rem;">
-                <input id="carrier" type="text" list="carrierSuggestions" style="flex: 1;">
-                <datalist id="carrierSuggestions"></datalist>
-                <button id="addCarrierBtn" class="btn btn-sm" type="button" style="padding: 0.5rem 0.75rem;">Add</button>
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Quantity (Net Tons)</label>
-              <input id="qtyTons" type="number" step="0.001">
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>Ship To</label>
-            <div style="display:grid; grid-template-columns: 1fr 2fr; gap: 0.75rem; margin-bottom: 0.5rem;">
-              <input id="shipToName" placeholder="Name" type="text">
-              <input id="shipToStreet" placeholder="Street" type="text">
-            </div>
-            <div style="margin-bottom: 0.5rem;">
-              <input id="shipToStreet2" placeholder="Address Line 2 (optional)" type="text">
-            </div>
-            <div style="display:grid; grid-template-columns: 1.5fr 0.5fr 0.5fr; gap: 0.75rem;">
-              <input id="shipToCity" placeholder="City" type="text">
-              <input id="shipToState" placeholder="State" maxlength="2" type="text">
-              <input id="shipToZip" placeholder="Zip (5)" inputmode="numeric" pattern="\d{5}" type="text">
-            </div>
-          </div>
-
-          <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
-            <div class="form-group">
-              <label>Lot</label>
-              <div style="display: flex; gap: 0.5rem;">
-                <input id="materialLot" type="text" list="lotSuggestions" style="flex: 1;">
-                <datalist id="lotSuggestions"></datalist>
-                <button id="addLotBtn" class="btn btn-sm" type="button" style="padding: 0.5rem 0.75rem;">Add</button>
-              </div>
-            </div>
-            <div class="form-group">
-              <label>Material Description</label>
-              <input id="materialDescription" type="text">
-            </div>
-          </div>
-
-          <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));">
-            <div class="form-group">
-              <label>C</label>
-              <input id="chemC" type="number" step="0.001">
-            </div>
-            <div class="form-group">
-              <label>Si</label>
-              <input id="chemSi" type="number" step="0.001">
-            </div>
-            <div class="form-group">
-              <label>S</label>
-              <input id="chemS" type="number" step="0.001">
-            </div>
-            <div class="form-group">
-              <label>P</label>
-              <input id="chemP" type="number" step="0.001">
-            </div>
-            <div class="form-group">
-              <label>Mn</label>
-              <input id="chemMn" type="number" step="0.001">
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>Schedule</label>
-            <div id="scheduleList" class="table-container" style="background:transparent; border:none;">
-              <!-- rows injected -->
-            </div>
-            <div id="manualScheduleEntry" style="margin-top: 0.75rem; padding: 0.75rem; background: var(--surface-elevated, #f8f9fa); border-radius: 8px; border: 1px solid var(--border, #e5e7eb);">
-              <div style="display: flex; gap: 0.5rem; align-items: flex-end; flex-wrap: wrap;">
-                <div style="flex: 1; min-width: 120px;">
-                  <label style="font-size: 0.85rem;">Date</label>
-                  <input id="scheduleDate" type="date" style="width: 100%;">
-                </div>
-                <div style="width: 80px;">
-                  <label style="font-size: 0.85rem;">Loads</label>
-                  <input id="scheduleLoads" type="number" min="1" value="1" style="width: 100%;">
-                </div>
-                <button id="addScheduleBtn" class="btn btn-sm" type="button">Add Load(s)</button>
-                <button id="clearScheduleBtn" class="btn btn-sm btn-secondary" type="button">Clear</button>
-              </div>
-              <p style="font-size: 0.8rem; color: var(--text-secondary); margin-top: 0.5rem;">
-                Add delivery dates one at a time, or add multiple loads on the same date.
-              </p>
-            </div>
-          </div>
-
-          <div class="form-group">
-            <label>Critical Delivery Instructions (AI-extracted)</label>
-            <textarea id="specialInstructions" rows="3" placeholder="e.g., 'DELIVER TO PLANT ONE' - AI extracts only critical driver directives"></textarea>
-            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">
-              AI identifies critical instructions (specific locations, call-ahead, special handling). Routine requirements (equipment type, weight limits) are ignored.
-            </p>
-          </div>
-
-          <div class="form-group">
-            <label>c/o Company (for Blind Shipping)</label>
-            <input id="careOfCo" type="text" placeholder="PrimeTrade, LLC" value="PrimeTrade, LLC">
-            <p style="font-size: 0.85rem; color: var(--text-secondary); margin-top: 0.25rem;">
-              This company name appears on the BOL "Ship From" section. Leave as PrimeTrade unless customer requires blind shipping.
-            </p>
-          </div>
-
-          <div style="display:flex; gap: 0.5rem; justify-content:flex-end; margin-top: 0.75rem;">
-            <button id="copyJson" class="btn btn-secondary btn-sm" type="button">Copy JSON</button>
-            <button id="approveSave" class="btn btn-accent btn-sm" type="button">Approve & Save</button>
-          </div>
-        </form>
-      </div>
+        </div>
     </div>
-  </div>
 
-  <!-- Add Customer Modal -->
-  <div id="addCustomerModal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 1001;">
-    <div style="background: var(--surface, #fff); border-radius: 12px; width: min(600px, 95vw); max-height: 90vh; overflow: auto; box-shadow: var(--shadow-xl); border: 1px solid var(--border);">
-      <div style="display:flex;justify-content:space-between;align-items:center;padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);">
-        <h3 style="margin: 0;">Add New Customer</h3>
-        <button id="closeAddCustomer" class="btn btn-danger btn-sm" type="button">Close</button>
-      </div>
-      <div style="padding: 1rem 1.25rem;">
-        <div id="addCustomerStatus" class="status" style="margin-bottom:.5rem;"></div>
-        <form id="addCustomerForm" onsubmit="return false;">
-          <div class="form-group">
-            <label>Customer Name *</label>
-            <input id="newCustomerName" type="text" required>
-          </div>
-          <div class="form-group">
-            <label>Address *</label>
-            <input id="newCustomerAddress" type="text" required>
-          </div>
-          <div class="form-group">
-            <label>Address Line 2</label>
-            <input id="newCustomerAddress2" type="text">
-          </div>
-          <div class="dashboard-grid" style="grid-template-columns: 1.5fr 0.5fr 0.5fr;">
-            <div class="form-group">
-              <label>City *</label>
-              <input id="newCustomerCity" type="text" required>
+    <!-- Add Lot Modal -->
+    <div id="addLotModal" class="modal-backdrop" style="z-index: 1001;">
+        <div class="modal modal-md">
+            <div class="modal-header">
+                <h3>Add New Lot</h3>
+                <button id="closeAddLot" class="btn btn-danger btn-sm" type="button">Close</button>
             </div>
-            <div class="form-group">
-              <label>State *</label>
-              <input id="newCustomerState" type="text" maxlength="2" required>
+            <div class="modal-body">
+                <div id="addLotStatus" class="status"></div>
+                <form id="addLotForm" onsubmit="return false;">
+                    <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr;">
+                        <div class="form-group">
+                            <label>Lot Code *</label>
+                            <input id="newLotCode" type="text" required placeholder="e.g., 2025-001">
+                        </div>
+                        <div class="form-group">
+                            <label>Material Description</label>
+                            <input id="newLotDescription" type="text" list="productSuggestions" placeholder="e.g., Pig Iron">
+                            <datalist id="productSuggestions"></datalist>
+                        </div>
+                    </div>
+                    <p style="font-size: 0.75rem; color: var(--text-muted); margin-bottom: 0.75rem;">Chemistry (optional):</p>
+                    <div class="dashboard-grid" style="grid-template-columns: repeat(5, 1fr);">
+                        <div class="form-group">
+                            <label>C</label>
+                            <input id="newLotC" type="number" step="0.001">
+                        </div>
+                        <div class="form-group">
+                            <label>Si</label>
+                            <input id="newLotSi" type="number" step="0.001">
+                        </div>
+                        <div class="form-group">
+                            <label>S</label>
+                            <input id="newLotS" type="number" step="0.001">
+                        </div>
+                        <div class="form-group">
+                            <label>P</label>
+                            <input id="newLotP" type="number" step="0.001">
+                        </div>
+                        <div class="form-group">
+                            <label>Mn</label>
+                            <input id="newLotMn" type="number" step="0.001">
+                        </div>
+                    </div>
+                    <div class="modal-footer" style="padding: 0; border: none; margin-top: 1rem;">
+                        <button id="saveLotBtn" class="btn btn-primary btn-sm" type="submit">Save Lot</button>
+                    </div>
+                </form>
             </div>
-            <div class="form-group">
-              <label>Zip *</label>
-              <input id="newCustomerZip" type="text" pattern="\d{5}" required>
-            </div>
-          </div>
-          <div style="display:flex; gap: 0.5rem; justify-content:flex-end; margin-top: 0.75rem;">
-            <button id="saveCustomerBtn" class="btn btn-accent btn-sm" type="submit">Save Customer</button>
-          </div>
-        </form>
-      </div>
+        </div>
     </div>
-  </div>
 
-  <!-- Add Carrier Modal -->
-  <div id="addCarrierModal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 1001;">
-    <div style="background: var(--surface, #fff); border-radius: 12px; width: min(500px, 95vw); max-height: 90vh; overflow: auto; box-shadow: var(--shadow-xl); border: 1px solid var(--border);">
-      <div style="display:flex;justify-content:space-between;align-items:center;padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);">
-        <h3 style="margin: 0;">Add New Carrier</h3>
-        <button id="closeAddCarrier" class="btn btn-danger btn-sm" type="button">Close</button>
-      </div>
-      <div style="padding: 1rem 1.25rem;">
-        <div id="addCarrierStatus" class="status" style="margin-bottom:.5rem;"></div>
-        <form id="addCarrierForm" onsubmit="return false;">
-          <div class="form-group">
-            <label>Carrier Name *</label>
-            <input id="newCarrierName" type="text" required>
-          </div>
-          <div class="form-group">
-            <label>Contact Name</label>
-            <input id="newCarrierContact" type="text">
-          </div>
-          <div class="form-group">
-            <label>Phone</label>
-            <input id="newCarrierPhone" type="tel">
-          </div>
-          <div class="form-group">
-            <label>Email</label>
-            <input id="newCarrierEmail" type="email">
-          </div>
-          <div style="display:flex; gap: 0.5rem; justify-content:flex-end; margin-top: 0.75rem;">
-            <button id="saveCarrierBtn" class="btn btn-accent btn-sm" type="submit">Save Carrier</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
+    <!-- Footer -->
+    <footer class="footer">
+        <p>&copy; 2024 Cincinnati Barge & Rail Terminal. All rights reserved.</p>
+    </footer>
 
-  <!-- Add Lot Modal -->
-  <div id="addLotModal" style="position: fixed; inset: 0; background: rgba(0,0,0,0.45); display: none; align-items: center; justify-content: center; padding: 20px; z-index: 1001;">
-    <div style="background: var(--surface, #fff); border-radius: 12px; width: min(600px, 95vw); max-height: 90vh; overflow: auto; box-shadow: var(--shadow-xl); border: 1px solid var(--border);">
-      <div style="display:flex;justify-content:space-between;align-items:center;padding: 1rem 1.25rem; border-bottom: 1px solid var(--border);">
-        <h3 style="margin: 0;">Add New Lot</h3>
-        <button id="closeAddLot" class="btn btn-danger btn-sm" type="button">Close</button>
-      </div>
-      <div style="padding: 1rem 1.25rem;">
-        <div id="addLotStatus" class="status" style="margin-bottom:.5rem;"></div>
-        <form id="addLotForm" onsubmit="return false;">
-          <div class="dashboard-grid" style="grid-template-columns: 1fr 1fr;">
-            <div class="form-group">
-              <label>Lot Code *</label>
-              <input id="newLotCode" type="text" required placeholder="e.g., 2025-001">
-            </div>
-            <div class="form-group">
-              <label>Material Description</label>
-              <input id="newLotDescription" type="text" list="productSuggestions" placeholder="e.g., Pig Iron">
-              <datalist id="productSuggestions"></datalist>
-            </div>
-          </div>
-          <p style="font-size: 0.85rem; color: var(--text-secondary); margin-bottom: 0.75rem;">Chemistry (optional):</p>
-          <div class="dashboard-grid" style="grid-template-columns: repeat(5, 1fr);">
-            <div class="form-group">
-              <label>C</label>
-              <input id="newLotC" type="number" step="0.001">
-            </div>
-            <div class="form-group">
-              <label>Si</label>
-              <input id="newLotSi" type="number" step="0.001">
-            </div>
-            <div class="form-group">
-              <label>S</label>
-              <input id="newLotS" type="number" step="0.001">
-            </div>
-            <div class="form-group">
-              <label>P</label>
-              <input id="newLotP" type="number" step="0.001">
-            </div>
-            <div class="form-group">
-              <label>Mn</label>
-              <input id="newLotMn" type="number" step="0.001">
-            </div>
-          </div>
-          <div style="display:flex; gap: 0.5rem; justify-content:flex-end; margin-top: 0.75rem;">
-            <button id="saveLotBtn" class="btn btn-accent btn-sm" type="submit">Save Lot</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-  <script src="/static/js/utils.js?v=2"></script>
-  <script>
+    <script src="/static/js/utils.js?v=2"></script>
+    <script>
 const out = document.getElementById('out');
 const form = document.getElementById('uploadForm');
 const modal = document.getElementById('reviewModal');
 const closeBtn = document.getElementById('closeReview');
 const copyBtn = document.getElementById('copyJson');
+
+// Load user info
+document.addEventListener('DOMContentLoaded', async () => {
+    try {
+        const resp = await fetch('/api/auth/me/', { credentials: 'same-origin' });
+        if (resp.ok) {
+            const user = await resp.json();
+            if (user && user.username) {
+                document.getElementById('usernameDisplay').textContent = `Welcome, ${user.username}`;
+            }
+        }
+    } catch (e) {
+        document.getElementById('usernameDisplay').textContent = 'Welcome';
+    }
+});
 
 // Combobox functionality for Customer and Carrier
 const addCustomerModal = document.getElementById('addCustomerModal');
@@ -370,48 +945,26 @@ async function loadCarriers() {
 
 // Show all suggestions when clicking on combobox inputs
 function showAllSuggestions(input) {
-  // Save current value
   const currentValue = input.value;
-  // Temporarily clear and restore to trigger datalist
   input.value = '';
   input.dispatchEvent(new Event('input', { bubbles: true }));
-  // Small delay to allow datalist to open, then restore value
   setTimeout(() => {
     input.value = currentValue;
     input.dispatchEvent(new Event('input', { bubbles: true }));
   }, 0);
 }
 
-// Add click handlers to show all suggestions
-customerIdInput.addEventListener('click', function() {
-  showAllSuggestions(this);
-});
-
-customerIdInput.addEventListener('focus', function() {
-  if (!this.value) {
-    showAllSuggestions(this);
-  }
-});
-
-carrierInput.addEventListener('click', function() {
-  showAllSuggestions(this);
-});
-
-carrierInput.addEventListener('focus', function() {
-  if (!this.value) {
-    showAllSuggestions(this);
-  }
-});
+customerIdInput.addEventListener('click', function() { showAllSuggestions(this); });
+customerIdInput.addEventListener('focus', function() { if (!this.value) showAllSuggestions(this); });
+carrierInput.addEventListener('click', function() { showAllSuggestions(this); });
+carrierInput.addEventListener('focus', function() { if (!this.value) showAllSuggestions(this); });
 
 // Auto-populate Ship-To address when customer is selected
 customerIdInput.addEventListener('change', async function() {
   const customerName = this.value.trim();
   if (!customerName) return;
-
-  // Find customer in cache
   const customer = customersCache.find(c => c.customer === customerName);
   if (customer) {
-    // Populate Ship-To fields with customer's primary address
     document.getElementById('shipToName').value = customer.customer;
     document.getElementById('shipToStreet').value = customer.address || '';
     document.getElementById('shipToStreet2').value = customer.address2 || '';
@@ -423,21 +976,15 @@ customerIdInput.addEventListener('change', async function() {
 
 // Open Add Customer modal
 addCustomerBtn.addEventListener('click', () => {
-  // Pre-fill with parsed value if it exists
   const parsedValue = customerIdInput.value.trim();
-  if (parsedValue) {
-    document.getElementById('newCustomerName').value = parsedValue;
-  }
+  if (parsedValue) document.getElementById('newCustomerName').value = parsedValue;
   addCustomerModal.style.display = 'flex';
 });
 
 // Open Add Carrier modal
 addCarrierBtn.addEventListener('click', () => {
-  // Pre-fill with parsed value if it exists
   const parsedValue = carrierInput.value.trim();
-  if (parsedValue) {
-    document.getElementById('newCarrierName').value = parsedValue;
-  }
+  if (parsedValue) document.getElementById('newCarrierName').value = parsedValue;
   addCarrierModal.style.display = 'flex';
 });
 
@@ -486,16 +1033,12 @@ document.getElementById('addCustomerForm').addEventListener('submit', async (e) 
       return;
     }
 
-    // Success: reload customers and close modal
     statusEl.textContent = 'Customer saved!';
     statusEl.className = 'status success';
     await loadCustomers();
-
-    // Set the new customer as selected
     customerIdInput.value = payload.customer;
     customerIdInput.dispatchEvent(new Event('change'));
 
-    // Close modal after short delay
     setTimeout(() => {
       addCustomerModal.style.display = 'none';
       document.getElementById('addCustomerForm').reset();
@@ -542,15 +1085,11 @@ document.getElementById('addCarrierForm').addEventListener('submit', async (e) =
       return;
     }
 
-    // Success: reload carriers and close modal
     statusEl.textContent = 'Carrier saved!';
     statusEl.className = 'status success';
     await loadCarriers();
-
-    // Set the new carrier as selected
     carrierInput.value = payload.carrier_name;
 
-    // Close modal after short delay
     setTimeout(() => {
       addCarrierModal.style.display = 'none';
       document.getElementById('addCarrierForm').reset();
@@ -574,7 +1113,6 @@ const materialLotInput = document.getElementById('materialLot');
 let lotsCache = [];
 let productsCache = [];
 
-// Load lots from API
 async function loadLots() {
   try {
     const resp = await fetch('/api/lots/', { credentials: 'same-origin' });
@@ -590,7 +1128,6 @@ async function loadLots() {
   }
 }
 
-// Load products for lot creation
 async function loadProducts() {
   try {
     const resp = await fetch('/api/products/', { credentials: 'same-origin' });
@@ -606,41 +1143,30 @@ async function loadProducts() {
   }
 }
 
-// Auto-populate chemistry when lot is selected
 materialLotInput.addEventListener('change', function() {
   const lotCode = this.value.trim();
   if (!lotCode) return;
-
   const lot = lotsCache.find(l => l.code === lotCode);
   if (lot) {
-    // Fill in chemistry fields
     if (lot.c !== null) document.getElementById('chemC').value = lot.c;
     if (lot.si !== null) document.getElementById('chemSi').value = lot.si;
     if (lot.s !== null) document.getElementById('chemS').value = lot.s;
     if (lot.p !== null) document.getElementById('chemP').value = lot.p;
     if (lot.mn !== null) document.getElementById('chemMn').value = lot.mn;
-    // Fill in material description from product
-    if (lot.product_name) {
-      document.getElementById('materialDescription').value = lot.product_name;
-    }
+    if (lot.product_name) document.getElementById('materialDescription').value = lot.product_name;
   }
 });
 
-// Open Add Lot modal
 addLotBtn.addEventListener('click', () => {
   const parsedValue = materialLotInput.value.trim();
-  if (parsedValue) {
-    document.getElementById('newLotCode').value = parsedValue;
-  }
+  if (parsedValue) document.getElementById('newLotCode').value = parsedValue;
   loadProducts();
   addLotModal.style.display = 'flex';
 });
 
-// Close Lot modal
 closeAddLot.addEventListener('click', () => { addLotModal.style.display = 'none'; });
 addLotModal.addEventListener('click', (e) => { if (e.target === addLotModal) addLotModal.style.display = 'none'; });
 
-// Save new lot
 document.getElementById('addLotForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const statusEl = document.getElementById('addLotStatus');
@@ -649,7 +1175,6 @@ document.getElementById('addLotForm').addEventListener('submit', async (e) => {
   const code = document.getElementById('newLotCode').value.trim();
   const description = document.getElementById('newLotDescription').value.trim();
 
-  // Find product by name if provided
   let productId = null;
   if (description) {
     const product = productsCache.find(p => p.name.toLowerCase() === description.toLowerCase());
@@ -686,13 +1211,9 @@ document.getElementById('addLotForm').addEventListener('submit', async (e) => {
     statusEl.textContent = 'Lot saved!';
     statusEl.className = 'status success';
     await loadLots();
-
-    // Set the new lot as selected and trigger change to populate fields
     materialLotInput.value = code;
     materialLotInput.dispatchEvent(new Event('change'));
-    if (description) {
-      document.getElementById('materialDescription').value = description;
-    }
+    if (description) document.getElementById('materialDescription').value = description;
 
     setTimeout(() => {
       addLotModal.style.display = 'none';
@@ -715,7 +1236,7 @@ let manualSchedule = [];
 function renderScheduleTable() {
   const schedEl = document.getElementById('scheduleList');
   if (manualSchedule.length === 0) {
-    schedEl.innerHTML = '<div style="color: var(--text-secondary); padding: 0.5rem 0;">No loads scheduled yet</div>';
+    schedEl.innerHTML = '<div style="color: var(--text-muted); padding: 0.5rem 0;">No loads scheduled yet</div>';
     return;
   }
 
@@ -730,7 +1251,7 @@ function renderScheduleTable() {
       <td>${d}</td>
       <td>${idx + 1}</td>
       <td>${nt}${nt ? ' NT' : ''}</td>
-      <td><button type="button" class="btn btn-sm btn-danger" onclick="removeScheduleItem(${idx})" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">×</button></td>
+      <td><button type="button" class="btn btn-danger btn-sm" onclick="removeScheduleItem(${idx})" style="padding: 0.2rem 0.5rem; font-size: 0.75rem;">×</button></td>
     </tr>`;
   });
   html += '</tbody></table>';
@@ -739,10 +1260,8 @@ function renderScheduleTable() {
 
 window.removeScheduleItem = function(idx) {
   manualSchedule.splice(idx, 1);
-  // Update sequence numbers
   manualSchedule.forEach((item, i) => { item.load = i + 1; });
   renderScheduleTable();
-  // Update _lastParsed
   if (window._lastParsed && window._lastParsed.parsed) {
     window._lastParsed.parsed.schedule = manualSchedule;
   }
@@ -757,7 +1276,6 @@ document.getElementById('addScheduleBtn').addEventListener('click', () => {
     return;
   }
 
-  // Add the specified number of loads for this date
   for (let i = 0; i < loadsCount; i++) {
     manualSchedule.push({
       date: dateVal,
@@ -767,12 +1285,10 @@ document.getElementById('addScheduleBtn').addEventListener('click', () => {
 
   renderScheduleTable();
 
-  // Update _lastParsed so approve picks it up
   if (window._lastParsed && window._lastParsed.parsed) {
     window._lastParsed.parsed.schedule = manualSchedule;
   }
 
-  // Clear inputs for next entry
   document.getElementById('scheduleDate').value = '';
   document.getElementById('scheduleLoads').value = '1';
 });
@@ -785,57 +1301,19 @@ document.getElementById('clearScheduleBtn').addEventListener('click', () => {
   }
 });
 
-// Ensure CSRF cookie is set, then load customers, carriers, and lots
+// Ensure CSRF cookie is set, then load data
 fetch('/api/csrf/', { credentials: 'same-origin' })
-  .then(() => {
-    loadCustomers();
-    loadCarriers();
-    loadLots();
-  })
-  .catch(() => {
-    // Still try to load even if CSRF fetch fails
-    loadCustomers();
-    loadCarriers();
-    loadLots();
-  });
+  .then(() => { loadCustomers(); loadCarriers(); loadLots(); })
+  .catch(() => { loadCustomers(); loadCarriers(); loadLots(); });
 
 function toISODate(d) {
   if (!d) return '';
   try {
-    // Handle already-ISO
     if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
     const dt = new Date(d);
     if (!isNaN(dt)) return dt.toISOString().slice(0,10);
   } catch (_) {}
   return '';
-}
-
-function parseAddress(raw) {
-  let s = (raw || '').trim();
-  // Strip any glued customer token after ZIP
-  s = s.replace(/(\b\d{5}\b)\s*[A-Z].*$/i, '$1');
-  const parts = s.split(',').map(t => t.trim()).filter(Boolean);
-  let street='', city='', state='', zip='';
-  if (parts.length >= 3) {
-    [street, city] = [parts[0], parts[1]];
-    const rest = parts.slice(2).join(', ');
-    const m = rest.match(/([A-Z]{2})\s*(\d{5})/i);
-    if (m) { state = m[1].toUpperCase(); zip = m[2]; }
-    else {
-      const m2 = rest.match(/\b([A-Z]{2})\b/); if (m2) state = m2[1].toUpperCase();
-      const m3 = rest.match(/(\d{5})/); if (m3) zip = m3[1];
-    }
-  } else if (parts.length === 2) {
-    street = parts[0];
-    const m = parts[1].match(/^(.+?)\s+([A-Z]{2})\s*(\d{5})/i);
-    if (m) { city = m[1].trim(); state = m[2].toUpperCase(); zip = m[3]; }
-    else { city = parts[1]; }
-  } else {
-    street = s;
-  }
-  zip = (zip || '').replace(/\D/g, '').slice(0,5);
-  if (zip.length !== 5) zip = '';
-  return {street, city, state, zip};
 }
 
 function toUSDate(d) {
@@ -861,8 +1339,6 @@ function fillReview(parsed) {
   document.getElementById('carrier').value = p.carrier || p.shipVia || '';
   document.getElementById('qtyTons').value = p.quantityNetTons ?? '';
 
-  // Use backend parser's already-parsed components from shipToRaw
-  // Backend now returns: street, street2, city, state, zip
   document.getElementById('shipToName').value = ship.name || '';
   document.getElementById('shipToStreet').value = ship.street || '';
   document.getElementById('shipToStreet2').value = ship.street2 || '';
@@ -881,7 +1357,7 @@ function fillReview(parsed) {
   const schedEl = document.getElementById('scheduleList');
   const sched = Array.isArray(p.schedule) ? p.schedule : [];
   if (sched.length === 0) {
-    schedEl.innerHTML = '<div style="color: var(--text-secondary); padding: 0.5rem 0;">No schedule found</div>';
+    schedEl.innerHTML = '<div style="color: var(--text-muted); padding: 0.5rem 0;">No schedule found</div>';
   } else {
     const perLoad = (Number(p.quantityNetTons) && sched.length) ? Number(p.quantityNetTons)/sched.length : null;
     let html = '<table><thead><tr><th>Date</th><th>Load #</th><th>Net Tons</th></tr></thead><tbody>';
@@ -903,20 +1379,19 @@ function openReview(parsed) {
   fillReview(parsed && parsed.parsed ? parsed.parsed : parsed);
   modal.style.display = 'flex';
 }
-function closeReview() { modal.style.display = 'none'; }
-closeBtn.addEventListener('click', closeReview);
+function closeReviewFn() { modal.style.display = 'none'; }
+closeBtn.addEventListener('click', closeReviewFn);
 
-// Manual Entry button - opens review modal with empty fields
 document.getElementById('manualEntryBtn').addEventListener('click', () => {
   window._lastParsed = { parsed: { schedule: [] } };
-  manualSchedule = [];  // Reset manual schedule
+  manualSchedule = [];
   fillReview({});
-  renderScheduleTable();  // Show empty schedule
+  renderScheduleTable();
   modal.style.display = 'flex';
   document.getElementById('releaseNumber').focus();
 });
-modal.addEventListener('click', (e) => { if (e.target === modal) closeReview(); });
-document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeReview(); });
+modal.addEventListener('click', (e) => { if (e.target === modal) closeReviewFn(); });
+document.addEventListener('keydown', (e) => { if (e.key === 'Escape') closeReviewFn(); });
 copyBtn.addEventListener('click', () => {
   const data = window._lastParsed && (window._lastParsed.parsed || window._lastParsed) || {};
   try {
@@ -961,7 +1436,6 @@ approveBtn.addEventListener('click', async () => {
     releaseDate: document.getElementById('releaseDate')?.value || p.releaseDate,
     customerId: document.getElementById('customerId')?.value || p.customerId,
     customerPO: document.getElementById('customerPO')?.value || p.customerPO,
-    // Use Carrier field as shipVia
     shipVia: document.getElementById('carrier')?.value || p.carrier || p.shipVia,
     shipTo: ship,
     material: {
@@ -991,7 +1465,6 @@ approveBtn.addEventListener('click', async () => {
     const json = await resp.json().catch(()=>null);
     if (!resp.ok) {
       const ms = document.getElementById('modalStatus');
-      // Duplicate release UX
       if (resp.status === 409 && (json?.error || '').toLowerCase().includes('duplicate')) {
         const link = json?.id ? ` — <a href="/api/releases/${json.id}/view/" style="text-decoration:underline; color: #721c24;">View existing</a>` : '';
         ms.innerHTML = `Release ${payload.releaseNumber} already exists${link}.`;
@@ -1008,7 +1481,6 @@ approveBtn.addEventListener('click', async () => {
       return;
     }
     if (window.Utils && Utils.showStatus) Utils.showStatus(`Release saved (ID ${json.id})`, 'success');
-    // Close modal and navigate to Open Releases for confirmation
     try { modal.style.display = 'none'; } catch(_){}
     setTimeout(() => { window.location.href = '/open-releases/'; }, 600);
   } catch (e) {
@@ -1070,7 +1542,6 @@ form.addEventListener('submit', async (e) => {
     } else {
       if (window.Utils && Utils.showStatus) Utils.showStatus('Parse complete' + (parsed && parsed.ai ? ` (AI: ${parsed.ai})` : '' ) + '.', 'success');
       if (parsed && parsed.ok && parsed.parsed) { openReview(parsed); }
-      // Focus Approve button to make next action obvious
       try { document.getElementById('approveSave')?.focus(); } catch(_) {}
     }
     try { out.scrollIntoView({ behavior: 'smooth', block: 'nearest' }); } catch (_) {}
@@ -1082,6 +1553,6 @@ form.addEventListener('submit', async (e) => {
     if (submitBtn) submitBtn.disabled = false;
   }
 });
-  </script>
+    </script>
 </body>
 </html>
