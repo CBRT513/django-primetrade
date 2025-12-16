@@ -370,7 +370,8 @@ def parse_release_pdf(file_obj, ai_mode: str | None = None) -> Dict[str, Any]:
     When ai_mode is None, uses regex-only extraction.
     """
     reader = PdfReader(file_obj)
-    text = "\n".join(page.extract_text() or "" for page in reader.pages)
+    # Use layout mode to preserve table structure (required since pypdf 6.x)
+    text = "\n".join(page.extract_text(extraction_mode="layout") or "" for page in reader.pages)
 
     if ai_mode in ("local", "cloud"):
         # AI-FIRST APPROACH: Let AI extract everything, use regex as fallback
