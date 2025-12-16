@@ -18,8 +18,8 @@ AI_SCHEMA = (
     '"allWarehouseRequirements": str|null }'
 )
 
-GEMINI_DEFAULT_MODEL = os.environ.get("GEMINI_MODEL", "gemini-2.5-flash")
-GEMINI_ENDPOINT_BASE = "https://generativelanguage.googleapis.com/v1beta/models"
+OPENAI_DEFAULT_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
+OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions"
 
 
 def _strip_code_fence(s: str) -> str:
@@ -31,23 +31,22 @@ def _strip_code_fence(s: str) -> str:
     return s.strip()
 
 
-def gemini_parse_release_text(
+def openai_parse_release_text(
     text: str,
     api_key: Optional[str] = None,
     model: Optional[str] = None,
-    timeout: float = 20.0,
+    timeout: float = 30.0,
 ) -> Optional[Dict[str, Any]]:
     """
-    Use Google Gemini API to extract structured data from release order text.
+    Use OpenAI API to extract structured data from release order text.
     Returns dict or None on failure.
     """
-    api_key = api_key or os.environ.get("GOOGLE_API_KEY")
+    api_key = api_key or os.environ.get("OPENAI_API_KEY")
     if not api_key:
-        logger.warning("GOOGLE_API_KEY not set, AI extraction disabled")
+        logger.warning("OPENAI_API_KEY not set, AI extraction disabled")
         return None
 
-    model = model or GEMINI_DEFAULT_MODEL
-    endpoint = f"{GEMINI_ENDPOINT_BASE}/{model}:generateContent?key={api_key}"
+    model = model or OPENAI_DEFAULT_MODEL
 
     prompt = (
         "Extract fields from the following RELEASE ORDER text. "
@@ -65,44 +64,48 @@ def gemini_parse_release_text(
     )
 
     try:
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        
         payload = {
-            "contents": [{
-                "parts": [{"text": prompt}]
-            }],
-            "generationConfig": {
-                "temperature": 0,
-                "responseMimeType": "application/json"
-            }
+            "model": model,
+            "messages": [
+                {"role": "user", "content": prompt}
+            ],
+            "temperature": 0,
+            "response_format": {"type": "json_object"}
         }
 
-        resp = requests.post(endpoint, json=payload, timeout=timeout)
+        resp = requests.post(OPENAI_ENDPOINT, headers=headers, json=payload, timeout=timeout)
         resp.raise_for_status()
         data = resp.json()
 
-        # Extract text from Gemini response format
-        candidates = data.get("candidates", [])
-        if not candidates:
+        # Extract content from OpenAI response format
+        choices = data.get("choices", [])
+        if not choices:
             return None
 
-        content = candidates[0].get("content", {})
-        parts = content.get("parts", [])
-        if not parts:
+        message = choices[0].get("message", {})
+        content = message.get("content", "")
+        
+        if not content:
             return None
 
-        text_response = parts[0].get("text", "")
-        clean_text = _strip_code_fence(text_response.strip())
-
+        clean_text = _strip_code_fence(content.strip())
         return json.loads(clean_text)
+        
     except Exception as e:
-        logger.error(f"Gemini API Stage 1 failed: {e}", exc_info=True)
+        logger.error(f"OpenAI API Stage 1 failed: {e}", exc_info=True)
         return None
 
 
-def gemini_filter_critical_instructions(
+def openai_filter_critical_instructions(
     warehouse_text: str,
     api_key: Optional[str] = None,
     model: Optional[str] = None,
-    timeout: float = 20.0,
+    timeout: float = 30.0,
 ) -> Optional[str]:
     """
     Stage 2: Filter warehouse requirements to extract ONLY critical delivery directives.
@@ -111,13 +114,12 @@ def gemini_filter_critical_instructions(
     if not warehouse_text or not warehouse_text.strip():
         return None
 
-    api_key = api_key or os.environ.get("GOOGLE_API_KEY")
+    api_key = api_key or os.environ.get("OPENAI_API_KEY")
     if not api_key:
-        logger.warning("GOOGLE_API_KEY not set, Stage 2 filter disabled")
+        logger.warning("OPENAI_API_KEY not set, Stage 2 filter disabled")
         return None
 
-    model = model or GEMINI_DEFAULT_MODEL
-    endpoint = f"{GEMINI_ENDPOINT_BASE}/{model}:generateContent?key={api_key}"
+    model = model or OPENAI_DEFAULT_MODEL
 
     prompt = (
         "You are analyzing warehouse requirements from a shipping release order. "
@@ -161,40 +163,42 @@ def gemini_filter_critical_instructions(
     )
 
     try:
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json"
+        }
+        
         payload = {
-            "contents": [{
-                "parts": [{"text": prompt}]
-            }],
-            "generationConfig": {
-                "temperature": 0,
-            }
+            "model": model,
+            "messages": [
+                {"role": "user", "content": prompt}
+            ],
+            "temperature": 0
         }
 
-        resp = requests.post(endpoint, json=payload, timeout=timeout)
+        resp = requests.post(OPENAI_ENDPOINT, headers=headers, json=payload, timeout=timeout)
         resp.raise_for_status()
         data = resp.json()
 
-        candidates = data.get("candidates", [])
-        if not candidates:
+        choices = data.get("choices", [])
+        if not choices:
             return None
 
-        content = candidates[0].get("content", {})
-        parts = content.get("parts", [])
-        if not parts:
-            return None
-
-        result = parts[0].get("text", "").strip()
+        message = choices[0].get("message", {})
+        result = message.get("content", "").strip()
 
         # Handle "null" response
         if result.lower() in ("null", "none", ""):
             return None
 
         return result
+        
     except Exception as e:
-        logger.error(f"Gemini API Stage 2 filter failed: {e}", exc_info=True)
+        logger.error(f"OpenAI API Stage 2 filter failed: {e}", exc_info=True)
         return None
 
 
-# Aliases for backward compatibility
-ai_parse_release_text = gemini_parse_release_text
-remote_ai_parse_release_text = gemini_parse_release_text
+# Backward compatibility aliases (used by release_parser.py)
+ai_parse_release_text = openai_parse_release_text
+remote_ai_parse_release_text = openai_parse_release_text
+gemini_filter_critical_instructions = openai_filter_critical_instructions
