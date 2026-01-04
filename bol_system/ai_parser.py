@@ -1,12 +1,21 @@
+"""
+AI-powered release order parsing using Anthropic Claude.
+
+Extracts structured data from release order text and filters
+critical delivery instructions from warehouse requirements.
+"""
 import json
 import logging
 import os
 import re
 from typing import Any, Dict, Optional
 
-import requests
+import anthropic
 
 logger = logging.getLogger(__name__)
+
+# Claude model configuration
+CLAUDE_MODEL = "claude-sonnet-4-20250514"
 
 AI_SCHEMA = (
     '{ "releaseNumber": str|null, "releaseDate": "MM/DD/YYYY"|null, '
@@ -18,9 +27,6 @@ AI_SCHEMA = (
     '"allWarehouseRequirements": str|null }'
 )
 
-OPENAI_DEFAULT_MODEL = os.environ.get("OPENAI_MODEL", "gpt-4o-mini")
-OPENAI_ENDPOINT = "https://api.openai.com/v1/chat/completions"
-
 
 def _strip_code_fence(s: str) -> str:
     """Remove markdown code fences from JSON response."""
@@ -31,22 +37,19 @@ def _strip_code_fence(s: str) -> str:
     return s.strip()
 
 
-def openai_parse_release_text(
+def claude_parse_release_text(
     text: str,
     api_key: Optional[str] = None,
-    model: Optional[str] = None,
     timeout: float = 30.0,
 ) -> Optional[Dict[str, Any]]:
     """
-    Use OpenAI API to extract structured data from release order text.
+    Use Claude API to extract structured data from release order text.
     Returns dict or None on failure.
     """
-    api_key = api_key or os.environ.get("OPENAI_API_KEY")
+    api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
-        logger.warning("OPENAI_API_KEY not set, AI extraction disabled")
+        logger.warning("ANTHROPIC_API_KEY not set, AI extraction disabled")
         return None
-
-    model = model or OPENAI_DEFAULT_MODEL
 
     prompt = (
         "Extract fields from the following RELEASE ORDER text. "
@@ -64,47 +67,44 @@ def openai_parse_release_text(
     )
 
     try:
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        }
-        
-        payload = {
-            "model": model,
-            "messages": [
-                {"role": "user", "content": prompt}
-            ],
-            "temperature": 0,
-            "response_format": {"type": "json_object"}
-        }
+        client = anthropic.Anthropic(api_key=api_key, timeout=timeout)
 
-        resp = requests.post(OPENAI_ENDPOINT, headers=headers, json=payload, timeout=timeout)
-        resp.raise_for_status()
-        data = resp.json()
+        response = client.messages.create(
+            model=CLAUDE_MODEL,
+            max_tokens=4096,
+            messages=[{
+                "role": "user",
+                "content": prompt
+            }]
+        )
 
-        # Extract content from OpenAI response format
-        choices = data.get("choices", [])
-        if not choices:
-            return None
-
-        message = choices[0].get("message", {})
-        content = message.get("content", "")
-        
-        if not content:
-            return None
-
+        content = response.content[0].text
         clean_text = _strip_code_fence(content.strip())
-        return json.loads(clean_text)
-        
+
+        result = json.loads(clean_text)
+        logger.info(f"Claude extraction successful: {list(result.keys())}")
+        return result
+
+    except anthropic.APITimeoutError:
+        logger.error("Claude API timeout")
+        return None
+    except anthropic.RateLimitError as e:
+        logger.error(f"Claude rate limit exceeded: {e}")
+        return None
+    except anthropic.APIError as e:
+        logger.error(f"Claude API error: {e}")
+        return None
+    except json.JSONDecodeError as e:
+        logger.error(f"Failed to parse Claude JSON response: {e}")
+        return None
     except Exception as e:
-        logger.error(f"OpenAI API Stage 1 failed: {e}", exc_info=True)
+        logger.error(f"Claude API Stage 1 failed: {e}", exc_info=True)
         return None
 
 
-def openai_filter_critical_instructions(
+def claude_filter_critical_instructions(
     warehouse_text: str,
     api_key: Optional[str] = None,
-    model: Optional[str] = None,
     timeout: float = 30.0,
 ) -> Optional[str]:
     """
@@ -114,12 +114,10 @@ def openai_filter_critical_instructions(
     if not warehouse_text or not warehouse_text.strip():
         return None
 
-    api_key = api_key or os.environ.get("OPENAI_API_KEY")
+    api_key = api_key or os.environ.get("ANTHROPIC_API_KEY")
     if not api_key:
-        logger.warning("OPENAI_API_KEY not set, Stage 2 filter disabled")
+        logger.warning("ANTHROPIC_API_KEY not set, Stage 2 filter disabled")
         return None
-
-    model = model or OPENAI_DEFAULT_MODEL
 
     prompt = (
         "You are analyzing warehouse requirements from a shipping release order. "
@@ -163,42 +161,42 @@ def openai_filter_critical_instructions(
     )
 
     try:
-        headers = {
-            "Authorization": f"Bearer {api_key}",
-            "Content-Type": "application/json"
-        }
-        
-        payload = {
-            "model": model,
-            "messages": [
-                {"role": "user", "content": prompt}
-            ],
-            "temperature": 0
-        }
+        client = anthropic.Anthropic(api_key=api_key, timeout=timeout)
 
-        resp = requests.post(OPENAI_ENDPOINT, headers=headers, json=payload, timeout=timeout)
-        resp.raise_for_status()
-        data = resp.json()
+        response = client.messages.create(
+            model=CLAUDE_MODEL,
+            max_tokens=1024,
+            messages=[{
+                "role": "user",
+                "content": prompt
+            }]
+        )
 
-        choices = data.get("choices", [])
-        if not choices:
-            return None
-
-        message = choices[0].get("message", {})
-        result = message.get("content", "").strip()
+        result = response.content[0].text.strip()
 
         # Handle "null" response
         if result.lower() in ("null", "none", ""):
             return None
 
         return result
-        
+
+    except anthropic.APITimeoutError:
+        logger.error("Claude API timeout (Stage 2)")
+        return None
+    except anthropic.RateLimitError as e:
+        logger.error(f"Claude rate limit exceeded (Stage 2): {e}")
+        return None
+    except anthropic.APIError as e:
+        logger.error(f"Claude API error (Stage 2): {e}")
+        return None
     except Exception as e:
-        logger.error(f"OpenAI API Stage 2 filter failed: {e}", exc_info=True)
+        logger.error(f"Claude API Stage 2 filter failed: {e}", exc_info=True)
         return None
 
 
 # Backward compatibility aliases (used by release_parser.py)
-ai_parse_release_text = openai_parse_release_text
-remote_ai_parse_release_text = openai_parse_release_text
-gemini_filter_critical_instructions = openai_filter_critical_instructions
+ai_parse_release_text = claude_parse_release_text
+remote_ai_parse_release_text = claude_parse_release_text
+openai_parse_release_text = claude_parse_release_text
+gemini_filter_critical_instructions = claude_filter_critical_instructions
+openai_filter_critical_instructions = claude_filter_critical_instructions
