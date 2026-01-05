@@ -1414,11 +1414,11 @@ def pending_release_loads(request):
         logger.error(f"pending_release_loads error: {e}", exc_info=True)
         return Response({'error': 'Failed to load pending loads', 'detail': str(e)}, status=status.HTTP_400_BAD_REQUEST)
 
-# Load detail with release context (for BOL pre-fill)
-@api_view(['GET'])
+# Load detail with release context (for BOL pre-fill) - GET and PATCH
+@api_view(['GET', 'PATCH'])
 @authentication_classes([CsrfExemptSessionAuthentication])
 @permission_classes([IsAuthenticated])
-@require_role('Admin', 'Office', 'Client')  # All authenticated users - Phase 2 audit fix
+@require_role_for_writes('admin', 'office')  # PATCH requires Admin or Office role
 @feature_permission_required('releases', 'view')
 def load_detail_api(request, load_id):
     try:
@@ -1426,7 +1426,39 @@ def load_detail_api(request, load_id):
     except ReleaseLoad.DoesNotExist:
         return Response({'error': 'Load not found'}, status=status.HTTP_404_NOT_FOUND)
 
-    # Return load data with nested release context
+    if request.method == 'PATCH':
+        # Update load date (pickup date)
+        data = request.data
+        updated_fields = []
+
+        if 'date' in data:
+            new_date = data['date']
+            if new_date:
+                try:
+                    # Parse date string (YYYY-MM-DD format)
+                    parsed_date = datetime.strptime(new_date, '%Y-%m-%d').date()
+                    load.date = parsed_date
+                    updated_fields.append('date')
+                except ValueError:
+                    return Response({'error': 'Invalid date format. Use YYYY-MM-DD'}, status=status.HTTP_400_BAD_REQUEST)
+            else:
+                # Allow clearing the date
+                load.date = None
+                updated_fields.append('date')
+
+        if updated_fields:
+            load.updated_by = getattr(request.user, 'email', str(request.user))
+            updated_fields.extend(['updated_at', 'updated_by'])
+            load.save(update_fields=updated_fields)
+            audit(request, 'UPDATE', load, f"Updated load date to {load.date}")
+            logger.info(f"Load {load_id} date updated to {load.date} by {request.user}")
+
+        return Response({
+            'ok': True,
+            'load': ReleaseLoadSerializer(load).data
+        })
+
+    # GET: Return load data with nested release context
     release = load.release
     data = {
         'load': ReleaseLoadSerializer(load).data,

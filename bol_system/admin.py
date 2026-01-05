@@ -132,7 +132,8 @@ class RoleRedirectConfigAdmin(admin.ModelAdmin):
 class ReleaseLoadInline(admin.TabularInline):
     model = ReleaseLoad
     extra = 0
-    readonly_fields = ['seq', 'date', 'planned_tons', 'status', 'bol']
+    fields = ['seq', 'date', 'planned_tons', 'status', 'bol']
+    readonly_fields = ['seq', 'planned_tons', 'status', 'bol']  # date is now editable
 
 
 @admin.register(Release)

@@ -117,6 +117,17 @@
         /* Empty State */
         .empty-state { text-align: center; padding: 48px 24px; color: var(--text-muted); }
 
+        /* Date Edit */
+        .date-cell { cursor: pointer; display: flex; align-items: center; gap: 6px; }
+        .date-cell:hover { color: var(--brand-primary); }
+        .date-cell .edit-icon { opacity: 0; width: 14px; height: 14px; transition: opacity 0.2s; }
+        .date-cell:hover .edit-icon { opacity: 1; }
+        .date-input { padding: 4px 8px; border: 1px solid var(--brand-primary); border-radius: 4px; font-size: 13px; width: 130px; }
+        .date-edit-actions { display: flex; gap: 4px; margin-top: 4px; }
+        .date-edit-actions button { padding: 2px 8px; font-size: 11px; border-radius: 4px; cursor: pointer; border: none; }
+        .date-edit-actions .save-btn { background: var(--brand-primary); color: white; }
+        .date-edit-actions .cancel-btn { background: var(--bg-light); color: var(--text-secondary); border: 1px solid var(--border-color); }
+
         /* Footer */
         .footer { text-align: center; padding: 24px; color: var(--text-muted); font-size: 13px; border-top: 1px solid var(--border-color); background: var(--bg-white); margin-top: 32px; }
 
@@ -232,9 +243,80 @@
         let currentFilter = 'all';
 
         function fmtDate(d) {
-            if (!d) return '';
+            if (!d) return 'No date';
             try { if (/^\d{4}-\d{2}-\d{2}$/.test(d)) { const [y,m,dd] = d.split('-'); return `${m}/${dd}/${y}`; } } catch(e) {}
             return String(d);
+        }
+
+        function toISODate(d) {
+            if (!d) return '';
+            if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+            return '';
+        }
+
+        // CSRF token helper
+        function getCSRFToken() {
+            const cookieValue = document.cookie.split('; ')
+                .find(row => row.startsWith('csrftoken='))
+                ?.split('=')[1];
+            return cookieValue || '';
+        }
+
+        // Edit date inline
+        let editingLoadId = null;
+
+        function startEditDate(loadId, currentDate, cellElement) {
+            if (editingLoadId === loadId) return; // Already editing
+            cancelEditDate(); // Cancel any existing edit
+            editingLoadId = loadId;
+
+            const isoDate = toISODate(currentDate) || '';
+            cellElement.innerHTML = `
+                <div>
+                    <input type="date" class="date-input" value="${isoDate}" id="date-input-${loadId}">
+                    <div class="date-edit-actions">
+                        <button class="save-btn" onclick="saveDate(${loadId}, event)">Save</button>
+                        <button class="cancel-btn" onclick="cancelEditDate()">Cancel</button>
+                    </div>
+                </div>
+            `;
+            document.getElementById(`date-input-${loadId}`).focus();
+        }
+
+        function cancelEditDate() {
+            if (editingLoadId) {
+                editingLoadId = null;
+                render(); // Re-render to restore original display
+            }
+        }
+
+        async function saveDate(loadId, event) {
+            event.stopPropagation();
+            const input = document.getElementById(`date-input-${loadId}`);
+            const newDate = input.value;
+
+            try {
+                const res = await fetch(`/api/releases/load/${loadId}/`, {
+                    method: 'PATCH',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCSRFToken()
+                    },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ date: newDate || null })
+                });
+
+                if (!res.ok) {
+                    const err = await res.json();
+                    throw new Error(err.error || 'Failed to update date');
+                }
+
+                editingLoadId = null;
+                // Reload to get fresh data
+                await load();
+            } catch (err) {
+                alert(err.message || 'Failed to save date');
+            }
         }
 
         function formatDaysUntil(days) {
@@ -250,10 +332,12 @@
 
         function renderLoadRow(load) {
             const daysText = formatDaysUntil(load.daysUntil);
+            const dateDisplay = fmtDate(load.scheduledDate);
+            const editIcon = `<svg class="edit-icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.232 5.232l3.536 3.536m-2.036-5.036a2.5 2.5 0 113.536 3.536L6.5 21.036H3v-3.572L16.732 3.732z"/></svg>`;
             return `<tr class="row-${load.urgency}">
                 <td><a href="/api/releases/${load.releaseId}/view/">${load.releaseNumber}</a></td>
                 <td>${load.seq}</td>
-                <td>${fmtDate(load.scheduledDate)}</td>
+                <td class="date-cell" onclick="startEditDate(${load.loadId}, '${load.scheduledDate || ''}', this)" title="Click to edit date">${dateDisplay}${editIcon}</td>
                 <td><span class="urgency-badge ${load.urgency}">${daysText}</span></td>
                 <td>${load.customer.name || ''}</td>
                 <td>${load.plannedTons.toFixed(2)}</td>
