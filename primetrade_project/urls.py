@@ -46,7 +46,8 @@ urlpatterns = [
     path('carriers.html', primetrade_views.carriers_page, name='carriers'),
     path('releases.html', primetrade_views.releases_upload_page, name='releases'),
     path('open-releases/', primetrade_views.open_releases_page, name='open_releases'),
-    path('loading-schedule.html', primetrade_views.loading_schedule_page, name='loading_schedule'),
+    path('loading-schedule/', primetrade_views.loading_schedule_page, name='loading_schedule'),
+    path('loading-schedule.html', primetrade_views.loading_schedule_page),  # Legacy URL
     path('client-schedule.html', primetrade_views.client_schedule_page, name='client_schedule'),
     path('client-release.html', primetrade_views.client_release_page, name='client_release'),
     path('bol-weights.html', primetrade_views.bol_weights_page, name='bol_weights'),
