@@ -154,48 +154,115 @@ class Truck(TimestampedModel):
         return f"{self.truck_number} / {self.trailer_number}"
 
 class BOLCounter(models.Model):
-    year = models.IntegerField(unique=True)
+    """
+    Atomic BOL number sequence per tenant + year.
+
+    Scope: (tenant, year) - resets annually
+    Format: {prefix}-{year}-{seq:04d} e.g., PRT-2025-0001
+
+    Note: prefix is per-tenant config, not variable at runtime.
+    Each tenant has one prefix (e.g., PRT for PrimeTrade).
+    """
+    tenant = models.ForeignKey(
+        Tenant, on_delete=models.CASCADE, null=True, blank=True,
+        related_name='bol_counters', help_text='Tenant this counter belongs to'
+    )
+    year = models.IntegerField()
     sequence = models.IntegerField(default=0)
-    
+
+    class Meta:
+        unique_together = [['tenant', 'year']]
+
+    def __str__(self):
+        tenant_code = self.tenant.code if self.tenant else 'GLOBAL'
+        return f"{tenant_code}-{self.year}: {self.sequence}"
+
     @classmethod
-    def get_next_bol_number(cls):
-        current_year = datetime.now().year
+    def get_next_bol_number(cls, tenant=None, prefix='PRT'):
+        """
+        Atomically get next BOL number.
+
+        Uses select_for_update to prevent race conditions.
+
+        Args:
+            tenant: Tenant instance (optional for backward compat)
+            prefix: BOL prefix (default 'PRT', can be from tenant config)
+
+        Returns:
+            String like "PRT-2025-0001"
+        """
+        from django.utils import timezone
+        current_year = timezone.now().year
+
         with transaction.atomic():
             counter, created = cls.objects.select_for_update().get_or_create(
+                tenant=tenant,
                 year=current_year,
                 defaults={'sequence': 0}
             )
             counter.sequence += 1
             counter.save()
-            return f"PRT-{current_year}-{counter.sequence:04d}"
+            return f"{prefix}-{current_year}-{counter.sequence:04d}"
 
 class BOL(TimestampedModel):
+    """
+    Universal BOL with PrimeTrade-specific fields.
+
+    Immutability: Key data is snapshotted at issuance to prevent drift.
+    One active (non-void) BOL per ReleaseLoad enforced by constraint.
+    """
     tenant = models.ForeignKey(
         Tenant, on_delete=models.CASCADE, null=True,
         related_name='bols', help_text='Tenant this BOL belongs to'
     )
-    bol_number = models.CharField(max_length=20, unique=True, db_index=True)
+    bol_number = models.CharField(max_length=20, db_index=True)
+    bol_date = models.DateField(null=True, blank=True, help_text='BOL date as proper DateField')
+    date = models.CharField(max_length=20, blank=True)  # Legacy - keep for backward compat
+
+    # Voiding support (enables reissues)
+    is_void = models.BooleanField(default=False, db_index=True)
+    voided_at = models.DateTimeField(null=True, blank=True)
+    voided_by = models.CharField(max_length=200, blank=True)
+    void_reason = models.TextField(blank=True)
+
+    # Audit fields
+    issued_by = models.CharField(max_length=200, blank=True, help_text='User who issued this BOL')
+
+    # Canonical relationships
+    release_line = models.ForeignKey(
+        'ReleaseLoad',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='bols',
+        help_text='The release load this BOL fulfills'
+    )
+    lot = models.ForeignKey(
+        'Lot',
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True,
+        related_name='bols',
+        help_text='Snapshot at issuance - do not update'
+    )
     product = models.ForeignKey(Product, on_delete=models.CASCADE)
-    product_name = models.CharField(max_length=200)
     customer = models.ForeignKey(Customer, on_delete=models.CASCADE, null=True, blank=True)
-    buyer_name = models.CharField(max_length=200)
-    ship_to = models.TextField()
-    customer_po = models.CharField(max_length=100, blank=True)
     carrier = models.ForeignKey(Carrier, on_delete=models.CASCADE)
-    carrier_name = models.CharField(max_length=200)
     truck = models.ForeignKey(Truck, on_delete=models.CASCADE, null=True, blank=True)
+
+    # Snapshot display fields (immutable after creation)
+    release_display = models.CharField(max_length=30, blank=True, help_text='"123-1" format for search/PDF')
+    product_name = models.CharField(max_length=200)
+    buyer_name = models.CharField(max_length=200)
+    carrier_name = models.CharField(max_length=200)
     truck_number = models.CharField(max_length=50)
     trailer_number = models.CharField(max_length=50)
-    date = models.CharField(max_length=20)  # Keep as string to match Firebase
-    net_tons = models.DecimalField(max_digits=10, decimal_places=2, help_text='CBRT scale weight (estimate)')
-    notes = models.TextField(blank=True)
-    pdf_url = models.URLField(max_length=1000, blank=True)  # Legacy URL (deprecated)
-    pdf_key = models.CharField(max_length=500, blank=True, null=True, help_text='S3 object key for signed URL generation')
-    created_by_email = models.CharField(max_length=200, default='system@primetrade.com')
-    lot_ref = models.ForeignKey('Lot', on_delete=models.SET_NULL, null=True, blank=True, help_text='Reference to lot for chemistry data')
-    release_number = models.CharField(max_length=20, blank=True, help_text='Release number for reference')
-    special_instructions = models.TextField(blank=True, help_text='Special warehouse/BOL requirements from release')
+    chemistry_display = models.CharField(max_length=200, blank=True, help_text='Formatted chemistry at issuance')
 
+    # Address and instructions (also snapshotted)
+    ship_to = models.TextField()
+    customer_po = models.CharField(max_length=100, blank=True)
+    special_instructions = models.TextField(blank=True, help_text='Special warehouse/BOL requirements from release')
     care_of_co = models.CharField(
         max_length=200,
         blank=True,
@@ -203,16 +270,40 @@ class BOL(TimestampedModel):
         help_text="Company name for 'c/o' line in BOL Ship From section (copied from release)"
     )
 
-    # Official weight tracking (certified scale)
+    # Weight (first-class fields)
+    net_tons = models.DecimalField(max_digits=10, decimal_places=2, help_text='CBRT scale weight (estimate)')
     official_weight_tons = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text='Certified scale weight (official)')
     official_weight_entered_by = models.CharField(max_length=200, blank=True, help_text='User who entered official weight')
     official_weight_entered_at = models.DateTimeField(null=True, blank=True, help_text='When official weight was entered')
     weight_variance_tons = models.DecimalField(max_digits=10, decimal_places=2, null=True, blank=True, help_text='Difference between official and CBRT scale')
     weight_variance_percent = models.DecimalField(max_digits=6, decimal_places=2, null=True, blank=True, help_text='Percentage variance')
+
+    # PDF storage
+    pdf_url = models.URLField(max_length=1000, blank=True)
+    pdf_key = models.CharField(max_length=500, blank=True, null=True, help_text='S3 object key for signed URL generation')
     stamped_pdf_url = models.URLField(max_length=1000, blank=True, help_text='Watermarked PDF with official weight stamp')
+
+    # Legacy fields for backward compatibility
+    notes = models.TextField(blank=True)
+    created_by_email = models.CharField(max_length=200, default='system@primetrade.com')
+    lot_ref = models.ForeignKey('Lot', on_delete=models.SET_NULL, null=True, blank=True, related_name='bols_legacy', help_text='Legacy lot reference')
+    release_number = models.CharField(max_length=20, blank=True, help_text='Legacy release number for reference')
 
     class Meta:
         ordering = ['-created_at']
+        unique_together = [['tenant', 'bol_number']]
+        constraints = [
+            # One active (non-void) BOL per ReleaseLoad
+            models.UniqueConstraint(
+                fields=['release_line'],
+                condition=models.Q(is_void=False),
+                name='uniq_active_bol_per_release_line'
+            ),
+        ]
+        indexes = [
+            models.Index(fields=['tenant', 'bol_date']),
+            models.Index(fields=['tenant', 'is_void']),
+        ]
     
     def save(self, *args, **kwargs):
         if not self.bol_number:
@@ -348,11 +439,18 @@ class CompanyBranding(TimestampedModel):
 # Lot and Release management (Phase 2)
 # =============================
 class Lot(TimestampedModel):
+    """
+    Chemistry lot tracking for pig iron.
+
+    Chemistry describes the lot, not the release or BOL.
+    Same lot code = same chemistry (single source of truth).
+    Multiple releases can reference same lot without duplicating chemistry.
+    """
     tenant = models.ForeignKey(
         Tenant, on_delete=models.CASCADE, null=True,
         related_name='lots', help_text='Tenant this lot belongs to'
     )
-    code = models.CharField(max_length=100, unique=True, db_index=True)
+    code = models.CharField(max_length=100, db_index=True)
     product = models.ForeignKey(Product, on_delete=models.SET_NULL, null=True, blank=True)
     c = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
     si = models.DecimalField(max_digits=6, decimal_places=3, null=True, blank=True)
@@ -362,9 +460,25 @@ class Lot(TimestampedModel):
 
     class Meta:
         ordering = ['code']
+        unique_together = [['tenant', 'code']]
 
     def __str__(self):
         return self.code
+
+    def format_chemistry(self):
+        """Format chemistry for BOL display. Uses is not None checks for proper null handling."""
+        parts = []
+        if self.c is not None:
+            parts.append(f"C {self.c:.3f}%")
+        if self.si is not None:
+            parts.append(f"Si {self.si:.3f}%")
+        if self.s is not None:
+            parts.append(f"S {self.s:.3f}%")
+        if self.p is not None:
+            parts.append(f"P {self.p:.3f}%")
+        if self.mn is not None:
+            parts.append(f"Mn {self.mn:.3f}%")
+        return " | ".join(parts)
 
 class Release(TimestampedModel):
     tenant = models.ForeignKey(
@@ -440,6 +554,14 @@ class Release(TimestampedModel):
 
 
 class ReleaseLoad(TimestampedModel):
+    """
+    Individual load within a release (maps to ReleaseLine in spec).
+
+    Status transitions:
+    - PENDING → SHIPPED (when BOL created with this release_line)
+    - PENDING → CANCELLED (manual)
+    - SHIPPED → PENDING (if BOL voided)
+    """
     tenant = models.ForeignKey(
         Tenant, on_delete=models.CASCADE, null=True,
         related_name='release_loads', help_text='Tenant this release load belongs to'
@@ -451,11 +573,12 @@ class ReleaseLoad(TimestampedModel):
     )
 
     release = models.ForeignKey(Release, on_delete=models.CASCADE, related_name='loads')
-    seq = models.IntegerField()  # 1..N
+    seq = models.IntegerField()  # 1..N (maps to line_number in spec)
     date = models.DateField(null=True, blank=True)
     planned_tons = models.DecimalField(max_digits=10, decimal_places=3, null=True, blank=True)
     status = models.CharField(max_length=12, choices=STATUS_CHOICES, default="PENDING")
-    bol = models.ForeignKey(BOL, on_delete=models.SET_NULL, null=True, blank=True)
+    shipped_at = models.DateTimeField(null=True, blank=True, help_text='Timestamp when BOL created')
+    bol = models.ForeignKey(BOL, on_delete=models.SET_NULL, null=True, blank=True, related_name='release_loads_legacy')
 
     class Meta:
         ordering = ['seq']
@@ -463,6 +586,11 @@ class ReleaseLoad(TimestampedModel):
 
     def __str__(self):
         return f"{self.release.release_number} load {self.seq}"
+
+    @property
+    def line_number(self):
+        """Alias for seq to match spec terminology."""
+        return self.seq
 
 
 class AuditLog(TimestampedModel):

@@ -22,6 +22,10 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/', include('bol_system.urls')),
 
+    # Tenant-scoped pigiron workflow (spec section 10)
+    # Pattern: /tenant/{tenant_code}/pigiron/...
+    path('tenant/<str:tenant_code>/pigiron/', include('bol_system.pigiron_urls')),
+
     # User Context API for RBAC (frontend permission checking)
     path('api/user/context/', api_views.user_context, name='user_context'),
 
