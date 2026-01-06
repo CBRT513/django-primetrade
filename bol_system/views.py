@@ -854,6 +854,7 @@ def confirm_bol(request):
             customer_po = data.get('customerPO', '')
 
         # Create BOL
+        lot_ref = release_obj.lot_ref if release_load else None
         bol = BOL.objects.create(
             product=product,
             product_name=product.name,
@@ -870,10 +871,11 @@ def confirm_bol(request):
             customer=customer,
             customer_po=customer_po,
             created_by_email=f'{request.user.username}@primetrade.com',
-            lot_ref=release_obj.lot_ref if release_load else None,
+            lot_ref=lot_ref,
             release_number=f'{release_obj.release_number}-{release_load.seq}' if release_load else '',
             special_instructions=release_obj.special_instructions if release_load else '',
-            care_of_co=release_obj.care_of_co if release_load else 'PrimeTrade, LLC'
+            care_of_co=release_obj.care_of_co if release_load else 'PrimeTrade, LLC',
+            chemistry_display=lot_ref.format_chemistry() if lot_ref else ''
         )
 
         # If load provided, mark shipped and attach
