@@ -34,11 +34,31 @@ def _parse_shipto_address(addr: str | None) -> Dict[str, str]:
     if not addr:
         return {}
 
-    # Split by newlines first, then handle comma-separated if needed
+    parsed = {}
+
+    # First, try to handle "Street City, ST ZIP" format (no comma between street and city)
+    # Look for common street suffixes to find where street ends
+    # Note: No trailing \b because "St." followed by comma doesn't have a word boundary after the period
+    street_suffixes = r'\b(St\.?|Street|Ave\.?|Avenue|Rd\.?|Road|Dr\.?|Drive|Blvd\.?|Boulevard|Ln\.?|Lane|Way|Ct\.?|Court|Pl\.?|Place|Hwy\.?|Highway|Pike|Circle|Cir\.?)'
+    suffix_match = re.search(street_suffixes, addr, re.I)
+    if suffix_match:
+        street = addr[:suffix_match.end()].strip()
+        remainder = addr[suffix_match.end():].strip()
+        # Remove leading punctuation/whitespace from remainder
+        remainder = re.sub(r'^[,.\s]+', '', remainder).strip()
+        # remainder should be "City, ST ZIP" or "City ST ZIP"
+        city_match = re.match(r'^([A-Za-z ]+?),?\s*([A-Z]{2})\s+(\d{5})', remainder)
+        if city_match:
+            parsed['street'] = street
+            parsed['city'] = city_match.group(1).strip()
+            parsed['state'] = city_match.group(2)
+            parsed['zip'] = city_match.group(3)
+            return parsed
+
+    # Fallback: Split by newlines first, then handle comma-separated if needed
     # This handles both formats:
     # "Street\nCity, ST ZIP" and "Street, City, ST ZIP"
     lines = [line.strip() for line in addr.replace('\n', ',').split(',') if line.strip()]
-    parsed = {}
 
     # Last line should contain "City ST ZIP" or just "ST ZIP"
     if lines:
@@ -91,9 +111,28 @@ def parse_release_text(text: str) -> Dict[str, Any]:
     )
 
     # Ship Via and FOB - allow colon and line ends
-    ship_via = (
-        _find(r"Ship\s*Via\s*[:\-]?\s*([^\n]+?)(?:\s+FOB|\n)", t)
+    # First, try to extract carrier from data row pattern
+    # This handles table layouts where columns may be in different orders:
+    # Pattern 1: date + carrier + FOB term (e.g., "01/09/2026    US Bulk       Destination")
+    # Pattern 2: date + release# + carrier + FOB term (e.g., "01/09/2026    60381    US Bulk    Destination")
+    carrier_data_row = (
+        # Pattern: date + release# + carrier + FOB term
+        re.search(
+            r"\d{2}/\d{2}/\d{4}\s+\d+\s+([A-Za-z][A-Za-z0-9 ]+?)\s+(?:Origin|Destination)\b",
+            t
+        )
+        # Pattern: date + carrier + FOB term (no release# in between)
+        or re.search(
+            r"\d{2}/\d{2}/\d{4}\s+([A-Za-z][A-Za-z0-9 ]+?)\s+(?:Origin|Destination)\b",
+            t
+        )
     )
+    if carrier_data_row:
+        ship_via = carrier_data_row.group(1).strip()
+    else:
+        ship_via = (
+            _find(r"Ship\s*Via\s*[:\-]?\s*([^\n]+?)(?:\s+FOB|\n)", t)
+        )
     fob = (
         _find(r"FOB\s*[:\-]?\s*([^\n]+?)(?:\s+Customer\s*P\.?O\.?|\n)", t)
         or _find(r"FOB\s*[:\-]?\s*([^\n]+)", t)
@@ -151,8 +190,18 @@ def parse_release_text(text: str) -> Dict[str, Any]:
     ship_to_block = _find(r"Ship To:\s*([\s\S]*?)(?:\n\s*(?:Release\s*#|Release\s*Date|Approx\.|Please\s+deliver|Shipper:))", t)
     ship_to = {}
     if ship_to_block:
-        # First line is name; subsequent lines compose address
-        lines = [ln.strip() for ln in ship_to_block.splitlines() if ln.strip()]
+        # Handle side-by-side columns (Ship From / Ship To) extracted by pypdf layout mode
+        # Lines may contain both columns separated by 5+ consecutive spaces
+        # We want the rightmost column (Ship To data)
+        raw_lines = ship_to_block.splitlines()
+        lines = []
+        for ln in raw_lines:
+            # If line has multiple chunks separated by 5+ spaces, take the rightmost
+            chunks = re.split(r'\s{5,}', ln)
+            rightmost = chunks[-1].strip() if chunks else ln.strip()
+            if rightmost:
+                lines.append(rightmost)
+
         if lines:
             ship_to["name"] = lines[0]
         if len(lines) > 1:

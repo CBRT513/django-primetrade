@@ -1071,10 +1071,21 @@ document.getElementById('addCarrierForm').addEventListener('submit', async (e) =
 
   try {
     saveBtn.disabled = true;
-    const csrf = (window.Utils && Utils.getCSRFToken) ? Utils.getCSRFToken() : null;
+    // Ensure CSRF token is available - fetch if not present
+    let csrf = (window.Utils && Utils.getCSRFToken) ? Utils.getCSRFToken() : null;
+    if (!csrf) {
+      // Fetch CSRF cookie if not available
+      await fetch('/api/csrf/', { credentials: 'same-origin' });
+      csrf = (window.Utils && Utils.getCSRFToken) ? Utils.getCSRFToken() : null;
+    }
+    if (!csrf) {
+      statusEl.textContent = 'CSRF token not available. Please refresh the page and try again.';
+      statusEl.className = 'status error';
+      return;
+    }
     const resp = await fetch('/api/carriers/', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', ...(csrf ? {'X-CSRFToken': csrf} : {}) },
+      headers: { 'Content-Type': 'application/json', 'X-CSRFToken': csrf },
       credentials: 'same-origin',
       body: JSON.stringify(payload)
     });
