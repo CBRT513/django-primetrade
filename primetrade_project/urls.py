@@ -6,11 +6,23 @@ from django.views.generic import RedirectView, TemplateView
 from django.views.static import serve
 from django.contrib.auth.decorators import login_required
 from django.views.decorators.csrf import ensure_csrf_cookie
+from django.http import HttpResponse
 from bol_system import auth_views
 from primetrade_project import auth_views as sso_auth_views
 from primetrade_project import api_views
 from primetrade_project import views as primetrade_views
 import os
+
+
+def robots_txt(request):
+    content = """User-agent: *
+Allow: /
+Disallow: /cbrt-ops/
+Disallow: /api/
+Disallow: /auth/
+Disallow: /tenant/
+"""
+    return HttpResponse(content, content_type="text/plain")
 
 @ensure_csrf_cookie
 def serve_static_html(request, file_name):
@@ -19,6 +31,7 @@ def serve_static_html(request, file_name):
     return serve(request, file_name, document_root=os.path.join(settings.BASE_DIR, 'static'))
 
 urlpatterns = [
+    path('robots.txt', robots_txt, name='robots_txt'),
     path('cbrt-ops/', admin.site.urls),
     path('api/', include('bol_system.urls')),
 
