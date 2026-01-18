@@ -19,7 +19,7 @@ def serve_static_html(request, file_name):
     return serve(request, file_name, document_root=os.path.join(settings.BASE_DIR, 'static'))
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
+    path('cbrt-ops/', admin.site.urls),
     path('api/', include('bol_system.urls')),
 
     # Tenant-scoped pigiron workflow (spec section 10)
