@@ -241,6 +241,8 @@
                 const available = balance.available !== undefined ? balance.available : (balance.remaining - committed);
                 const committedStyle = committed > 0 ? 'color: #d97706; font-weight: 600;' : '';
                 const availableStyle = available > 0 ? 'color: #059669; font-weight: 600;' : (available < 0 ? 'color: #dc2626; font-weight: 600;' : '');
+                const chem = [product.c, product.si, product.s, product.p, product.mn].map(v => v == null ? '-' : Number(v).toFixed(3)).join(' / ');
+                const lotInfo = product.last_lot_code ? `Lot: ${product.last_lot_code}` : '';
                 return `<tr class="${isActive ? '' : 'inactive'}">
                     <td><span class="badge badge-${isActive ? 'active' : 'inactive'}">${isActive ? 'Active' : 'Inactive'}</span></td>
                     <td><strong>${product.name}</strong></td>
@@ -252,6 +254,12 @@
                     <td class="actions">
                         <button class="btn btn-primary btn-sm" onclick="editProduct(${product.id})">Edit</button>
                         <button class="btn ${isActive ? 'btn-warning' : 'btn-secondary'} btn-sm" onclick="toggleStatus(${product.id}, ${isActive})">${isActive ? 'Deactivate' : 'Activate'}</button>
+                    </td>
+                </tr>
+                <tr class="${isActive ? '' : 'inactive'}" style="border-bottom: 1px solid #e5e7eb;">
+                    <td colspan="8" style="padding: 4px 8px 12px 8px; font-size: 12px; color: #6b7280;">
+                        <span style="margin-right: 24px;"><strong>C/Si/S/P/Mn:</strong> ${chem}</span>
+                        ${lotInfo ? `<span><strong>${lotInfo}</strong></span>` : ''}
                     </td>
                 </tr>`;
             }).join('');
