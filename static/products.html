@@ -178,18 +178,16 @@
                             <tr>
                                 <th>Status</th>
                                 <th>Product</th>
-                                <th>Last Lot</th>
-                                <th>C/Si/S/P/Mn</th>
-                                <th>Starting</th>
-                                <th>Shipped</th>
-                                <th>Remaining</th>
-                                <th>Committed</th>
-                                <th>Available</th>
+                                <th style="text-align: right;">Starting</th>
+                                <th style="text-align: right;">Shipped</th>
+                                <th style="text-align: right;">Remaining</th>
+                                <th style="text-align: right;">Committed</th>
+                                <th style="text-align: right;">Available</th>
                                 <th style="text-align: right;">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="productList">
-                            <tr><td colspan="10" class="empty-state">Loading products...</td></tr>
+                            <tr><td colspan="8" class="empty-state">Loading products...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -235,7 +233,7 @@
 
         function renderProducts() {
             const tbody = document.getElementById('productList');
-            if (products.length === 0) { tbody.innerHTML = '<tr><td colspan="10" class="empty-state">No products found. Add your first product.</td></tr>'; return; }
+            if (products.length === 0) { tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No products found. Add your first product.</td></tr>'; return; }
             tbody.innerHTML = products.map(product => {
                 const isActive = product.is_active !== false;
                 const balance = balances[product.id] || { startTons: 0, shipped: 0, committed: 0, remaining: 0, available: 0 };
@@ -246,13 +244,11 @@
                 return `<tr class="${isActive ? '' : 'inactive'}">
                     <td><span class="badge badge-${isActive ? 'active' : 'inactive'}">${isActive ? 'Active' : 'Inactive'}</span></td>
                     <td><strong>${product.name}</strong></td>
-                    <td>${product.last_lot_code || '-'}</td>
-                    <td class="chem">${[product.c,product.si,product.s,product.p,product.mn].map(v=>v==null?'-':Number(v).toFixed(3)).join(' / ')}</td>
-                    <td class="tons-display">${balance.startTons.toFixed(2)}</td>
-                    <td>${balance.shipped.toFixed(2)}</td>
-                    <td>${balance.remaining.toFixed(2)}</td>
-                    <td style="${committedStyle}">${committed.toFixed(2)}</td>
-                    <td style="${availableStyle}">${available.toFixed(2)}</td>
+                    <td style="text-align: right;">${balance.startTons.toFixed(2)}</td>
+                    <td style="text-align: right;">${balance.shipped.toFixed(2)}</td>
+                    <td style="text-align: right;">${balance.remaining.toFixed(2)}</td>
+                    <td style="text-align: right; ${committedStyle}">${committed.toFixed(2)}</td>
+                    <td style="text-align: right; ${availableStyle}">${available.toFixed(2)}</td>
                     <td class="actions">
                         <button class="btn btn-primary btn-sm" onclick="editProduct(${product.id})">Edit</button>
                         <button class="btn ${isActive ? 'btn-warning' : 'btn-secondary'} btn-sm" onclick="toggleStatus(${product.id}, ${isActive})">${isActive ? 'Deactivate' : 'Activate'}</button>
