@@ -942,11 +942,12 @@ def confirm_bol(request):
 def balances(request):
     try:
         # Filter by tenant for data isolation
-        products = Product.objects.filter(is_active=True, **get_tenant_filter(request))
+        tenant_filter = get_tenant_filter(request)
+        products = Product.objects.filter(is_active=True, **tenant_filter)
         result = []
         for product in products:
             # Use official weight if available, otherwise fall back to CBRT weight
-            bols = BOL.objects.filter(product=product, **get_tenant_filter(request))
+            bols = BOL.objects.filter(product=product, **tenant_filter)
             shipped = 0
             for bol in bols:
                 try:
@@ -959,13 +960,26 @@ def balances(request):
                     logger.warning(f"Error processing BOL {bol.id} weight: {e}, using net_tons")
                     shipped += float(bol.net_tons)
 
+            # Calculate committed: sum of planned_tons from PENDING loads in OPEN releases
+            from django.db.models import Sum
+            committed_result = ReleaseLoad.objects.filter(
+                release__status='OPEN',
+                status='PENDING',
+                release__lot_ref__product=product,
+                release__tenant=tenant_filter.get('tenant')
+            ).aggregate(total=Sum('planned_tons'))
+            committed = float(committed_result['total'] or 0)
+
             start_tons = float(product.start_tons)
+            remaining = start_tons - shipped
             result.append({
                 'id': product.id,
                 'name': product.name,
                 'startTons': round(start_tons, 2),
                 'shipped': round(shipped, 2),
-                'remaining': round(start_tons - shipped, 2)
+                'committed': round(committed, 2),
+                'remaining': round(remaining, 2),
+                'available': round(remaining - committed, 2)
             })
 
         return Response(result)

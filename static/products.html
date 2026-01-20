@@ -182,12 +182,13 @@
                                 <th>C/Si/S/P/Mn</th>
                                 <th>Starting</th>
                                 <th>Shipped</th>
+                                <th>Committed</th>
                                 <th>Remaining</th>
                                 <th style="text-align: right;">Actions</th>
                             </tr>
                         </thead>
                         <tbody id="productList">
-                            <tr><td colspan="8" class="empty-state">Loading products...</td></tr>
+                            <tr><td colspan="9" class="empty-state">Loading products...</td></tr>
                         </tbody>
                     </table>
                 </div>
@@ -233,10 +234,10 @@
 
         function renderProducts() {
             const tbody = document.getElementById('productList');
-            if (products.length === 0) { tbody.innerHTML = '<tr><td colspan="8" class="empty-state">No products found. Add your first product.</td></tr>'; return; }
+            if (products.length === 0) { tbody.innerHTML = '<tr><td colspan="9" class="empty-state">No products found. Add your first product.</td></tr>'; return; }
             tbody.innerHTML = products.map(product => {
                 const isActive = product.is_active !== false;
-                const balance = balances[product.id] || { startTons: 0, shipped: 0, remaining: 0 };
+                const balance = balances[product.id] || { startTons: 0, shipped: 0, committed: 0, remaining: 0 };
                 return `<tr class="${isActive ? '' : 'inactive'}">
                     <td><span class="badge badge-${isActive ? 'active' : 'inactive'}">${isActive ? 'Active' : 'Inactive'}</span></td>
                     <td><strong>${product.name}</strong></td>
@@ -244,6 +245,7 @@
                     <td class="chem">${[product.c,product.si,product.s,product.p,product.mn].map(v=>v==null?'-':Number(v).toFixed(3)).join(' / ')}</td>
                     <td class="tons-display">${balance.startTons.toFixed(2)}</td>
                     <td>${balance.shipped.toFixed(2)}</td>
+                    <td>${balance.committed.toFixed(2)}</td>
                     <td>${balance.remaining.toFixed(2)}</td>
                     <td class="actions">
                         <button class="btn btn-primary btn-sm" onclick="editProduct(${product.id})">Edit</button>
