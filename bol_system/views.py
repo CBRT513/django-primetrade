@@ -853,43 +853,41 @@ def confirm_bol(request):
             ship_to_text = data['shipTo']
             customer_po = data.get('customerPO', '')
 
-        # Create BOL
+        # Create BOL - wrap in transaction to ensure BOL number is rolled back on failure
         lot_ref = release_obj.lot_ref if release_load else None
-        bol = BOL.objects.create(
-            product=product,
-            product_name=product.name,
-            date=data['date'],
-            buyer_name=buyer_name,
-            ship_to=ship_to_text,
-            carrier=carrier,
-            carrier_name=carrier.carrier_name,
-            truck=truck,
-            truck_number=truck.truck_number if truck else data.get('truckNo', ''),
-            trailer_number=truck.trailer_number if truck else data.get('trailerNo', ''),
-            net_tons=net_tons,
-            notes=data.get('notes', ''),
-            customer=customer,
-            customer_po=customer_po,
-            created_by_email=f'{request.user.username}@primetrade.com',
-            lot_ref=lot_ref,
-            release_number=f'{release_obj.release_number}-{release_load.seq}' if release_load else '',
-            special_instructions=release_obj.special_instructions if release_load else '',
-            care_of_co=release_obj.care_of_co if release_load else 'PrimeTrade, LLC',
-            chemistry_display=lot_ref.format_chemistry() if lot_ref else ''
-        )
+        with transaction.atomic():
+            bol = BOL.objects.create(
+                product=product,
+                product_name=product.name,
+                date=data['date'],
+                buyer_name=buyer_name,
+                ship_to=ship_to_text,
+                carrier=carrier,
+                carrier_name=carrier.carrier_name,
+                truck=truck,
+                truck_number=truck.truck_number if truck else data.get('truckNo', ''),
+                trailer_number=truck.trailer_number if truck else data.get('trailerNo', ''),
+                net_tons=net_tons,
+                notes=data.get('notes', ''),
+                customer=customer,
+                customer_po=customer_po,
+                created_by_email=f'{request.user.username}@primetrade.com',
+                lot_ref=lot_ref,
+                release_number=f'{release_obj.release_number}-{release_load.seq}' if release_load else '',
+                special_instructions=release_obj.special_instructions if release_load else '',
+                care_of_co=release_obj.care_of_co if release_load else 'PrimeTrade, LLC',
+                chemistry_display=lot_ref.format_chemistry() if lot_ref else ''
+            )
 
-        # If load provided, mark shipped and attach
-        if release_load:
-            release_load.status = 'SHIPPED'
-            release_load.bol = bol
-            release_load.save(update_fields=['status','bol','updated_at','updated_by'])
-            # If all loads shipped, close release
-            try:
+            # If load provided, mark shipped and attach
+            if release_load:
+                release_load.status = 'SHIPPED'
+                release_load.bol = bol
+                release_load.save(update_fields=['status','bol','updated_at','updated_by'])
+                # If all loads shipped, close release
                 if release_load.release.loads.filter(status='PENDING').count() == 0:
                     release_load.release.status = 'COMPLETE'
                     release_load.release.save(update_fields=['status','updated_at'])
-            except Exception:
-                pass
 
         logger.info(f"BOL {bol.bol_number} created by {request.user.username} with {net_tons} tons")
         audit(request, 'BOL_CREATED', bol, f"BOL created {bol.bol_number}", {'netTons': net_tons})
