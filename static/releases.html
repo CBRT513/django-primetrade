@@ -960,10 +960,31 @@ customerIdInput.addEventListener('focus', function() { if (!this.value) showAllS
 carrierInput.addEventListener('click', function() { showAllSuggestions(this); });
 carrierInput.addEventListener('focus', function() { if (!this.value) showAllSuggestions(this); });
 
+// Customer ID prefix to c/o company mapping for blind shipping
+const CUSTOMER_PREFIX_TO_CARE_OF = {
+  'HW-': 'Hickman, Williams & Company',
+  // Add more prefixes here as needed
+};
+
+function getCareOfCompanyForCustomer(customerId) {
+  if (!customerId) return 'PrimeTrade, LLC';
+  const upperCustomerId = customerId.toUpperCase();
+  for (const [prefix, company] of Object.entries(CUSTOMER_PREFIX_TO_CARE_OF)) {
+    if (upperCustomerId.startsWith(prefix.toUpperCase())) {
+      return company;
+    }
+  }
+  return 'PrimeTrade, LLC';
+}
+
 // Auto-populate Ship-To address when customer is selected
 customerIdInput.addEventListener('change', async function() {
   const customerName = this.value.trim();
   if (!customerName) return;
+
+  // Auto-set c/o Company based on customer prefix
+  document.getElementById('careOfCo').value = getCareOfCompanyForCustomer(customerName);
+
   const customer = customersCache.find(c => c.customer === customerName);
   if (customer) {
     document.getElementById('shipToName').value = customer.customer;
@@ -1384,6 +1405,9 @@ function fillReview(parsed) {
   }
 
   document.getElementById('specialInstructions').value = p.specialInstructions || '';
+
+  // Auto-set c/o Company based on customer prefix
+  document.getElementById('careOfCo').value = getCareOfCompanyForCustomer(p.customerId);
 }
 
 function openReview(parsed) {
