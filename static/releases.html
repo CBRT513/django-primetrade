@@ -971,9 +971,11 @@ function getCareOfCompanyForCustomer(customerId) {
   const upperCustomerId = customerId.toUpperCase();
   for (const [prefix, company] of Object.entries(CUSTOMER_PREFIX_TO_CARE_OF)) {
     if (upperCustomerId.startsWith(prefix.toUpperCase())) {
+      console.log(`[c/o Auto] Customer "${customerId}" matched prefix "${prefix}" -> "${company}"`);
       return company;
     }
   }
+  console.log(`[c/o Auto] Customer "${customerId}" no prefix match -> default`);
   return 'PrimeTrade, LLC';
 }
 
