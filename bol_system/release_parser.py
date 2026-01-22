@@ -295,12 +295,12 @@ def parse_release_text(text: str) -> Dict[str, Any]:
     except Exception:
         pass
 
-    # Schedule lines (e.g., "Deliver 11-05-25 Load #1" or "1 TL 11/04/25 LOAD #1")
+    # Schedule lines (e.g., "Deliver 11-05-25 Load #1", "Pickup 01/22/26 Load #1", or "1 TL 11/04/25 LOAD #1")
     sched: List[Dict[str, str]] = []
     # Pattern handles both dash (11-05-25) and slash (11/04/25) formats
     DATE_SHORT = r"\d{2}[-/]\d{2}[-/]\d{2}"
-    # Make "Deliver" optional to handle formats like "1 TL 11/04/25 LOAD #1"
-    for m in re.finditer(r"(?:\d+\s*TL\s*)?(?:Deliver\s*)?(%s)\s*(?:LOAD|Load)\s*#?\s*(\d+)" % DATE_SHORT, t, re.I):
+    # Make "Deliver/Pickup" optional to handle formats like "1 TL 11/04/25 LOAD #1"
+    for m in re.finditer(r"(?:\d+\s*TL\s*)?(?:(?:Deliver|Pickup)\s*)?(%s)\s*(?:LOAD|Load)\s*#?\s*(\d+)" % DATE_SHORT, t, re.I):
         ds, num = m.group(1), m.group(2)
         # Convert YY to YYYY (assume 20YY), handle both - and / separators
         parts = re.split(r'[-/]', ds)
