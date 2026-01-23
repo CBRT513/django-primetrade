@@ -35,8 +35,24 @@ def generate_session_code() -> str:
     return code
 
 
+def normalize_phone(phone: str) -> str:
+    """Convert (513) 555-1234 to +15135551234 for Twilio."""
+    import re
+    digits = re.sub(r'\D', '', phone)
+    if len(digits) == 10:
+        return f"+1{digits}"
+    elif len(digits) == 11 and digits.startswith('1'):
+        return f"+{digits}"
+    return phone  # Return as-is if unexpected format
+
+
 def send_checkin_sms(phone: str, code: str) -> bool:
     """Send check-in code to driver via Twilio."""
+    # Check if Twilio is configured
+    if not getattr(settings, 'TWILIO_ACCOUNT_SID', None):
+        print(f"SMS skipped (Twilio not configured) - Code: {code} for {phone}")
+        return False
+
     try:
         from twilio.rest import Client
 
@@ -45,14 +61,15 @@ def send_checkin_sms(phone: str, code: str) -> bool:
             settings.TWILIO_AUTH_TOKEN
         )
 
+        normalized_phone = normalize_phone(phone)
         message = client.messages.create(
             body=f"CBRT Check-in code: {code}\n\nShow this code when your load is ready.\n\nQuestions? (513) 921-2400",
             from_=settings.TWILIO_PHONE_NUMBER,
-            to=phone
+            to=normalized_phone
         )
+        print(f"SMS sent to {normalized_phone} - Code: {code}")
         return True
     except Exception as e:
-        # Log error but don't fail check-in
         print(f"SMS send failed: {e}")
         return False
 
