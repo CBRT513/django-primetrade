@@ -748,3 +748,63 @@ class UserCustomerAccess(models.Model):
                 is_primary=True
             ).exclude(pk=self.pk).update(is_primary=False)
         super().save(*args, **kwargs)
+
+
+class EmailNotificationConfig(models.Model):
+    """
+    Configurable email notification settings for BOL notifications.
+
+    Only one active config should exist at a time.
+    """
+    name = models.CharField(
+        max_length=100,
+        default='Default',
+        help_text='Configuration name for reference'
+    )
+    is_active = models.BooleanField(
+        default=True,
+        help_text='Only the active config is used for sending emails'
+    )
+    to_emails = models.TextField(
+        help_text='Primary recipients (one email per line)'
+    )
+    cc_emails = models.TextField(
+        blank=True,
+        help_text='CC recipients (one email per line)'
+    )
+    enabled = models.BooleanField(
+        default=True,
+        help_text='Uncheck to disable all BOL notification emails'
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        verbose_name = 'Email Notification Config'
+        verbose_name_plural = 'Email Notification Configs'
+
+    def __str__(self):
+        status = "✓ ACTIVE" if self.is_active else "✗ inactive"
+        enabled = "" if self.enabled else " [DISABLED]"
+        return f"{self.name} ({status}){enabled}"
+
+    def get_to_list(self):
+        """Return list of TO email addresses."""
+        return [e.strip() for e in self.to_emails.strip().split('\n') if e.strip()]
+
+    def get_cc_list(self):
+        """Return list of CC email addresses."""
+        return [e.strip() for e in self.cc_emails.strip().split('\n') if e.strip()]
+
+    def save(self, *args, **kwargs):
+        # Ensure only one active config
+        if self.is_active:
+            EmailNotificationConfig.objects.filter(
+                is_active=True
+            ).exclude(pk=self.pk).update(is_active=False)
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get_active(cls):
+        """Get the active email config, or None if disabled/not configured."""
+        return cls.objects.filter(is_active=True, enabled=True).first()

@@ -2,7 +2,7 @@ from django.contrib import admin
 from .models import (
     Product, Customer, Carrier, Truck, BOL, BOLCounter, CompanyBranding,
     RoleRedirectConfig, Tenant, Release, ReleaseLoad, Lot, AuditLog, CustomerShipTo,
-    UserCustomerAccess
+    UserCustomerAccess, EmailNotificationConfig
 )
 
 
@@ -196,3 +196,31 @@ class UserCustomerAccessAdmin(admin.ModelAdmin):
             'classes': ('collapse',)
         }),
     )
+
+
+@admin.register(EmailNotificationConfig)
+class EmailNotificationConfigAdmin(admin.ModelAdmin):
+    """Admin interface for BOL email notification settings."""
+    list_display = ['name', 'is_active', 'enabled', 'recipient_count', 'updated_at']
+    list_filter = ['is_active', 'enabled']
+    readonly_fields = ['created_at', 'updated_at']
+
+    fieldsets = (
+        ('Configuration', {
+            'fields': ('name', 'is_active', 'enabled')
+        }),
+        ('Recipients', {
+            'fields': ('to_emails', 'cc_emails'),
+            'description': 'Enter one email address per line'
+        }),
+        ('Metadata', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def recipient_count(self, obj):
+        to_count = len(obj.get_to_list())
+        cc_count = len(obj.get_cc_list())
+        return f"{to_count} TO, {cc_count} CC"
+    recipient_count.short_description = "Recipients"
