@@ -605,6 +605,20 @@
             </div>
             <div class="modal-body">
                 <div id="modalStatus" class="status"></div>
+                <!-- Chemistry Override Warning -->
+                <div id="chemistryOverrideSection" style="display: none; background: #fef3c7; border: 1px solid #f59e0b; border-radius: 8px; padding: 1rem; margin-bottom: 1rem;">
+                    <p style="color: #92400e; font-weight: 600; margin-bottom: 0.5rem;">⚠️ Chemistry Mismatch Detected</p>
+                    <p style="color: #78350f; font-size: 0.875rem; margin-bottom: 0.75rem;">The chemistry values differ from the existing lot. Review the differences below:</p>
+                    <div id="chemistryMismatchDetails" style="background: white; border-radius: 4px; padding: 0.5rem; font-family: monospace; font-size: 0.8rem; margin-bottom: 0.75rem;"></div>
+                    <label style="display: flex; align-items: flex-start; gap: 0.5rem; cursor: pointer; color: #78350f;">
+                        <input type="checkbox" id="chemistryOverrideCheckbox" style="margin-top: 2px;">
+                        <span>I acknowledge this chemistry difference is intentional and want to update the lot with these new values</span>
+                    </label>
+                    <div class="form-group" style="margin-top: 0.75rem; margin-bottom: 0;">
+                        <label style="font-size: 0.8rem; color: #78350f;">Reason (optional)</label>
+                        <input type="text" id="chemistryOverrideReason" placeholder="e.g., New test results from lab">
+                    </div>
+                </div>
                 <form id="reviewForm" onsubmit="return false;">
                     <div class="dashboard-grid" style="grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));">
                         <div class="form-group">
@@ -1469,6 +1483,11 @@ approveBtn.addEventListener('click', async () => {
     const n = Number(s);
     return Number.isFinite(n) ? n : undefined;
   };
+  // Check if chemistry override is acknowledged
+  const overrideCheckbox = document.getElementById('chemistryOverrideCheckbox');
+  const overrideAcknowledged = overrideCheckbox?.checked || false;
+  const overrideReason = document.getElementById('chemistryOverrideReason')?.value || '';
+
   const payload = {
     releaseNumber: document.getElementById('releaseNumber')?.value || p.releaseNumber,
     releaseDate: document.getElementById('releaseDate')?.value || p.releaseDate,
@@ -1491,6 +1510,8 @@ approveBtn.addEventListener('click', async () => {
     schedule: Array.isArray(p.schedule) ? p.schedule : [],
     specialInstructions: document.getElementById('specialInstructions')?.value || '',
     careOfCo: document.getElementById('careOfCo')?.value || 'PrimeTrade, LLC',
+    chemistryOverrideAcknowledged: overrideAcknowledged,
+    chemistryOverrideReason: overrideReason,
   };
   try {
     const csrf = (window.Utils && Utils.getCSRFToken) ? Utils.getCSRFToken() : null;
@@ -1503,21 +1524,40 @@ approveBtn.addEventListener('click', async () => {
     const json = await resp.json().catch(()=>null);
     if (!resp.ok) {
       const ms = document.getElementById('modalStatus');
+      const overrideSection = document.getElementById('chemistryOverrideSection');
       if (resp.status === 409 && (json?.error || '').toLowerCase().includes('duplicate')) {
         const link = json?.id ? ` — <a href="/api/releases/${json.id}/view/" style="text-decoration:underline; color: #721c24;">View existing</a>` : '';
         ms.innerHTML = `Release ${payload.releaseNumber} already exists${link}.`;
         ms.className = 'status error';
+        overrideSection.style.display = 'none';
         const rn = document.getElementById('releaseNumber');
         rn.style.borderColor = 'var(--error)';
         rn.style.boxShadow = '0 0 0 3px rgba(184, 68, 42, 0.15)';
         rn.focus();
+      } else if (resp.status === 409 && json?.requiresOverride) {
+        // Chemistry mismatch - show override option
+        ms.textContent = '';
+        ms.className = '';
+        overrideSection.style.display = 'block';
+        const detailsDiv = document.getElementById('chemistryMismatchDetails');
+        const mismatches = json.mismatches || [];
+        detailsDiv.innerHTML = mismatches.map(m =>
+          `<div>${m.element}: Existing <b>${m.existing?.toFixed(3) || 'N/A'}</b> → New <b>${m.parsed?.toFixed(3) || 'N/A'}</b> (Δ ${m.delta?.toFixed(3)})</div>`
+        ).join('') || 'Chemistry values differ from existing lot.';
+        document.getElementById('chemistryOverrideCheckbox').checked = false;
+        document.getElementById('chemistryOverrideReason').value = '';
+        if (window.Utils && Utils.showStatus) Utils.showStatus('Chemistry mismatch - acknowledge to proceed', 'info', 8000);
+        return;
       } else {
-        ms.textContent = (json?.error || json?.detail || `HTTP ${resp.status}`);
+        ms.textContent = (json?.error || json?.warning || json?.detail || `HTTP ${resp.status}`);
         ms.className = 'status error';
+        overrideSection.style.display = 'none';
       }
       if (window.Utils && Utils.showStatus) Utils.showStatus(ms.textContent || 'Save failed', 'error', 8000);
       return;
     }
+    // Hide override section on success
+    document.getElementById('chemistryOverrideSection').style.display = 'none';
     if (window.Utils && Utils.showStatus) Utils.showStatus(`Release saved (ID ${json.id})`, 'success');
     try { modal.style.display = 'none'; } catch(_){}
     setTimeout(() => { window.location.href = '/open-releases/'; }, 600);
