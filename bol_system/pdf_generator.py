@@ -153,21 +153,46 @@ def generate_bol_pdf(bol_data, output_path=None, return_bytes=False):
     lot_number = ''
     chemistry_text = 'N/A'
 
+    # Check for release override chemistry first
+    release_override = None
+    if hasattr(data, 'release_line') and data.release_line:
+        release_override = data.release_line.release
+
     if hasattr(data, 'lot_ref') and data.lot_ref:
         lot = data.lot_ref
         lot_number = lot.code
 
-        # Build chemistry string
+        # Build chemistry string - use release override values if present, else lot values
         chem_parts = []
-        if lot.c is not None:
+
+        # Carbon
+        if release_override and release_override.chemistry_override_c is not None:
+            chem_parts.append(f'C {float(release_override.chemistry_override_c):.3f}%')
+        elif lot.c is not None:
             chem_parts.append(f'C {float(lot.c):.3f}%')
-        if lot.si is not None:
+
+        # Silicon
+        if release_override and release_override.chemistry_override_si is not None:
+            chem_parts.append(f'Si {float(release_override.chemistry_override_si):.3f}%')
+        elif lot.si is not None:
             chem_parts.append(f'Si {float(lot.si):.3f}%')
-        if lot.s is not None:
+
+        # Sulfur
+        if release_override and release_override.chemistry_override_s is not None:
+            chem_parts.append(f'S {float(release_override.chemistry_override_s):.3f}%')
+        elif lot.s is not None:
             chem_parts.append(f'S {float(lot.s):.3f}%')
-        if lot.p is not None:
+
+        # Phosphorus
+        if release_override and release_override.chemistry_override_p is not None:
+            chem_parts.append(f'P {float(release_override.chemistry_override_p):.3f}%')
+        elif lot.p is not None:
             chem_parts.append(f'P {float(lot.p):.3f}%')
-        if lot.mn is not None:
+
+        # Manganese
+        if release_override and release_override.chemistry_override_mn is not None:
+            chem_parts.append(f'Mn {float(release_override.chemistry_override_mn):.3f}%')
+        elif lot.mn is not None:
             chem_parts.append(f'Mn {float(lot.mn):.3f}%')
 
         if chem_parts:

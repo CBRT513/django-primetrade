@@ -1252,6 +1252,17 @@ def approve_release(request):
                         rel.chemistry_override_reason = data.get('chemistryOverrideReason', '')
                         rel.chemistry_override_by = request.user.username
                         rel.chemistry_override_at = timezone.now()
+                        # Store override chemistry values from the release PDF
+                        if analysis.get('C') is not None:
+                            rel.chemistry_override_c = Decimal(str(analysis['C']))
+                        if analysis.get('Si') is not None:
+                            rel.chemistry_override_si = Decimal(str(analysis['Si']))
+                        if analysis.get('S') is not None:
+                            rel.chemistry_override_s = Decimal(str(analysis['S']))
+                        if analysis.get('P') is not None:
+                            rel.chemistry_override_p = Decimal(str(analysis['P']))
+                        if analysis.get('Mn') is not None:
+                            rel.chemistry_override_mn = Decimal(str(analysis['Mn']))
                         audit(request, 'CHEMISTRY_OVERRIDE', rel,
                             f"Chemistry override for release {rel.release_number}, lot {lot_code}",
                             {'lot': lot_code, 'mismatches': mismatches})
@@ -1780,6 +1791,17 @@ def release_detail_api(request, release_id):
                         rel.chemistry_override_reason = data.get('chemistryOverrideReason', '')
                         rel.chemistry_override_by = request.user.username
                         rel.chemistry_override_at = timezone.now()
+                        # Store override chemistry values from the release PDF
+                        if analysis.get('C') is not None:
+                            rel.chemistry_override_c = Decimal(str(analysis['C']))
+                        if analysis.get('Si') is not None:
+                            rel.chemistry_override_si = Decimal(str(analysis['Si']))
+                        if analysis.get('S') is not None:
+                            rel.chemistry_override_s = Decimal(str(analysis['S']))
+                        if analysis.get('P') is not None:
+                            rel.chemistry_override_p = Decimal(str(analysis['P']))
+                        if analysis.get('Mn') is not None:
+                            rel.chemistry_override_mn = Decimal(str(analysis['Mn']))
                         audit(request, 'CHEMISTRY_OVERRIDE', rel,
                             f"Chemistry override for release {rel.release_number}, lot {lot_code}",
                             {'lot': lot_code, 'mismatches': mismatches})

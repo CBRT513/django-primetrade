@@ -570,6 +570,27 @@ class Release(TimestampedModel):
         blank=True,
         help_text="When override was acknowledged"
     )
+    # Override chemistry values (used on BOLs instead of lot chemistry)
+    chemistry_override_c = models.DecimalField(
+        max_digits=6, decimal_places=3, null=True, blank=True,
+        help_text="Override Carbon value for this release"
+    )
+    chemistry_override_si = models.DecimalField(
+        max_digits=6, decimal_places=3, null=True, blank=True,
+        help_text="Override Silicon value for this release"
+    )
+    chemistry_override_s = models.DecimalField(
+        max_digits=6, decimal_places=3, null=True, blank=True,
+        help_text="Override Sulfur value for this release"
+    )
+    chemistry_override_p = models.DecimalField(
+        max_digits=6, decimal_places=3, null=True, blank=True,
+        help_text="Override Phosphorus value for this release"
+    )
+    chemistry_override_mn = models.DecimalField(
+        max_digits=6, decimal_places=3, null=True, blank=True,
+        help_text="Override Manganese value for this release"
+    )
 
     class Meta:
         ordering = ['-created_at']
