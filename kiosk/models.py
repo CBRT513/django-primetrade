@@ -11,14 +11,13 @@ class DriverSession(models.Model):
     # Driver info (collected at check-in)
     driver_name = models.CharField(max_length=100)
     phone = models.CharField(max_length=20)
-    truck_number = models.CharField(max_length=50, blank=True)
+    pickup_number = models.CharField(max_length=50, default='')
+    carrier_name = models.CharField(max_length=200, default='')
+    truck_number = models.CharField(max_length=50, default='')
+    trailer_number = models.CharField(max_length=50, default='')
 
-    # Visit type
-    VISIT_TYPE_CHOICES = [
-        ('pickup', 'Pickup'),
-        ('delivery', 'Delivery'),
-    ]
-    visit_type = models.CharField(max_length=20, choices=VISIT_TYPE_CHOICES)
+    # Legacy fields (kept for backward compatibility)
+    visit_type = models.CharField(max_length=20, blank=True, default='pickup')
     notes = models.TextField(blank=True)
 
     # Status

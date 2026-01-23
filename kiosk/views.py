@@ -23,9 +23,10 @@ def checkin(request):
             code=code,
             driver_name=request.POST.get('driver_name', '').strip(),
             phone=request.POST.get('phone', '').strip(),
+            pickup_number=request.POST.get('pickup_number', '').strip(),
+            carrier_name=request.POST.get('carrier_name', '').strip(),
             truck_number=request.POST.get('truck_number', '').strip(),
-            visit_type=request.POST.get('visit_type', 'pickup'),
-            notes=request.POST.get('notes', '').strip(),
+            trailer_number=request.POST.get('trailer_number', '').strip(),
         )
 
         # Send SMS with code

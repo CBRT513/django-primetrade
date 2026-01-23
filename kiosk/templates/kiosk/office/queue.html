@@ -58,7 +58,7 @@
             <span class="code">{{ s.code }}</span>
         </div>
         <div class="meta">
-            {{ s.phone }} | Truck: {{ s.truck_number|default:"N/A" }} | {{ s.visit_type|title }}
+            {{ s.carrier_name }} | Pickup #{{ s.pickup_number }} | Truck: {{ s.truck_number }} / {{ s.trailer_number }}
         </div>
         <div class="actions">
             <a href="{% url 'kiosk:office_assign' s.id %}" class="btn-sm-primary">Assign BOL</a>

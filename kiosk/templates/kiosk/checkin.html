@@ -5,29 +5,59 @@
 {% block content %}
 <h1>Driver Check-In</h1>
 
-<form method="post">
+<form method="post" id="checkin-form">
     {% csrf_token %}
 
-    <label for="driver_name">Your Name *</label>
+    <label for="driver_name">Name *</label>
     <input type="text" id="driver_name" name="driver_name" required autocomplete="name">
 
     <label for="phone">Phone Number *</label>
-    <input type="tel" id="phone" name="phone" required autocomplete="tel" placeholder="(555) 123-4567">
+    <input type="tel" id="phone" name="phone" required autocomplete="tel"
+           placeholder="(___) ___-____" maxlength="14">
 
-    <label for="truck_number">Truck Number</label>
-    <input type="text" id="truck_number" name="truck_number" autocomplete="off">
+    <label for="pickup_number">Pickup Number *</label>
+    <input type="text" id="pickup_number" name="pickup_number" required autocomplete="off">
 
-    <label for="visit_type">Visit Type *</label>
-    <select id="visit_type" name="visit_type" required>
-        <option value="pickup">Pickup</option>
-        <option value="delivery">Delivery</option>
-    </select>
+    <label for="carrier_name">Carrier Name *</label>
+    <input type="text" id="carrier_name" name="carrier_name" required autocomplete="organization">
 
-    <label for="notes">Notes (optional)</label>
-    <textarea id="notes" name="notes" rows="2"></textarea>
+    <label for="truck_number">Truck Number *</label>
+    <input type="text" id="truck_number" name="truck_number" required autocomplete="off">
+
+    <label for="trailer_number">Trailer Number *</label>
+    <input type="text" id="trailer_number" name="trailer_number" required autocomplete="off">
 
     <button type="submit" class="btn btn-primary">CHECK IN</button>
 </form>
 
 <a href="{% url 'kiosk:home' %}" class="back-link">← Back</a>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Phone number mask: (___) ___-____
+const phoneInput = document.getElementById('phone');
+
+phoneInput.addEventListener('input', function(e) {
+    let value = e.target.value.replace(/\D/g, '');
+    if (value.length > 10) value = value.slice(0, 10);
+
+    if (value.length >= 6) {
+        e.target.value = '(' + value.slice(0,3) + ') ' + value.slice(3,6) + '-' + value.slice(6);
+    } else if (value.length >= 3) {
+        e.target.value = '(' + value.slice(0,3) + ') ' + value.slice(3);
+    } else if (value.length > 0) {
+        e.target.value = '(' + value;
+    } else {
+        e.target.value = '';
+    }
+});
+
+phoneInput.addEventListener('keydown', function(e) {
+    // Allow backspace to work naturally
+    if (e.key === 'Backspace' && this.value.length <= 1) {
+        this.value = '';
+    }
+});
+</script>
 {% endblock %}

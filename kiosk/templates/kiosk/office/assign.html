@@ -50,7 +50,9 @@
 <div class="driver-info">
     <strong>Driver:</strong> {{ session.driver_name }}<br>
     <strong>Code:</strong> {{ session.code }}<br>
-    <strong>Truck:</strong> {{ session.truck_number|default:"N/A" }}
+    <strong>Carrier:</strong> {{ session.carrier_name }}<br>
+    <strong>Pickup #:</strong> {{ session.pickup_number }}<br>
+    <strong>Truck/Trailer:</strong> {{ session.truck_number }} / {{ session.trailer_number }}
 </div>
 
 <div class="search-box">

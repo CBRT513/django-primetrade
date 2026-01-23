@@ -1,7 +1,9 @@
 {% extends 'kiosk/base.html' %}
+{% load static %}
 
 {% block content %}
-<div style="text-align: center; padding-top: 60px;">
+<div style="text-align: center; padding-top: 40px;">
+    <img src="{% static 'kiosk/icon-192.png' %}" alt="CBRT Logo" style="width: 120px; height: 120px; margin-bottom: 20px;">
     <h1>CINCINNATI BARGE &amp; RAIL TERMINAL</h1>
 
     <a href="{% url 'kiosk:checkin' %}" class="btn btn-primary" style="margin-top: 40px;">
