@@ -1246,18 +1246,12 @@ def approve_release(request):
                                 'tolerance': tol,
                                 'mismatches': mismatches
                             }, status=status.HTTP_409_CONFLICT)
-                        # User acknowledged - set override fields on release
+                        # User acknowledged - set override fields on release only
+                        # Do NOT update the lot - override applies to this release's BOLs only
                         rel.chemistry_override_acknowledged = True
                         rel.chemistry_override_reason = data.get('chemistryOverrideReason', '')
                         rel.chemistry_override_by = request.user.username
                         rel.chemistry_override_at = timezone.now()
-                        # Update lot with new chemistry values
-                        for k_model, k_parsed in [('c','C'),('si','Si'),('s','S'),('p','P'),('mn','Mn')]:
-                            parsed_val = analysis.get(k_parsed)
-                            if parsed_val is not None:
-                                setattr(lot_obj, k_model, Decimal(str(parsed_val)))
-                        lot_obj.updated_by = request.user.username
-                        lot_obj.save()
                         audit(request, 'CHEMISTRY_OVERRIDE', rel,
                             f"Chemistry override for release {rel.release_number}, lot {lot_code}",
                             {'lot': lot_code, 'mismatches': mismatches})
@@ -1764,8 +1758,10 @@ def release_detail_api(request, release_id):
                         if exf is None and paf is not None:
                             setattr(lot_obj, k_model, Decimal(str(paf)))
                     # Attach product if missing
+                    product_attached = False
                     if product_obj and not lot_obj.product:
                         lot_obj.product = product_obj
+                        product_attached = True
                     if mismatches:
                         # Check if user acknowledged the chemistry override
                         override_acknowledged = data.get('chemistryOverrideAcknowledged', False)
@@ -1778,19 +1774,16 @@ def release_detail_api(request, release_id):
                                 'tolerance': tol,
                                 'mismatches': mismatches
                             }, status=status.HTTP_409_CONFLICT)
-                        # User acknowledged - set override fields on release
+                        # User acknowledged - set override fields on release only
+                        # Do NOT update the lot - override applies to this release's BOLs only
                         rel.chemistry_override_acknowledged = True
                         rel.chemistry_override_reason = data.get('chemistryOverrideReason', '')
                         rel.chemistry_override_by = request.user.username
                         rel.chemistry_override_at = timezone.now()
-                        # Update lot with new chemistry values
-                        for k_model, k_parsed in [('c','C'),('si','Si'),('s','S'),('p','P'),('mn','Mn')]:
-                            parsed_val = analysis.get(k_parsed)
-                            if parsed_val is not None:
-                                setattr(lot_obj, k_model, Decimal(str(parsed_val)))
                         audit(request, 'CHEMISTRY_OVERRIDE', rel,
                             f"Chemistry override for release {rel.release_number}, lot {lot_code}",
                             {'lot': lot_code, 'mismatches': mismatches})
+                    # Save lot if product was attached (missing chemistry filled at lines 1758-1759 also needs save)
                     lot_obj.updated_by = request.user.username
                     lot_obj.save()
                 except Lot.DoesNotExist:
