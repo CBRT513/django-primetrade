@@ -25,6 +25,13 @@
     {% endfor %}
 </div>
 
+<div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+    <p style="font-size: 14px; color: #6b7280; margin: 0 0 8px;">Your Check-In Info</p>
+    <p style="font-size: 18px; margin: 4px 0;"><strong>Carrier:</strong> {{ session.carrier_name }}</p>
+    <p style="font-size: 18px; margin: 4px 0;"><strong>Truck #:</strong> {{ session.truck_number }}</p>
+    <p style="font-size: 18px; margin: 4px 0;"><strong>Trailer #:</strong> {{ session.trailer_number }}</p>
+</div>
+
 <p style="text-align: center; font-size: 18px; margin-bottom: 20px;">
     Is this your load?
 </p>

@@ -10,7 +10,7 @@ from .models import Product, Customer, Carrier, Truck, BOL, Release, ReleaseLoad
 from .serializers import ProductSerializer, CustomerSerializer, CarrierSerializer, TruckSerializer, ReleaseSerializer, ReleaseLoadSerializer, CustomerShipToSerializer, AuditLogSerializer
 from .pdf_generator import generate_bol_pdf
 from .release_parser import parse_release_pdf
-from .email_utils import send_bol_notification
+# send_bol_notification moved to kiosk checkout flow
 from .security import validate_tenant_access, get_tenant_filter
 from primetrade_project.decorators import require_role, require_role_for_writes
 from bol_system.permissions import feature_permission_required
@@ -908,12 +908,8 @@ def confirm_bol(request):
             bol.pdf_key = _derive_pdf_key(pdf_url)
             bol.save(update_fields=['pdf_url', 'pdf_key', 'updated_at'])
 
-        # Send email notification
-        try:
-            send_bol_notification(bol, pdf_url)
-        except Exception as e:
-            logger.error(f"Failed to send email notification for BOL {bol.bol_number}: {str(e)}")
-            # Don't fail BOL creation if email fails
+        # Email notification moved to kiosk checkout - send only after driver signature
+        # See kiosk/views.py checkout_complete()
 
         # Handle kiosk driver assignment if provided
         driver_session_id = data.get('driverSessionId')
