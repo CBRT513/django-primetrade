@@ -1,0 +1,39 @@
+{% extends 'kiosk/base.html' %}
+
+{% block title %}Review BOL{% endblock %}
+
+{% block content %}
+<h1>Review Your BOL</h1>
+
+<div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
+    <p style="font-size: 14px; color: #6b7280; margin: 0;">BOL Number</p>
+    <p style="font-size: 24px; font-weight: 600; margin: 4px 0 16px;">{{ bol.bol_number }}</p>
+
+    <p style="font-size: 14px; color: #6b7280; margin: 0;">From</p>
+    <p style="font-size: 18px; margin: 4px 0 16px;">{{ bol.shipper.name }}</p>
+
+    <p style="font-size: 14px; color: #6b7280; margin: 0;">To</p>
+    <p style="font-size: 18px; margin: 4px 0 16px;">{{ bol.consignee.name }}</p>
+
+    <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 16px 0;">
+
+    <p style="font-size: 14px; color: #6b7280; margin: 0;">Load</p>
+    {% for item in bol.line_items %}
+    <p style="font-size: 18px; margin: 4px 0;">
+        {{ item.description }} - {{ item.quantity }} {{ item.unit }}
+    </p>
+    {% endfor %}
+</div>
+
+<p style="text-align: center; font-size: 18px; margin-bottom: 20px;">
+    Is this your load?
+</p>
+
+<a href="{% url 'kiosk:checkout_sign' code=session.code %}" class="btn btn-success">
+    YES, SIGN BOL
+</a>
+
+<a href="{% url 'kiosk:home' %}" class="btn btn-danger">
+    NO, SEE OFFICE
+</a>
+{% endblock %}

@@ -1,0 +1,33 @@
+{% extends 'kiosk/base.html' %}
+
+{% block title %}Check In - CBRT Kiosk{% endblock %}
+
+{% block content %}
+<h1>Driver Check-In</h1>
+
+<form method="post">
+    {% csrf_token %}
+
+    <label for="driver_name">Your Name *</label>
+    <input type="text" id="driver_name" name="driver_name" required autocomplete="name">
+
+    <label for="phone">Phone Number *</label>
+    <input type="tel" id="phone" name="phone" required autocomplete="tel" placeholder="(555) 123-4567">
+
+    <label for="truck_number">Truck Number</label>
+    <input type="text" id="truck_number" name="truck_number" autocomplete="off">
+
+    <label for="visit_type">Visit Type *</label>
+    <select id="visit_type" name="visit_type" required>
+        <option value="pickup">Pickup</option>
+        <option value="delivery">Delivery</option>
+    </select>
+
+    <label for="notes">Notes (optional)</label>
+    <textarea id="notes" name="notes" rows="2"></textarea>
+
+    <button type="submit" class="btn btn-primary">CHECK IN</button>
+</form>
+
+<a href="{% url 'kiosk:home' %}" class="back-link">← Back</a>
+{% endblock %}

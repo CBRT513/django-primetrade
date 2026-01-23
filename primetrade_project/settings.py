@@ -84,6 +84,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'bol_system',
+    'kiosk',
 ]
 
 MIDDLEWARE = [
@@ -319,6 +320,17 @@ if config('DATABASE_URL', default=None):
         conn_max_age=600,
         conn_health_checks=True,
     )
+
+# Twilio Configuration (for kiosk SMS)
+TWILIO_ACCOUNT_SID = config('TWILIO_ACCOUNT_SID', default='')
+TWILIO_AUTH_TOKEN = config('TWILIO_AUTH_TOKEN', default='')
+TWILIO_PHONE_NUMBER = config('TWILIO_PHONE_NUMBER', default='')
+
+# Kiosk Configuration
+KIOSK_CONFIG = {
+    'company_name': 'Cincinnati Barge & Rail Terminal',
+    'company_phone': '(513) 921-2400',
+}
 
 # Email Configuration (Gmail SMTP)
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'

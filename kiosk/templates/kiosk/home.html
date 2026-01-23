@@ -1,0 +1,22 @@
+{% extends 'kiosk/base.html' %}
+
+{% block content %}
+<div style="text-align: center; padding-top: 60px;">
+    <h1>CINCINNATI BARGE &amp; RAIL TERMINAL</h1>
+
+    <a href="{% url 'kiosk:checkin' %}" class="btn btn-primary" style="margin-top: 40px;">
+        CHECK IN
+        <br><span style="font-size: 16px; font-weight: 400;">Get your code</span>
+    </a>
+
+    <a href="{% url 'kiosk:checkout_code' %}" class="btn btn-success" style="margin-top: 20px;">
+        CHECK OUT
+        <br><span style="font-size: 16px; font-weight: 400;">Sign &amp; get BOL</span>
+    </a>
+
+    <p style="margin-top: 60px; color: #6b7280; font-size: 18px;">
+        Questions? Come to the office window<br>
+        or call (513) 921-2400
+    </p>
+</div>
+{% endblock %}

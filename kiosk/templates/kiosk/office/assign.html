@@ -1,0 +1,120 @@
+{% extends 'kiosk/base.html' %}
+
+{% block title %}Assign BOL - {{ session.driver_name }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    body { background: #1f2937; }
+    .container { max-width: 800px; }
+    h1 { color: white; }
+    .driver-info {
+        background: white;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 20px;
+    }
+    .search-box {
+        margin-bottom: 20px;
+    }
+    .search-box input {
+        width: 100%;
+        padding: 12px 16px;
+        font-size: 16px;
+        border: 2px solid #d1d5db;
+        border-radius: 8px;
+    }
+    .results {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    .bol-card {
+        background: white;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 12px;
+        cursor: pointer;
+        transition: transform 0.1s;
+    }
+    .bol-card:hover {
+        transform: scale(1.02);
+    }
+    .bol-number { font-size: 18px; font-weight: 600; color: #005500; }
+    .bol-meta { color: #6b7280; font-size: 14px; margin-top: 4px; }
+    .back-link { color: #9ca3af; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>Assign BOL</h1>
+
+<div class="driver-info">
+    <strong>Driver:</strong> {{ session.driver_name }}<br>
+    <strong>Code:</strong> {{ session.code }}<br>
+    <strong>Truck:</strong> {{ session.truck_number|default:"N/A" }}
+</div>
+
+<div class="search-box">
+    <input type="text" id="bol-search" placeholder="Search BOL number, customer, or truck..."
+           autocomplete="off">
+</div>
+
+<div class="results" id="results"></div>
+
+<a href="{% url 'kiosk:office_queue' %}" class="back-link">← Back to Queue</a>
+
+<script>
+const searchInput = document.getElementById('bol-search');
+const resultsDiv = document.getElementById('results');
+let searchTimeout;
+
+searchInput.addEventListener('input', function() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        const query = this.value.trim();
+        if (query.length < 2) {
+            resultsDiv.innerHTML = '<p style="color: #9ca3af;">Type at least 2 characters to search...</p>';
+            return;
+        }
+
+        fetch(`/kiosk/api/bol-search/?q=${encodeURIComponent(query)}`)
+            .then(r => r.json())
+            .then(data => {
+                if (data.results.length === 0) {
+                    resultsDiv.innerHTML = '<p style="color: #9ca3af;">No BOLs found</p>';
+                    return;
+                }
+
+                resultsDiv.innerHTML = data.results.map(bol => `
+                    <div class="bol-card" onclick="assignBol(${bol.id}, '${bol.bol_number}')">
+                        <div class="bol-number">${bol.bol_number}</div>
+                        <div class="bol-meta">
+                            ${bol.customer_name} | ${bol.summary}
+                        </div>
+                    </div>
+                `).join('');
+            });
+    }, 300);
+});
+
+function assignBol(bolId, bolNumber) {
+    const formData = new FormData();
+    formData.append('bol_id', bolId);
+    formData.append('bol_number', bolNumber);
+    formData.append('csrfmiddlewaretoken', '{{ csrf_token }}');
+
+    fetch('/kiosk/api/session/{{ session.id }}/assign/', {
+        method: 'POST',
+        body: formData
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            window.location.href = '{% url "kiosk:office_queue" %}';
+        }
+    });
+}
+
+// Focus search on load
+searchInput.focus();
+</script>
+{% endblock %}

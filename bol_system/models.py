@@ -289,6 +289,25 @@ class BOL(TimestampedModel):
     lot_ref = models.ForeignKey('Lot', on_delete=models.SET_NULL, null=True, blank=True, related_name='bols_legacy', help_text='Legacy lot reference')
     release_number = models.CharField(max_length=20, blank=True, help_text='Legacy release number for reference')
 
+    # Driver signature fields (for kiosk checkout)
+    signature = models.TextField(blank=True, help_text='Base64-encoded PNG signature')
+    signed_at = models.DateTimeField(null=True, blank=True)
+    signed_by = models.CharField(max_length=100, blank=True, help_text='Driver name who signed')
+
+    # BOL status for kiosk workflow
+    BOL_STATUS_CHOICES = [
+        ('created', 'Created'),
+        ('ready', 'Ready for Pickup'),
+        ('signed', 'Signed'),
+    ]
+    bol_status = models.CharField(
+        max_length=20,
+        choices=BOL_STATUS_CHOICES,
+        default='created',
+        db_index=True,
+        help_text='Kiosk workflow status'
+    )
+
     class Meta:
         ordering = ['-created_at']
         unique_together = [['tenant', 'bol_number']]

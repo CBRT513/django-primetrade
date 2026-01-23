@@ -1,0 +1,141 @@
+{% extends 'kiosk/base.html' %}
+
+{% block title %}Driver Queue - Office{% endblock %}
+
+{% block extra_css %}
+<style>
+    body { background: #1f2937; }
+    .container { max-width: 1000px; }
+    h1 { color: white; }
+    .section { margin-bottom: 30px; }
+    .section-title {
+        color: #9ca3af;
+        font-size: 14px;
+        text-transform: uppercase;
+        margin-bottom: 10px;
+    }
+    .card {
+        background: white;
+        border-radius: 8px;
+        padding: 16px;
+        margin-bottom: 12px;
+    }
+    .card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+    }
+    .driver-name { font-size: 18px; font-weight: 600; }
+    .code { color: #005500; font-weight: 600; }
+    .meta { color: #6b7280; font-size: 14px; margin-top: 8px; }
+    .actions { margin-top: 12px; }
+    .actions a, .actions button {
+        display: inline-block;
+        padding: 8px 16px;
+        font-size: 14px;
+        border-radius: 6px;
+        text-decoration: none;
+        border: none;
+        cursor: pointer;
+        margin-right: 8px;
+    }
+    .btn-sm-primary { background: #005500; color: white; }
+    .btn-sm-success { background: #059669; color: white; }
+    .btn-sm-danger { background: #dc2626; color: white; }
+    .empty { color: #6b7280; font-style: italic; }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>Driver Queue</h1>
+
+<div class="section">
+    <div class="section-title">Waiting ({{ waiting|length }})</div>
+    {% for s in waiting %}
+    <div class="card">
+        <div class="card-header">
+            <span class="driver-name">{{ s.driver_name }}</span>
+            <span class="code">{{ s.code }}</span>
+        </div>
+        <div class="meta">
+            {{ s.phone }} | Truck: {{ s.truck_number|default:"N/A" }} | {{ s.visit_type|title }}
+        </div>
+        <div class="actions">
+            <a href="{% url 'kiosk:office_assign' s.id %}" class="btn-sm-primary">Assign BOL</a>
+            <form method="post" action="{% url 'kiosk:office_cancel' s.id %}" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn-sm-danger">Cancel</button>
+            </form>
+        </div>
+    </div>
+    {% empty %}
+    <p class="empty">No drivers waiting</p>
+    {% endfor %}
+</div>
+
+<div class="section">
+    <div class="section-title">Assigned ({{ assigned|length }})</div>
+    {% for s in assigned %}
+    <div class="card">
+        <div class="card-header">
+            <span class="driver-name">{{ s.driver_name }}</span>
+            <span class="code">{{ s.code }}</span>
+        </div>
+        <div class="meta">
+            BOL: {{ s.bol_number }} | Assigned by: {{ s.assigned_by }}
+        </div>
+        <div class="actions">
+            <form method="post" action="{% url 'kiosk:office_mark_ready' s.id %}" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn-sm-success">Mark Ready</button>
+            </form>
+            <form method="post" action="{% url 'kiosk:office_cancel' s.id %}" style="display: inline;">
+                {% csrf_token %}
+                <button type="submit" class="btn-sm-danger">Cancel</button>
+            </form>
+        </div>
+    </div>
+    {% empty %}
+    <p class="empty">No assigned sessions</p>
+    {% endfor %}
+</div>
+
+<div class="section">
+    <div class="section-title">Ready ({{ ready|length }})</div>
+    {% for s in ready %}
+    <div class="card">
+        <div class="card-header">
+            <span class="driver-name">{{ s.driver_name }}</span>
+            <span class="code">{{ s.code }}</span>
+        </div>
+        <div class="meta">
+            BOL: {{ s.bol_number }} | Waiting for driver to check out
+        </div>
+    </div>
+    {% empty %}
+    <p class="empty">No loads ready</p>
+    {% endfor %}
+</div>
+
+<div class="section">
+    <div class="section-title">Completed Today ({{ completed_today|length }})</div>
+    {% for s in completed_today %}
+    <div class="card" style="opacity: 0.7;">
+        <div class="card-header">
+            <span class="driver-name">{{ s.driver_name }}</span>
+            <span class="code">{{ s.code }}</span>
+        </div>
+        <div class="meta">
+            BOL: {{ s.bol_number }} | Completed: {{ s.completed_at|time:"g:i A" }}
+        </div>
+    </div>
+    {% empty %}
+    <p class="empty">No completions today</p>
+    {% endfor %}
+</div>
+
+<script>
+    // Auto-refresh every 30 seconds
+    setTimeout(() => location.reload(), 30000);
+</script>
+{% endblock %}

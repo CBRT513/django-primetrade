@@ -1,0 +1,25 @@
+{% extends 'kiosk/base.html' %}
+
+{% block title %}Check Out - Enter Code{% endblock %}
+
+{% block content %}
+<h1>Enter Your Code</h1>
+
+{% if error %}
+<div class="error">{{ error }}</div>
+{% endif %}
+
+<form method="post">
+    {% csrf_token %}
+
+    <label for="code">Check-In Code</label>
+    <input type="text" id="code" name="code" required
+           autocomplete="off" autocapitalize="characters"
+           placeholder="e.g., 6044-01"
+           style="font-size: 32px; text-align: center; letter-spacing: 4px;">
+
+    <button type="submit" class="btn btn-success">CONTINUE</button>
+</form>
+
+<a href="{% url 'kiosk:home' %}" class="back-link">← Back</a>
+{% endblock %}

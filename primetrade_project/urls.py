@@ -34,6 +34,7 @@ urlpatterns = [
     path('robots.txt', robots_txt, name='robots_txt'),
     path('cbrt-ops/', admin.site.urls),
     path('api/', include('bol_system.urls')),
+    path('kiosk/', include('kiosk.urls')),
 
     # Tenant-scoped pigiron workflow (spec section 10)
     # Pattern: /tenant/{tenant_code}/pigiron/...

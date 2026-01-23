@@ -1,0 +1,30 @@
+{% extends 'kiosk/base.html' %}
+
+{% block title %}Complete{% endblock %}
+
+{% block content %}
+<div class="success-message">
+    <h1 style="color: #059669;">All Done!</h1>
+
+    <p style="font-size: 20px;">BOL {{ session.bol_number }} has been signed.</p>
+
+    <a href="{{ pdf_url }}" target="_blank" class="btn btn-primary" onclick="window.print()">
+        PRINT BOL
+    </a>
+
+    <p style="margin-top: 40px; font-size: 24px; color: #374151;">
+        Safe travels!
+    </p>
+
+    <a href="{% url 'kiosk:home' %}" class="btn btn-secondary" style="margin-top: 40px;">
+        DONE
+    </a>
+</div>
+
+<script>
+    // Auto-redirect after 15 seconds
+    setTimeout(() => {
+        window.location.href = '{% url "kiosk:home" %}';
+    }, 15000);
+</script>
+{% endblock %}

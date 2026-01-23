@@ -16,16 +16,19 @@ from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 
 
-def generate_bol_pdf(bol_data, output_path=None):
+def generate_bol_pdf(bol_data, output_path=None, return_bytes=False):
     """
     Generate a professional BOL PDF
 
     Args:
         bol_data: BOL model object or dictionary with BOL data
         output_path: Optional custom output path
+        return_bytes: If True, return PDF as bytes instead of saving to storage
 
     Returns:
-        The file path
+        If return_bytes=True: PDF bytes
+        If output_path provided: The local file path
+        Otherwise: S3 signed URL
     """
     # Handle both model objects and dictionaries
     if hasattr(bol_data, '__dict__') and not isinstance(bol_data, dict):
@@ -343,6 +346,11 @@ def generate_bol_pdf(bol_data, output_path=None):
 
     # Build PDF
     doc.build(elements)
+
+    # If return_bytes is True, return raw PDF bytes (for kiosk inline display)
+    if return_bytes:
+        buffer.seek(0)
+        return buffer.read()
 
     # If output_path is provided (for preview mode), save to local file
     if output_path:

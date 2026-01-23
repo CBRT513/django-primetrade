@@ -1,0 +1,30 @@
+{% extends 'kiosk/base.html' %}
+
+{% block title %}Check-In Complete{% endblock %}
+
+{% block content %}
+<div class="success-message">
+    <h1>Check-In Complete!</h1>
+
+    <p>Your code has been sent to:</p>
+    <p style="font-size: 24px; font-weight: 600;">{{ session.phone }}</p>
+
+    <div class="code">{{ session.code }}</div>
+
+    <p style="font-size: 18px; color: #6b7280;">
+        Keep this code. You'll need it to sign and print<br>
+        your BOL when your load is ready.
+    </p>
+
+    <a href="{% url 'kiosk:home' %}" class="btn btn-secondary" style="margin-top: 40px;">
+        DONE
+    </a>
+</div>
+
+<script>
+    // Auto-redirect after 10 seconds
+    setTimeout(() => {
+        window.location.href = '{% url "kiosk:home" %}';
+    }, 10000);
+</script>
+{% endblock %}
