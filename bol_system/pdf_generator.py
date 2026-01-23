@@ -2,21 +2,25 @@
 Professional BOL PDF Generation using ReportLab
 Designed for black & white laser printers
 """
+import base64
+
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.units import inch
 from reportlab.lib import colors
 from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer, Image, PageBreak
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.enums import TA_CENTER, TA_LEFT, TA_RIGHT
+from reportlab.lib.utils import ImageReader
 from datetime import datetime
 import os
 from io import BytesIO
 from django.conf import settings
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
+from PIL import Image as PILImage
 
 
-def generate_bol_pdf(bol_data, output_path=None, return_bytes=False):
+def generate_bol_pdf(bol_data, output_path=None, return_bytes=False, signature_data=None, signed_by=None, signed_at=None):
     """
     Generate a professional BOL PDF
 
@@ -24,6 +28,9 @@ def generate_bol_pdf(bol_data, output_path=None, return_bytes=False):
         bol_data: BOL model object or dictionary with BOL data
         output_path: Optional custom output path
         return_bytes: If True, return PDF as bytes instead of saving to storage
+        signature_data: Optional base64 encoded signature image
+        signed_by: Optional driver name who signed
+        signed_at: Optional datetime when signed
 
     Returns:
         If return_bytes=True: PDF bytes
@@ -326,9 +333,63 @@ def generate_bol_pdf(bol_data, output_path=None, return_bytes=False):
             elements.append(Spacer(1, 0.02*inch))
 
     # ========== SIGNATURE SECTION ==========
+    # Build carrier signature content - with actual signature if provided
+    if signature_data:
+        # Decode and prepare signature image
+        try:
+            sig_base64 = signature_data
+            if ',' in sig_base64:
+                sig_base64 = sig_base64.split(',')[1]
+            sig_bytes = base64.b64decode(sig_base64)
+            sig_img = PILImage.open(BytesIO(sig_bytes))
+
+            # Convert to RGB if needed
+            if sig_img.mode in ('RGBA', 'LA', 'P'):
+                background = PILImage.new('RGB', sig_img.size, (255, 255, 255))
+                if sig_img.mode == 'P':
+                    sig_img = sig_img.convert('RGBA')
+                if sig_img.mode == 'RGBA':
+                    background.paste(sig_img, mask=sig_img.split()[-1])
+                else:
+                    background.paste(sig_img)
+                sig_img = background
+
+            # Save to buffer for ReportLab
+            sig_buffer = BytesIO()
+            sig_img.save(sig_buffer, format='PNG')
+            sig_buffer.seek(0)
+
+            # Create signature image for table
+            sig_image_obj = Image(sig_buffer, width=2.2*inch, height=0.5*inch)
+
+            # Format timestamp
+            timestamp_str = signed_at.strftime('%m/%d/%Y %I:%M %p') if signed_at else ''
+            driver_name = signed_by or 'Driver'
+
+            # Build carrier signature cell with actual signature
+            carrier_sig_content = [
+                [Paragraph('<b>CARRIER SIGNATURE</b>', normal_style)],
+                [sig_image_obj],
+                [Paragraph(f'{driver_name}<br/><font size="7">Signed: {timestamp_str}</font>', normal_style)]
+            ]
+            carrier_sig_table = Table(carrier_sig_content, colWidths=[4.5*inch])
+            carrier_sig_table.setStyle(TableStyle([
+                ('VALIGN', (0, 0), (-1, -1), 'TOP'),
+                ('LEFTPADDING', (0, 0), (-1, -1), 0),
+                ('RIGHTPADDING', (0, 0), (-1, -1), 0),
+                ('TOPPADDING', (0, 0), (-1, -1), 2),
+                ('BOTTOMPADDING', (0, 0), (-1, -1), 2),
+            ]))
+            carrier_sig_cell = carrier_sig_table
+        except Exception:
+            # Fall back to blank signature line if image processing fails
+            carrier_sig_cell = Paragraph('<b>CARRIER SIGNATURE</b><br/><br/>_____________________________<br/>Driver Name<br/><font size="7">Date / Time</font>', normal_style)
+    else:
+        carrier_sig_cell = Paragraph('<b>CARRIER SIGNATURE</b><br/><br/>_____________________________<br/>Driver Name<br/><font size="7">Date / Time</font>', normal_style)
+
     sig_data = [[
         Paragraph('<b>SHIPPER SIGNATURE</b><br/><br/>_____________________________<br/>James Rose<br/><font size="7">Authorized Representative</font>', normal_style),
-        Paragraph('<b>CARRIER SIGNATURE</b><br/><br/>_____________________________<br/>Driver Name<br/><font size="7">Date / Time</font>', normal_style)
+        carrier_sig_cell
     ]]
 
     sig_table = Table(sig_data, colWidths=[4.7*inch, 4.7*inch])
