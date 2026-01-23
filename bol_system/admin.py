@@ -138,10 +138,26 @@ class ReleaseLoadInline(admin.TabularInline):
 
 @admin.register(Release)
 class ReleaseAdmin(TenantAdminMixin, admin.ModelAdmin):
-    list_display = ['release_number', 'customer_id_text', 'status', 'quantity_net_tons', 'created_at']
-    list_filter = ['status', 'created_at']
+    list_display = ['release_number', 'customer_id_text', 'status', 'quantity_net_tons', 'chemistry_override_acknowledged', 'created_at']
+    list_filter = ['status', 'chemistry_override_acknowledged', 'created_at']
     search_fields = ['release_number', 'customer_id_text', 'customer_po']
     inlines = [ReleaseLoadInline]
+    readonly_fields = ['chemistry_override_by', 'chemistry_override_at']
+    fieldsets = (
+        (None, {
+            'fields': ('release_number', 'release_date', 'status', 'customer_id_text', 'customer_ref', 'customer_po')
+        }),
+        ('Shipping', {
+            'fields': ('ship_via', 'fob', 'ship_to_name', 'ship_to_street', 'ship_to_street2', 'ship_to_city', 'ship_to_state', 'ship_to_zip', 'carrier_ref', 'care_of_co')
+        }),
+        ('Material', {
+            'fields': ('material_description', 'lot', 'lot_ref', 'quantity_net_tons', 'special_instructions')
+        }),
+        ('Chemistry Override', {
+            'fields': ('chemistry_override_acknowledged', 'chemistry_override_reason', 'chemistry_override_by', 'chemistry_override_at'),
+            'classes': ('collapse',),
+        }),
+    )
 
 
 @admin.register(Lot)

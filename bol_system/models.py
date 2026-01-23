@@ -551,6 +551,26 @@ class Release(TimestampedModel):
         help_text="Company name for 'c/o' line in BOL Ship From section (for blind shipping)"
     )
 
+    # Chemistry override (when release chemistry differs from existing lot)
+    chemistry_override_acknowledged = models.BooleanField(
+        default=False,
+        help_text="User acknowledged chemistry differs from existing lot"
+    )
+    chemistry_override_reason = models.TextField(
+        blank=True,
+        help_text="Reason for chemistry override (optional)"
+    )
+    chemistry_override_by = models.CharField(
+        max_length=200,
+        blank=True,
+        help_text="User who acknowledged the override"
+    )
+    chemistry_override_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When override was acknowledged"
+    )
+
     class Meta:
         ordering = ['-created_at']
         # Release number is unique per-tenant, not globally
