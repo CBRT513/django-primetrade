@@ -914,6 +914,23 @@ def confirm_bol(request):
             logger.error(f"Failed to send email notification for BOL {bol.bol_number}: {str(e)}")
             # Don't fail BOL creation if email fails
 
+        # Handle kiosk driver assignment if provided
+        driver_session_id = data.get('driverSessionId')
+        if driver_session_id:
+            try:
+                from kiosk.models import DriverSession
+                driver_session = DriverSession.objects.get(id=driver_session_id, status='waiting')
+                driver_session.bol_id = bol.id
+                driver_session.bol_number = bol.bol_number
+                driver_session.status = 'ready'
+                driver_session.assigned_at = timezone.now()
+                driver_session.assigned_by = request.user.username if request.user.is_authenticated else 'office'
+                driver_session.save()
+                logger.info(f"BOL {bol.bol_number} assigned to driver session {driver_session.code}")
+            except Exception as e:
+                logger.warning(f"Failed to assign driver session {driver_session_id}: {str(e)}")
+                # Don't fail BOL creation if driver assignment fails
+
         return Response({
             'ok': True,
             'bolNo': bol.bol_number,

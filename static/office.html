@@ -428,6 +428,14 @@
                         </div>
                     </div>
 
+                    <div class="form-group">
+                        <label>Assign to Driver</label>
+                        <select name="driverSessionId" id="driverSession">
+                            <option value="">-- Select Driver (Optional) --</option>
+                        </select>
+                        <div class="helper-text">Select a waiting driver to mark their load as ready</div>
+                    </div>
+
                     <button type="submit" class="btn btn-primary">Preview BOL</button>
                     <span id="status" class="status"></span>
                 </form>
@@ -513,6 +521,7 @@
     let products = [];
     let customers = [];
     let carriers = [];
+    let waitingDrivers = [];
     let pendingBOLData = null;
 
     function showPreviewModal(pdfBase64) {
@@ -668,10 +677,16 @@
             if (user?.username) qs("usernameDisplay").textContent = `Welcome, ${user.username}`;
         } catch (e) { qs("usernameDisplay").textContent = "Welcome"; }
 
-        const [productsData, customersData, carriersData] = await Promise.all([
-            getJSON("/api/products/"), getJSON("/api/customers/"), getJSON("/api/carriers/")
+        const [productsData, customersData, carriersData, driversData] = await Promise.all([
+            getJSON("/api/products/"), getJSON("/api/customers/"), getJSON("/api/carriers/"),
+            getJSON("/kiosk/api/waiting-drivers/").catch(() => ({ drivers: [] }))
         ]);
         products = productsData; customers = customersData; carriers = carriersData;
+        waitingDrivers = driversData.drivers || [];
+
+        // Populate driver dropdown
+        const driverSel = qs("driverSession");
+        waitingDrivers.forEach(d => driverSel.add(new Option(d.label, d.id)));
 
         const loads = await getJSON('/api/releases/pending-loads/');
         const loadSel = qs('releaseLoad');

@@ -185,6 +185,28 @@ def api_bol_search(request):
     return JsonResponse({'results': results})
 
 
+def api_waiting_drivers(request):
+    """Get list of waiting drivers for BOL form dropdown."""
+    from datetime import timedelta
+
+    cutoff = timezone.now() - timedelta(hours=4)
+    waiting = DriverSession.objects.filter(
+        status='waiting',
+        checked_in_at__gte=cutoff
+    ).order_by('checked_in_at')
+
+    results = [{
+        'id': s.id,
+        'code': s.code,
+        'carrier_name': s.carrier_name,
+        'truck_number': s.truck_number,
+        'pickup_number': s.pickup_number,
+        'label': f"{s.code} | {s.carrier_name} | Truck {s.truck_number} | {s.pickup_number}"
+    } for s in waiting]
+
+    return JsonResponse({'drivers': results})
+
+
 @require_http_methods(["POST"])
 def api_assign_bol(request, session_id):
     """Assign BOL to session (AJAX)."""

@@ -22,6 +22,7 @@ urlpatterns = [
     # API
     path('api/bol-search/', views.api_bol_search, name='api_bol_search'),
     path('api/session/<int:session_id>/assign/', views.api_assign_bol, name='api_assign_bol'),
+    path('api/waiting-drivers/', views.api_waiting_drivers, name='api_waiting_drivers'),
 
     # PWA
     path('manifest.json', views.pwa_manifest, name='pwa_manifest'),
