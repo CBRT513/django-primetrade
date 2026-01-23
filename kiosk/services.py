@@ -1,5 +1,9 @@
-from datetime import date
+import logging
+import re
+from datetime import date, timedelta
 from django.conf import settings
+
+logger = logging.getLogger('kiosk')
 
 
 def date_serial(d: date) -> int:
@@ -18,7 +22,7 @@ def generate_session_code() -> str:
     from .models import DriverSession
 
     today = date.today()
-    serial = date_serial(today) % 10000  # 6044
+    serial = date_serial(today) % 10000
 
     today_count = DriverSession.objects.filter(
         checked_in_at__date=today
@@ -32,12 +36,12 @@ def generate_session_code() -> str:
         sequence += 1
         code = f"{serial}-{sequence:02d}"
 
+    logger.debug(f"Generated session code: {code}")
     return code
 
 
 def normalize_phone(phone: str) -> str:
     """Convert (513) 555-1234 to +15135551234 for Twilio."""
-    import re
     digits = re.sub(r'\D', '', phone)
     if len(digits) == 10:
         return f"+1{digits}"
@@ -46,12 +50,21 @@ def normalize_phone(phone: str) -> str:
     return phone  # Return as-is if unexpected format
 
 
-def send_checkin_sms(phone: str, code: str) -> bool:
-    """Send check-in code to driver via Twilio."""
+def send_checkin_sms(phone: str, code: str) -> dict:
+    """
+    Send check-in code to driver via Twilio.
+
+    Returns:
+        dict with 'success' (bool) and 'error' (str or None)
+    """
     # Check if Twilio is configured
-    if not getattr(settings, 'TWILIO_ACCOUNT_SID', None):
-        print(f"SMS skipped (Twilio not configured) - Code: {code} for {phone}")
-        return False
+    if not getattr(settings, 'TWILIO_ACCOUNT_SID', None) or not settings.TWILIO_ACCOUNT_SID:
+        logger.info(f"[{code}] SMS skipped - Twilio not configured")
+        return {'success': False, 'error': 'SMS not configured'}
+
+    if not phone:
+        logger.warning(f"[{code}] SMS skipped - no phone number provided")
+        return {'success': False, 'error': 'No phone number'}
 
     try:
         from twilio.rest import Client
@@ -67,21 +80,24 @@ def send_checkin_sms(phone: str, code: str) -> bool:
             from_=settings.TWILIO_PHONE_NUMBER,
             to=normalized_phone
         )
-        print(f"SMS sent to {normalized_phone} - Code: {code}")
-        return True
+        logger.info(f"[{code}] SMS sent to {normalized_phone} - SID: {message.sid}")
+        return {'success': True, 'error': None}
+
     except Exception as e:
-        print(f"SMS send failed: {e}")
-        return False
+        logger.error(f"[{code}] SMS send failed to {phone}: {str(e)}")
+        return {'success': False, 'error': str(e)}
 
 
 def expire_old_sessions():
     """Mark sessions older than 4 hours as expired."""
     from django.utils import timezone
-    from datetime import timedelta
     from .models import DriverSession
 
     cutoff = timezone.now() - timedelta(hours=4)
-    DriverSession.objects.filter(
+    expired_count = DriverSession.objects.filter(
         checked_in_at__lt=cutoff,
         status__in=['waiting', 'assigned', 'ready']
     ).update(status='expired')
+
+    if expired_count > 0:
+        logger.info(f"Expired {expired_count} old driver sessions")

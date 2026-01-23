@@ -8,9 +8,14 @@
 
     <p style="font-size: 20px;">BOL {{ session.bol_number }} has been signed.</p>
 
+    {% if pdf_error %}
+    <div class="error" style="margin: 20px 0;">{{ pdf_error }}</div>
+    <p style="font-size: 18px;">Your code: <strong>{{ session.code }}</strong></p>
+    {% else %}
     <a href="{{ pdf_url }}" target="_blank" class="btn btn-primary" onclick="window.print()">
         PRINT BOL
     </a>
+    {% endif %}
 
     <p style="margin-top: 40px; font-size: 24px; color: #374151;">
         Safe travels!

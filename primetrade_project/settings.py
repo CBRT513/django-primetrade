@@ -306,6 +306,11 @@ LOGGING = {
             'level': 'WARNING',
             'propagate': False,
         },
+        'kiosk': {
+            'handlers': ['console', 'file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
     },
     'root': {
         'handlers': ['console', 'file'],
