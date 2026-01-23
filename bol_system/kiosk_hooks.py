@@ -15,6 +15,7 @@ from pypdf import PdfReader, PdfWriter
 from reportlab.pdfgen import canvas
 from reportlab.lib.pagesizes import letter, landscape
 from reportlab.lib.units import inch
+from reportlab.lib.utils import ImageReader
 from PIL import Image
 
 from .models import BOL, CompanyBranding
@@ -132,6 +133,9 @@ def _overlay_signature_on_pdf(pdf_bytes: bytes, signature_base64: str, signed_by
     sig_image.save(sig_buffer, format='PNG')
     sig_buffer.seek(0)
 
+    # Wrap BytesIO in ImageReader for ReportLab compatibility
+    sig_reader = ImageReader(sig_buffer)
+
     # Create overlay PDF with signature
     # PDF is landscape letter: 792 x 612 points (11 x 8.5 inches)
     overlay_buffer = BytesIO()
@@ -146,7 +150,7 @@ def _overlay_signature_on_pdf(pdf_bytes: bytes, signature_base64: str, signed_by
 
     # Draw signature image
     c.drawImage(
-        sig_buffer,
+        sig_reader,
         sig_x,
         sig_y,
         width=sig_width,
