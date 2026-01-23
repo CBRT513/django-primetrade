@@ -1096,6 +1096,39 @@ def approve_release(request):
         lot_code = (mat.get('lot') or '').strip()
         analysis = mat.get('analysis') or {}
 
+        # PRE-CHECK: Validate chemistry BEFORE transaction to avoid partial saves
+        # If lot exists and chemistry differs, require override acknowledgment
+        if lot_code:
+            try:
+                existing_lot = Lot.objects.get(code=lot_code)
+                tol = float(os.getenv('LOT_CHEM_TOLERANCE', '0.01'))
+                def _val(x):
+                    try:
+                        return float(x) if x is not None else None
+                    except Exception:
+                        return None
+                mismatches = []
+                for k_model, k_parsed in [('c','C'),('si','Si'),('s','S'),('p','P'),('mn','Mn')]:
+                    existing = getattr(existing_lot, k_model, None)
+                    parsed = analysis.get(k_parsed)
+                    exf = _val(existing)
+                    paf = _val(parsed)
+                    if exf is not None and paf is not None:
+                        if abs(exf - paf) > tol:
+                            mismatches.append({'element': k_parsed, 'existing': exf, 'parsed': paf, 'delta': abs(exf - paf)})
+                if mismatches:
+                    override_acknowledged = data.get('chemistryOverrideAcknowledged', False)
+                    if not override_acknowledged:
+                        return Response({
+                            'warning': 'Chemistry differs from existing lot',
+                            'requiresOverride': True,
+                            'lot': lot_code,
+                            'tolerance': tol,
+                            'mismatches': mismatches
+                        }, status=status.HTTP_409_CONFLICT)
+            except Lot.DoesNotExist:
+                pass  # New lot - no conflict
+
         # Determine or create Product from material description (if provided)
         desc = (mat.get('description') or '').strip()
         product_obj = None
@@ -1617,6 +1650,38 @@ def release_detail_api(request, release_id):
         lot_code = (mat.get('lot') or rel.lot or '').strip()
         desc = (mat.get('description') or rel.material_description or '').strip()
         analysis = mat.get('analysis') or {}
+
+        # PRE-CHECK: Validate chemistry BEFORE transaction to avoid partial saves
+        # If lot exists and chemistry differs, require override acknowledgment
+        if lot_code and analysis:
+            try:
+                existing_lot = Lot.objects.get(code=lot_code)
+                def _val_precheck(x):
+                    try:
+                        return float(x) if x is not None else None
+                    except Exception:
+                        return None
+                precheck_mismatches = []
+                for k_model, k_parsed in [('c','C'),('si','Si'),('s','S'),('p','P'),('mn','Mn')]:
+                    existing = getattr(existing_lot, k_model, None)
+                    parsed = analysis.get(k_parsed)
+                    exf = _val_precheck(existing)
+                    paf = _val_precheck(parsed)
+                    if exf is not None and paf is not None:
+                        if abs(exf - paf) > tol:
+                            precheck_mismatches.append({'element': k_parsed, 'existing': exf, 'parsed': paf, 'delta': abs(exf - paf)})
+                if precheck_mismatches:
+                    override_acknowledged = data.get('chemistryOverrideAcknowledged', False)
+                    if not override_acknowledged:
+                        return Response({
+                            'warning': 'Chemistry differs from existing lot',
+                            'requiresOverride': True,
+                            'lot': lot_code,
+                            'tolerance': tol,
+                            'mismatches': precheck_mismatches
+                        }, status=status.HTTP_409_CONFLICT)
+            except Lot.DoesNotExist:
+                pass  # New lot - no conflict
 
         with transaction.atomic():
             # Handle release cancellation
