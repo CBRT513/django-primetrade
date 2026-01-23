@@ -202,7 +202,7 @@ def checkout_complete(request, code):
     try:
         from bol_system.kiosk_hooks import get_bol_detail
         bol = get_bol_detail(session.bol_id)
-        pdf_url = f'/bol/{session.bol_id}/pdf/'
+        pdf_url = f'/kiosk/bol/{session.bol_id}/pdf/'
     except Exception as e:
         logger.error(f"[{code}] Failed to get BOL for print: {str(e)}")
         bol = None
@@ -371,3 +371,11 @@ self.addEventListener('fetch', (event) => {
 });
 """
     return HttpResponse(sw_content, content_type='application/javascript')
+
+
+# === PDF ===
+
+def bol_pdf(request, bol_id):
+    """Serve BOL PDF inline for printing."""
+    from bol_system.kiosk_hooks import generate_pdf
+    return generate_pdf(bol_id)

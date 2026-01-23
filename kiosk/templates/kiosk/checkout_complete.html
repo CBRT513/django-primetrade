@@ -12,9 +12,10 @@
     <div class="error" style="margin: 20px 0;">{{ pdf_error }}</div>
     <p style="font-size: 18px;">Your code: <strong>{{ session.code }}</strong></p>
     {% else %}
-    <a href="{{ pdf_url }}" target="_blank" class="btn btn-primary" onclick="window.print()">
+    <button type="button" class="btn btn-primary" id="printBtn">
         PRINT BOL
-    </a>
+    </button>
+    <p id="printStatus" style="margin-top: 10px; font-size: 14px; color: #6b7280; display: none;"></p>
     {% endif %}
 
     <p style="margin-top: 40px; font-size: 24px; color: #374151;">
@@ -26,5 +27,50 @@
     </a>
 </div>
 
-<!-- Auto-redirect removed - driver controls when to leave -->
+<!-- Hidden iframe for printing -->
+<iframe id="printFrame" style="display: none;"></iframe>
+
+<script>
+document.getElementById('printBtn').addEventListener('click', function() {
+    const btn = this;
+    const status = document.getElementById('printStatus');
+    const frame = document.getElementById('printFrame');
+
+    btn.disabled = true;
+    btn.textContent = 'LOADING...';
+    status.style.display = 'block';
+    status.textContent = 'Preparing document...';
+
+    // Load PDF in iframe
+    frame.src = '{{ pdf_url }}';
+
+    frame.onload = function() {
+        status.textContent = 'Opening print dialog...';
+
+        // Small delay to ensure PDF is fully rendered
+        setTimeout(function() {
+            try {
+                frame.contentWindow.print();
+            } catch(e) {
+                // If iframe print fails (cross-origin), open in new tab
+                window.open('{{ pdf_url }}', '_blank');
+            }
+
+            btn.disabled = false;
+            btn.textContent = 'PRINT BOL';
+            status.style.display = 'none';
+        }, 500);
+    };
+
+    // Fallback if iframe doesn't load in 5 seconds
+    setTimeout(function() {
+        if (btn.disabled) {
+            window.open('{{ pdf_url }}', '_blank');
+            btn.disabled = false;
+            btn.textContent = 'PRINT BOL';
+            status.style.display = 'none';
+        }
+    }, 5000);
+});
+</script>
 {% endblock %}
