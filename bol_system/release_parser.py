@@ -429,9 +429,17 @@ def parse_release_pdf(file_obj, ai_mode: str | None = None) -> Dict[str, Any]:
     file_obj.seek(0)  # Reset for PdfReader
 
     reader = PdfReader(file_obj)
-    # Use layout mode to preserve table structure (required since pypdf 6.x)
-    text = "\n".join(page.extract_text(extraction_mode="layout") or "" for page in reader.pages)
-    logger.info(f"PDF text extracted: {len(text)} chars, first 100: {text[:100]!r}")
+    # Try layout mode first (preserves table structure), fall back to plain if it fails
+    text_layout = "\n".join(page.extract_text(extraction_mode="layout") or "" for page in reader.pages)
+    text_plain = "\n".join(page.extract_text() or "" for page in reader.pages)
+
+    # Use whichever extraction mode got more text
+    if len(text_plain) > len(text_layout) * 2:  # Plain got significantly more text
+        text = text_plain
+        logger.info(f"PDF text: using plain mode ({len(text_plain)} chars vs layout {len(text_layout)} chars)")
+    else:
+        text = text_layout
+        logger.info(f"PDF text: using layout mode ({len(text_layout)} chars vs plain {len(text_plain)} chars)")
 
     if ai_mode in ("local", "cloud"):
         # AI-FIRST APPROACH: Let AI extract everything, use regex as fallback
