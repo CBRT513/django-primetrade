@@ -72,6 +72,7 @@ def claude_parse_release_text(
         response = client.messages.create(
             model=CLAUDE_MODEL,
             max_tokens=4096,
+            temperature=0,  # Deterministic output
             messages=[{
                 "role": "user",
                 "content": prompt
@@ -83,6 +84,7 @@ def claude_parse_release_text(
 
         result = json.loads(clean_text)
         logger.info(f"Claude extraction successful: {list(result.keys())}")
+        logger.info(f"Claude releaseNumber={result.get('releaseNumber')!r}, customerId={result.get('customerId')!r}")
         return result
 
     except anthropic.APITimeoutError:
@@ -166,6 +168,7 @@ def claude_filter_critical_instructions(
         response = client.messages.create(
             model=CLAUDE_MODEL,
             max_tokens=1024,
+            temperature=0,  # Deterministic output
             messages=[{
                 "role": "user",
                 "content": prompt

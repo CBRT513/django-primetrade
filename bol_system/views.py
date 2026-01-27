@@ -2256,7 +2256,9 @@ def upload_release(request):
             ai_mode = 'cloud'
         else:
             ai_mode = None
+        logger.info(f"upload_release: user={request.user.email}, file={f.name}, size={f.size}, ai_mode={ai_mode}")
         data = parse_release_pdf(f, ai_mode=ai_mode)
+        logger.info(f"upload_release: parsed releaseNumber={data.get('releaseNumber')!r}")
         return Response({'ok': True, 'parsed': data, 'ai': ai_mode})
     except Exception as e:
         logger.error(f"Error parsing release PDF: {e}", exc_info=True)

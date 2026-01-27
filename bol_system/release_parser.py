@@ -418,9 +418,20 @@ def parse_release_pdf(file_obj, ai_mode: str | None = None) -> Dict[str, Any]:
     When ai_mode is set, uses AI-first extraction with regex fallback.
     When ai_mode is None, uses regex-only extraction.
     """
+    import logging
+    import hashlib
+    logger = logging.getLogger(__name__)
+
+    # Read file to get hash for debugging
+    content = file_obj.read()
+    file_hash = hashlib.md5(content).hexdigest()[:8]
+    logger.info(f"PDF upload: {len(content)} bytes, hash={file_hash}")
+    file_obj.seek(0)  # Reset for PdfReader
+
     reader = PdfReader(file_obj)
     # Use layout mode to preserve table structure (required since pypdf 6.x)
     text = "\n".join(page.extract_text(extraction_mode="layout") or "" for page in reader.pages)
+    logger.info(f"PDF text extracted: {len(text)} chars, first 100: {text[:100]!r}")
 
     if ai_mode in ("local", "cloud"):
         # AI-FIRST APPROACH: Let AI extract everything, use regex as fallback
@@ -434,6 +445,11 @@ def parse_release_pdf(file_obj, ai_mode: str | None = None) -> Dict[str, Any]:
         if isinstance(ai, dict):
             # Start with AI results
             parsed = {}
+
+            # Log key AI values for debugging blank modal issues
+            logger.info(f"AI releaseNumber: {ai.get('releaseNumber')!r}")
+            logger.info(f"AI customerId: {ai.get('customerId')!r}")
+            logger.info(f"AI shipTo: {ai.get('shipTo')!r}")
 
             # Use AI values if available, otherwise try regex
             regex_fallback = parse_release_text(text)
@@ -512,6 +528,9 @@ def parse_release_pdf(file_obj, ai_mode: str | None = None) -> Dict[str, Any]:
 
             # Raw text preview
             parsed["rawTextPreview"] = text[:1000]
+
+            # Log final parsed result for debugging
+            logger.info(f"Final parsed releaseNumber: {parsed.get('releaseNumber')!r}, customerId: {parsed.get('customerId')!r}, shipToRaw: {parsed.get('shipToRaw')!r}")
 
             return parsed
         else:
