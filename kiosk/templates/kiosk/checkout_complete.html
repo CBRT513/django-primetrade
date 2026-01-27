@@ -8,9 +8,9 @@
 
     <p style="font-size: 20px;">BOL {{ session.bol_number }} has been signed.</p>
 
-    <a href="{{ pdf_url }}" target="_blank" class="btn btn-primary" onclick="window.print()">
+    <button type="button" class="btn btn-primary" id="printBtn" style="font-size: 24px; padding: 20px 40px;">
         PRINT BOL
-    </a>
+    </button>
 
     <p style="margin-top: 40px; font-size: 24px; color: #374151;">
         Safe travels!
@@ -21,10 +21,81 @@
     </a>
 </div>
 
+<!-- Print instruction overlay -->
+<div id="printOverlay" style="
+    display: none;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: rgba(0,0,0,0.9);
+    z-index: 9999;
+    justify-content: center;
+    align-items: center;
+    flex-direction: column;
+    text-align: center;
+    padding: 40px;
+">
+    <div style="background: #fef3c7; border: 4px solid #f59e0b; border-radius: 20px; padding: 40px; max-width: 500px;">
+        <p style="font-size: 48px; margin: 0 0 20px 0;">👆</p>
+        <h2 style="font-size: 36px; color: #92400e; margin: 0 0 20px 0;">TAP "PRINT"</h2>
+        <p style="font-size: 24px; color: #78350f; margin: 0;">
+            In the box that just appeared,<br>
+            tap the blue <strong>Print</strong> button
+        </p>
+    </div>
+    <button type="button" onclick="closePrintOverlay()" style="
+        margin-top: 30px;
+        background: #6b7280;
+        color: white;
+        border: none;
+        padding: 15px 30px;
+        font-size: 18px;
+        border-radius: 8px;
+        cursor: pointer;
+    ">Cancel</button>
+</div>
+
+<!-- Hidden iframe for printing -->
+<iframe id="printFrame" style="position: absolute; left: -9999px; width: 1px; height: 1px;"></iframe>
+
 <script>
-    // Auto-redirect after 15 seconds
-    setTimeout(() => {
-        window.location.href = '{% url "kiosk:home" %}';
-    }, 15000);
+const printBtn = document.getElementById('printBtn');
+const printOverlay = document.getElementById('printOverlay');
+const printFrame = document.getElementById('printFrame');
+
+function closePrintOverlay() {
+    printOverlay.style.display = 'none';
+}
+
+printBtn.addEventListener('click', function() {
+    // Show the instruction overlay
+    printOverlay.style.display = 'flex';
+
+    // Load PDF in iframe and trigger print
+    printFrame.src = '{{ pdf_url }}';
+
+    printFrame.onload = function() {
+        setTimeout(function() {
+            try {
+                printFrame.contentWindow.print();
+            } catch(e) {
+                // Fallback: open in new tab
+                window.open('{{ pdf_url }}', '_blank');
+            }
+        }, 300);
+    };
+
+    // Auto-hide overlay after 10 seconds (print dialog dismissed)
+    setTimeout(closePrintOverlay, 10000);
+});
+
+// Hide overlay if user taps outside the instruction box
+printOverlay.addEventListener('click', function(e) {
+    if (e.target === printOverlay) {
+        closePrintOverlay();
+    }
+});
 </script>
 {% endblock %}

@@ -123,7 +123,7 @@ def checkout_complete(request, code):
     return render(request, 'kiosk/checkout_complete.html', {
         'session': session,
         'bol': bol,
-        'pdf_url': f'/bol/{session.bol_id}/pdf/',
+        'pdf_url': f'/kiosk/bol/{session.bol_id}/pdf/',
     })
 
 
@@ -264,3 +264,11 @@ self.addEventListener('fetch', (event) => {
 });
 """
     return HttpResponse(sw_content, content_type='application/javascript')
+
+
+# === PDF ===
+
+def bol_pdf(request, bol_id):
+    """Serve BOL PDF inline for AirPrint."""
+    from bol_system.kiosk_hooks import generate_pdf
+    return generate_pdf(bol_id)
