@@ -133,7 +133,7 @@ class ReleaseLoadInline(admin.TabularInline):
     model = ReleaseLoad
     extra = 0
     fields = ['seq', 'date', 'planned_tons', 'status', 'bol']
-    readonly_fields = ['seq', 'planned_tons', 'status', 'bol']  # date is now editable
+    readonly_fields = ['seq', 'planned_tons', 'bol']  # status is now editable for cancellation
 
 
 @admin.register(Release)
