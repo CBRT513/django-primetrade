@@ -1,9 +1,9 @@
 {% extends 'kiosk/base.html' %}
 
-{% block title %}Check In - CBRT Kiosk{% endblock %}
+{% block title %}{% if lang == 'es' %}Registrarse{% else %}Check In{% endif %} - CBRT Kiosk{% endblock %}
 
 {% block content %}
-<h1>Driver Check-In</h1>
+<h1>{% if lang == 'es' %}Registro de Conductor{% else %}Driver Check-In{% endif %}</h1>
 
 {% if error %}
 <div class="error">{{ error }}</div>
@@ -12,29 +12,31 @@
 <form method="post" id="checkin-form">
     {% csrf_token %}
 
-    <label for="driver_name">Name *</label>
+    <label for="driver_name">{% if lang == 'es' %}Nombre *{% else %}Name *{% endif %}</label>
     <input type="text" id="driver_name" name="driver_name" required autocomplete="name">
 
-    <label for="phone">Phone Number *</label>
+    <label for="phone">{% if lang == 'es' %}Número de Teléfono *{% else %}Phone Number *{% endif %}</label>
     <input type="tel" id="phone" name="phone" required autocomplete="tel"
            placeholder="(___) ___-____" maxlength="14">
 
-    <label for="pickup_number">Pickup Number *</label>
+    <label for="pickup_number">{% if lang == 'es' %}Número de Recogida *{% else %}Pickup Number *{% endif %}</label>
     <input type="text" id="pickup_number" name="pickup_number" required autocomplete="off">
 
-    <label for="carrier_name">Carrier Name *</label>
+    <label for="carrier_name">{% if lang == 'es' %}Nombre del Transportista *{% else %}Carrier Name *{% endif %}</label>
     <input type="text" id="carrier_name" name="carrier_name" required autocomplete="organization">
 
-    <label for="truck_number">Truck Number *</label>
+    <label for="truck_number">{% if lang == 'es' %}Número de Camión *{% else %}Truck Number *{% endif %}</label>
     <input type="text" id="truck_number" name="truck_number" required autocomplete="off">
 
-    <label for="trailer_number">Trailer Number *</label>
+    <label for="trailer_number">{% if lang == 'es' %}Número de Remolque *{% else %}Trailer Number *{% endif %}</label>
     <input type="text" id="trailer_number" name="trailer_number" required autocomplete="off">
 
-    <button type="submit" class="btn btn-primary">CHECK IN</button>
+    <button type="submit" class="btn btn-primary">
+        {% if lang == 'es' %}REGISTRARSE{% else %}CHECK IN{% endif %}
+    </button>
 </form>
 
-<a href="{% url 'kiosk:home' %}" class="back-link">← Back</a>
+<a href="{% url 'kiosk:menu' %}" class="back-link">← {% if lang == 'es' %}Volver{% else %}Back{% endif %}</a>
 {% endblock %}
 
 {% block extra_js %}

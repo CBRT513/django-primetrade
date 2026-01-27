@@ -1,28 +1,28 @@
 {% extends 'kiosk/base.html' %}
 
-{% block title %}Complete{% endblock %}
+{% block title %}{% if lang == 'es' %}Completo{% else %}Complete{% endif %}{% endblock %}
 
 {% block content %}
 <div class="success-message">
-    <h1 style="color: #059669;">All Done!</h1>
+    <h1 style="color: #059669;">{% if lang == 'es' %}¡Listo!{% else %}All Done!{% endif %}</h1>
 
-    <p style="font-size: 20px;">BOL {{ session.bol_number }} has been signed.</p>
+    <p style="font-size: 20px;">{% if lang == 'es' %}BOL {{ session.bol_number }} ha sido firmado.{% else %}BOL {{ session.bol_number }} has been signed.{% endif %}</p>
 
     {% if pdf_error %}
     <div class="error" style="margin: 20px 0;">{{ pdf_error }}</div>
-    <p style="font-size: 18px;">Your code: <strong>{{ session.code }}</strong></p>
+    <p style="font-size: 18px;">{% if lang == 'es' %}Su código:{% else %}Your code:{% endif %} <strong>{{ session.code }}</strong></p>
     {% else %}
     <button type="button" class="btn btn-primary" id="printBtn" style="font-size: 24px; padding: 20px 40px;">
-        PRINT BOL
+        {% if lang == 'es' %}IMPRIMIR BOL{% else %}PRINT BOL{% endif %}
     </button>
     {% endif %}
 
     <p style="margin-top: 40px; font-size: 24px; color: #374151;">
-        Safe travels!
+        {% if lang == 'es' %}¡Buen viaje!{% else %}Safe travels!{% endif %}
     </p>
 
     <a href="{% url 'kiosk:home' %}" class="btn btn-secondary" style="margin-top: 40px;">
-        DONE
+        {% if lang == 'es' %}LISTO{% else %}DONE{% endif %}
     </a>
 </div>
 
@@ -44,10 +44,15 @@
 ">
     <div style="background: #fef3c7; border: 4px solid #f59e0b; border-radius: 20px; padding: 40px; max-width: 500px;">
         <p style="font-size: 72px; margin: 0 0 20px 0;">👆</p>
-        <h2 style="font-size: 42px; color: #92400e; margin: 0 0 20px 0;">TAP "PRINT"</h2>
+        <h2 style="font-size: 42px; color: #92400e; margin: 0 0 20px 0;">{% if lang == 'es' %}TOQUE "PRINT"{% else %}TAP "PRINT"{% endif %}</h2>
         <p style="font-size: 24px; color: #78350f; margin: 0;">
+            {% if lang == 'es' %}
+            En el cuadro que apareció,<br>
+            toque el botón azul <strong>Print</strong>
+            {% else %}
             In the box that just appeared,<br>
             tap the blue <strong>Print</strong> button
+            {% endif %}
         </p>
     </div>
     <button type="button" onclick="closePrintOverlay()" style="
@@ -59,7 +64,7 @@
         font-size: 18px;
         border-radius: 8px;
         cursor: pointer;
-    ">Cancel</button>
+    ">{% if lang == 'es' %}Cancelar{% else %}Cancel{% endif %}</button>
 </div>
 
 <!-- Hidden iframe for printing -->

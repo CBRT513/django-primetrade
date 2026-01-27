@@ -1,6 +1,6 @@
 {% extends 'kiosk/base.html' %}
 
-{% block title %}Sign BOL{% endblock %}
+{% block title %}{% if lang == 'es' %}Firmar BOL{% else %}Sign BOL{% endif %}{% endblock %}
 
 {% block extra_css %}
 <style>
@@ -16,13 +16,13 @@
 {% endblock %}
 
 {% block content %}
-<h1>Sign Below</h1>
+<h1>{% if lang == 'es' %}Firme Abajo{% else %}Sign Below{% endif %}</h1>
 
 {% if error %}
 <div class="error">{{ error }}</div>
 {% endif %}
 
-<p style="text-align: center; color: #6b7280;">Use your finger to sign</p>
+<p style="text-align: center; color: #6b7280;">{% if lang == 'es' %}Use su dedo para firmar{% else %}Use your finger to sign{% endif %}</p>
 
 <canvas id="signature-pad"></canvas>
 
@@ -31,15 +31,15 @@
     <input type="hidden" name="signature" id="signature-data">
 
     <button type="button" class="btn btn-secondary" onclick="clearSignature()">
-        CLEAR
+        {% if lang == 'es' %}BORRAR{% else %}CLEAR{% endif %}
     </button>
 
     <button type="submit" class="btn btn-success">
-        SUBMIT SIGNATURE
+        {% if lang == 'es' %}ENVIAR FIRMA{% else %}SUBMIT SIGNATURE{% endif %}
     </button>
 </form>
 
-<a href="{% url 'kiosk:checkout_review' code=session.code %}" class="back-link">← Back</a>
+<a href="{% url 'kiosk:checkout_review' code=session.code %}" class="back-link">← {% if lang == 'es' %}Volver{% else %}Back{% endif %}</a>
 {% endblock %}
 
 {% block extra_js %}

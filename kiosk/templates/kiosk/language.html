@@ -1,0 +1,23 @@
+{% extends 'kiosk/base.html' %}
+{% load static %}
+
+{% block title %}Select Language{% endblock %}
+
+{% block content %}
+<div style="text-align: center; padding-top: 60px;">
+    <img src="{% static 'kiosk/logo.png' %}" alt="CBRT Logo" style="width: 280px; margin-bottom: 50px;">
+
+    <p style="font-size: 24px; color: #374151; margin-bottom: 40px;">
+        Select your language<br>
+        <span style="color: #6b7280;">Seleccione su idioma</span>
+    </p>
+
+    <a href="{% url 'kiosk:set_language' %}?lang=en" class="btn btn-primary" style="margin-bottom: 20px;">
+        🇺🇸 English
+    </a>
+
+    <a href="{% url 'kiosk:set_language' %}?lang=es" class="btn btn-primary">
+        🇲🇽 Español
+    </a>
+</div>
+{% endblock %}

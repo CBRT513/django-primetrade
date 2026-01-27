@@ -1,23 +1,28 @@
 {% extends 'kiosk/base.html' %}
 
-{% block title %}Check-In Complete{% endblock %}
+{% block title %}{% if lang == 'es' %}Registro Completo{% else %}Check-In Complete{% endif %}{% endblock %}
 
 {% block content %}
 <div class="success-message">
-    <h1>Check-In Complete!</h1>
+    <h1>{% if lang == 'es' %}¡Registro Completo!{% else %}Check-In Complete!{% endif %}</h1>
 
-    <p>Your code has been sent to:</p>
+    <p>{% if lang == 'es' %}Su código ha sido enviado a:{% else %}Your code has been sent to:{% endif %}</p>
     <p style="font-size: 24px; font-weight: 600;">{{ session.phone }}</p>
 
     <div class="code">{{ session.code }}</div>
 
     <p style="font-size: 18px; color: #6b7280;">
+        {% if lang == 'es' %}
+        Guarde este código. Lo necesitará para firmar e imprimir<br>
+        su BOL cuando su carga esté lista.
+        {% else %}
         Keep this code. You'll need it to sign and print<br>
         your BOL when your load is ready.
+        {% endif %}
     </p>
 
-    <a href="{% url 'kiosk:home' %}" class="btn btn-secondary" style="margin-top: 40px;">
-        DONE
+    <a href="{% url 'kiosk:menu' %}" class="btn btn-secondary" style="margin-top: 40px;">
+        {% if lang == 'es' %}LISTO{% else %}DONE{% endif %}
     </a>
 </div>
 

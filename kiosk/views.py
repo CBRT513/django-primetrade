@@ -12,9 +12,28 @@ logger = logging.getLogger('kiosk')
 
 # === Driver-Facing Views (iPad) ===
 
+def get_lang(request):
+    """Get language from session, default to English."""
+    return request.session.get('kiosk_lang', 'en')
+
+
 def home(request):
-    """Kiosk home screen with Check-In / Check-Out buttons."""
-    return render(request, 'kiosk/home.html')
+    """Language selection screen."""
+    return render(request, 'kiosk/language.html')
+
+
+def set_language(request):
+    """Set language preference and redirect to menu."""
+    lang = request.GET.get('lang', 'en')
+    if lang not in ('en', 'es'):
+        lang = 'en'
+    request.session['kiosk_lang'] = lang
+    return redirect('kiosk:menu')
+
+
+def menu(request):
+    """Main menu with Check-In / Check-Out buttons."""
+    return render(request, 'kiosk/home.html', {'lang': get_lang(request)})
 
 
 def checkin(request):
@@ -70,7 +89,7 @@ def checkin(request):
                 'error': 'An error occurred. Please try again or see the office.'
             })
 
-    return render(request, 'kiosk/checkin.html')
+    return render(request, 'kiosk/checkin.html', {'lang': get_lang(request)})
 
 
 def checkin_success(request, code):
@@ -81,7 +100,7 @@ def checkin_success(request, code):
     # The template always shows the code, so driver has it regardless of SMS status
     logger.info(f"[{code}] Showing check-in success screen")
 
-    return render(request, 'kiosk/checkin_success.html', {'session': session})
+    return render(request, 'kiosk/checkin_success.html', {'session': session, 'lang': get_lang(request)})
 
 
 def checkout_code(request):
@@ -124,7 +143,7 @@ def checkout_code(request):
             error = "Code not recognized. Please check and try again."
             logger.info(f"Checkout code not found: {code}")
 
-    return render(request, 'kiosk/checkout_code.html', {'error': error})
+    return render(request, 'kiosk/checkout_code.html', {'error': error, 'lang': get_lang(request)})
 
 
 def checkout_review(request, code):
@@ -147,6 +166,7 @@ def checkout_review(request, code):
     return render(request, 'kiosk/checkout_review.html', {
         'session': session,
         'bol': bol,
+        'lang': get_lang(request),
     })
 
 
@@ -183,6 +203,7 @@ def checkout_sign(request, code):
     return render(request, 'kiosk/checkout_sign.html', {
         'session': session,
         'error': error,
+        'lang': get_lang(request),
     })
 
 
@@ -214,6 +235,7 @@ def checkout_complete(request, code):
         'bol': bol,
         'pdf_url': pdf_url,
         'pdf_error': pdf_error,
+        'lang': get_lang(request),
     })
 
 

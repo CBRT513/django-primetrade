@@ -1,23 +1,23 @@
 {% extends 'kiosk/base.html' %}
 
-{% block title %}Review BOL{% endblock %}
+{% block title %}{% if lang == 'es' %}Revisar BOL{% else %}Review BOL{% endif %}{% endblock %}
 
 {% block content %}
-<h1>Review Your BOL</h1>
+<h1>{% if lang == 'es' %}Revise Su BOL{% else %}Review Your BOL{% endif %}</h1>
 
 <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-    <p style="font-size: 14px; color: #6b7280; margin: 0;">BOL Number</p>
+    <p style="font-size: 14px; color: #6b7280; margin: 0;">{% if lang == 'es' %}Número de BOL{% else %}BOL Number{% endif %}</p>
     <p style="font-size: 24px; font-weight: 600; margin: 4px 0 16px;">{{ bol.bol_number }}</p>
 
-    <p style="font-size: 14px; color: #6b7280; margin: 0;">From</p>
+    <p style="font-size: 14px; color: #6b7280; margin: 0;">{% if lang == 'es' %}De{% else %}From{% endif %}</p>
     <p style="font-size: 18px; margin: 4px 0 16px;">{{ bol.shipper.name }}</p>
 
-    <p style="font-size: 14px; color: #6b7280; margin: 0;">To</p>
+    <p style="font-size: 14px; color: #6b7280; margin: 0;">{% if lang == 'es' %}Para{% else %}To{% endif %}</p>
     <p style="font-size: 18px; margin: 4px 0 16px;">{{ bol.consignee.name }}</p>
 
     <hr style="border: none; border-top: 1px solid #e5e7eb; margin: 16px 0;">
 
-    <p style="font-size: 14px; color: #6b7280; margin: 0;">Load</p>
+    <p style="font-size: 14px; color: #6b7280; margin: 0;">{% if lang == 'es' %}Carga{% else %}Load{% endif %}</p>
     {% for item in bol.line_items %}
     <p style="font-size: 18px; margin: 4px 0;">
         {{ item.description }} - {{ item.quantity }} {{ item.unit }}
@@ -26,21 +26,21 @@
 </div>
 
 <div style="background: white; border-radius: 12px; padding: 20px; margin-bottom: 20px;">
-    <p style="font-size: 14px; color: #6b7280; margin: 0 0 8px;">Your Check-In Info</p>
-    <p style="font-size: 18px; margin: 4px 0;"><strong>Carrier:</strong> {{ session.carrier_name }}</p>
-    <p style="font-size: 18px; margin: 4px 0;"><strong>Truck #:</strong> {{ session.truck_number }}</p>
-    <p style="font-size: 18px; margin: 4px 0;"><strong>Trailer #:</strong> {{ session.trailer_number }}</p>
+    <p style="font-size: 14px; color: #6b7280; margin: 0 0 8px;">{% if lang == 'es' %}Su Información de Registro{% else %}Your Check-In Info{% endif %}</p>
+    <p style="font-size: 18px; margin: 4px 0;"><strong>{% if lang == 'es' %}Transportista:{% else %}Carrier:{% endif %}</strong> {{ session.carrier_name }}</p>
+    <p style="font-size: 18px; margin: 4px 0;"><strong>{% if lang == 'es' %}Camión #:{% else %}Truck #:{% endif %}</strong> {{ session.truck_number }}</p>
+    <p style="font-size: 18px; margin: 4px 0;"><strong>{% if lang == 'es' %}Remolque #:{% else %}Trailer #:{% endif %}</strong> {{ session.trailer_number }}</p>
 </div>
 
 <p style="text-align: center; font-size: 18px; margin-bottom: 20px;">
-    Is this your load?
+    {% if lang == 'es' %}¿Es esta su carga?{% else %}Is this your load?{% endif %}
 </p>
 
 <a href="{% url 'kiosk:checkout_sign' code=session.code %}" class="btn btn-success">
-    YES, SIGN BOL
+    {% if lang == 'es' %}SÍ, FIRMAR BOL{% else %}YES, SIGN BOL{% endif %}
 </a>
 
 <a href="{% url 'kiosk:home' %}" class="btn btn-danger">
-    NO, SEE OFFICE
+    {% if lang == 'es' %}NO, VER OFICINA{% else %}NO, SEE OFFICE{% endif %}
 </a>
 {% endblock %}

@@ -6,18 +6,48 @@
     <img src="{% static 'kiosk/logo.png' %}" alt="CBRT Logo" style="width: 280px; margin-bottom: 30px;">
 
     <a href="{% url 'kiosk:checkin' %}" class="btn btn-primary" style="margin-top: 40px;">
+        {% if lang == 'es' %}
+        REGISTRARSE
+        <br><span style="font-size: 16px; font-weight: 400;">Obtener su código</span>
+        {% else %}
         CHECK IN
         <br><span style="font-size: 16px; font-weight: 400;">Get your code</span>
+        {% endif %}
     </a>
 
     <a href="{% url 'kiosk:checkout_code' %}" class="btn btn-success" style="margin-top: 20px;">
+        {% if lang == 'es' %}
+        SALIR
+        <br><span style="font-size: 16px; font-weight: 400;">Firmar y obtener BOL</span>
+        {% else %}
         CHECK OUT
         <br><span style="font-size: 16px; font-weight: 400;">Sign &amp; get BOL</span>
+        {% endif %}
     </a>
 
     <p style="margin-top: 60px; color: #6b7280; font-size: 18px;">
+        {% if lang == 'es' %}
+        ¿Preguntas? Venga a la ventana de la oficina<br>
+        o llame al (513) 921-2400
+        {% else %}
         Questions? Come to the office window<br>
         or call (513) 921-2400
+        {% endif %}
     </p>
+
+    <!-- Language switcher -->
+    <a href="{% url 'kiosk:home' %}" style="
+        position: fixed;
+        bottom: 20px;
+        right: 20px;
+        background: #e5e7eb;
+        padding: 10px 16px;
+        border-radius: 8px;
+        color: #374151;
+        text-decoration: none;
+        font-size: 14px;
+    ">
+        {% if lang == 'es' %}🇺🇸 English{% else %}🇲🇽 Español{% endif %}
+    </a>
 </div>
 {% endblock %}

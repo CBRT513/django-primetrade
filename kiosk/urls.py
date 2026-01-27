@@ -6,6 +6,8 @@ app_name = 'kiosk'
 urlpatterns = [
     # Driver-facing (iPad)
     path('', views.home, name='home'),
+    path('set-language/', views.set_language, name='set_language'),
+    path('menu/', views.menu, name='menu'),
     path('checkin/', views.checkin, name='checkin'),
     path('checkin/success/<str:code>/', views.checkin_success, name='checkin_success'),
     path('checkout/', views.checkout_code, name='checkout_code'),
