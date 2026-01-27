@@ -410,6 +410,182 @@ def parse_release_text(text: str) -> Dict[str, Any]:
     return result
 
 
+def _process_ai_result(ai: Dict[str, Any], text: str) -> Dict[str, Any]:
+    """Process AI extraction result into the parsed format."""
+    import logging
+    logger = logging.getLogger(__name__)
+
+    parsed = {}
+
+    # Log key AI values for debugging
+    logger.info(f"AI releaseNumber: {ai.get('releaseNumber')!r}")
+    logger.info(f"AI customerId: {ai.get('customerId')!r}")
+    logger.info(f"AI shipTo: {ai.get('shipTo')!r}")
+
+    # Use AI values, regex fallback only if text extraction worked
+    regex_fallback = parse_release_text(text) if len(text.strip()) >= 100 else {}
+
+    parsed["releaseNumber"] = ai.get("releaseNumber") or regex_fallback.get("releaseNumber")
+    parsed["customerId"] = ai.get("customerId") or regex_fallback.get("customerId")
+    parsed["customerPO"] = ai.get("customerPO") or regex_fallback.get("customerPO")
+    parsed["releaseDate"] = ai.get("releaseDate") or regex_fallback.get("releaseDate")
+    parsed["shipVia"] = ai.get("shipVia") or regex_fallback.get("shipVia")
+    parsed["fob"] = ai.get("fob") or regex_fallback.get("fob")
+
+    # Ship To
+    ai_ship = ai.get("shipTo") if isinstance(ai.get("shipTo"), dict) else None
+    ship_to_final = ai_ship or regex_fallback.get("shipToRaw")
+
+    # Parse address components if address exists
+    if ship_to_final and ship_to_final.get('address'):
+        parsed_addr = _parse_shipto_address(ship_to_final['address'])
+        ship_to_final.update(parsed_addr)
+
+    parsed["shipToRaw"] = ship_to_final
+
+    # Material
+    if isinstance(ai.get("material"), dict):
+        ai_extras = ai.get("material", {}).get("extraBOLAnalysis")
+        regex_extras = regex_fallback.get("material", {}).get("extraBOLAnalysis")
+
+        parsed["material"] = {
+            "lot": ai.get("material", {}).get("lot"),
+            "description": ai.get("material", {}).get("description"),
+            "analysis": regex_fallback.get("material", {}).get("analysis", {}),
+            "extraBOLAnalysis": ai_extras or regex_extras,
+        }
+    else:
+        parsed["material"] = regex_fallback.get("material", {})
+
+    # Warehouse
+    parsed["warehouse"] = regex_fallback.get("warehouse", {"name": "CRT", "location": "CINCINNATI"})
+
+    # Quantity
+    parsed["quantityNetTons"] = ai.get("quantityNetTons") or regex_fallback.get("quantityNetTons")
+
+    # Schedule - prefer AI, fallback to regex
+    if isinstance(ai.get("schedule"), list) and ai.get("schedule"):
+        iso_sched = []
+        for row in ai.get("schedule"):
+            try:
+                d = row.get("date")
+                if d and "/" in d:
+                    mm, dd, yyyy = d.split("/")
+                    d = f"{yyyy}-{mm.zfill(2)}-{dd.zfill(2)}"
+                iso_sched.append({"date": d, "load": int(row.get("load"))})
+            except Exception:
+                pass
+        parsed["schedule"] = iso_sched if iso_sched else regex_fallback.get("schedule", [])
+    else:
+        parsed["schedule"] = regex_fallback.get("schedule", [])
+
+    # Carrier
+    parsed["carrier"] = regex_fallback.get("carrier")
+
+    # BOL Requirements (from regex only)
+    parsed["bolRequirements"] = regex_fallback.get("bolRequirements", [])
+
+    # Critical Delivery Instructions - Two-stage AI extraction
+    warehouse_text = ai.get("allWarehouseRequirements")
+    if warehouse_text:
+        critical = gemini_filter_critical_instructions(warehouse_text.strip())
+        parsed["specialInstructions"] = critical if critical else None
+    else:
+        parsed["specialInstructions"] = None
+
+    # Raw text preview
+    parsed["rawTextPreview"] = text[:1000] if text else "[Vision-only extraction]"
+
+    logger.info(f"Final parsed releaseNumber: {parsed.get('releaseNumber')!r}, customerId: {parsed.get('customerId')!r}")
+
+    return parsed
+
+
+def _claude_vision_parse(pdf_bytes: bytes) -> Dict[str, Any] | None:
+    """Send PDF directly to Claude Vision when text extraction fails."""
+    import base64
+    import json
+    import os
+    import logging
+    logger = logging.getLogger(__name__)
+
+    try:
+        import anthropic
+    except ImportError:
+        logger.error("anthropic package not installed for Vision fallback")
+        return None
+
+    api_key = os.environ.get("ANTHROPIC_API_KEY")
+    if not api_key:
+        logger.warning("ANTHROPIC_API_KEY not set, Vision fallback disabled")
+        return None
+
+    pdf_base64 = base64.standard_b64encode(pdf_bytes).decode("utf-8")
+    logger.info(f"Vision fallback: sending {len(pdf_bytes)} bytes directly to Claude")
+
+    try:
+        client = anthropic.Anthropic(api_key=api_key, timeout=60.0)
+
+        response = client.messages.create(
+            model="claude-sonnet-4-20250514",
+            max_tokens=4096,
+            temperature=0,
+            messages=[{
+                "role": "user",
+                "content": [
+                    {
+                        "type": "document",
+                        "source": {
+                            "type": "base64",
+                            "media_type": "application/pdf",
+                            "data": pdf_base64
+                        }
+                    },
+                    {
+                        "type": "text",
+                        "text": """Extract release information from this document. Return ONLY valid JSON (no markdown, no explanation):
+{
+    "releaseNumber": "string or null",
+    "releaseDate": "MM/DD/YYYY or null",
+    "customerId": "string or null",
+    "customerPO": "string or null",
+    "shipVia": "string or null",
+    "fob": "string or null",
+    "shipTo": {"name": "string or null", "address": "string or null"},
+    "material": {"lot": "string or null", "description": "string or null", "extraBOLAnalysis": "string or null"},
+    "quantityNetTons": number or null,
+    "schedule": [{"date": "MM/DD/YYYY", "load": number}],
+    "allWarehouseRequirements": "string or null"
+}
+Instructions:
+- For material.description: include ONLY the base material name (e.g., 'NODULAR PIG IRON')
+- For allWarehouseRequirements: extract the COMPLETE text from 'Warehouse requirements:' section
+- Fill unknown fields with null"""
+                    }
+                ]
+            }]
+        )
+
+        response_text = response.content[0].text.strip()
+
+        # Remove markdown code fences if present
+        if response_text.startswith('```'):
+            lines = response_text.split('\n')
+            if lines[0].startswith('```'):
+                lines = lines[1:]
+            if lines and lines[-1].strip() == '```':
+                lines = lines[:-1]
+            response_text = '\n'.join(lines)
+
+        result = json.loads(response_text)
+        logger.info(f"Vision extraction successful: releaseNumber={result.get('releaseNumber')!r}")
+        return result
+
+    except Exception as e:
+        logger.error(f"Claude Vision fallback failed: {e}", exc_info=True)
+        return None
+
+
 def parse_release_pdf(file_obj, ai_mode: str | None = None) -> Dict[str, Any]:
     """Extract text from a PDF file-like and parse it.
 
@@ -417,6 +593,8 @@ def parse_release_pdf(file_obj, ai_mode: str | None = None) -> Dict[str, Any]:
 
     When ai_mode is set, uses AI-first extraction with regex fallback.
     When ai_mode is None, uses regex-only extraction.
+
+    If text extraction fails (<100 chars), falls back to Claude Vision (sends PDF directly).
     """
     import logging
     import hashlib
@@ -441,106 +619,26 @@ def parse_release_pdf(file_obj, ai_mode: str | None = None) -> Dict[str, Any]:
         text = text_layout
         logger.info(f"PDF text: using layout mode ({len(text_layout)} chars vs plain {len(text_plain)} chars)")
 
+    # FALLBACK: If text extraction failed, use Claude Vision to read PDF directly
+    if len(text.strip()) < 100 and ai_mode in ("local", "cloud"):
+        logger.warning(f"Text extraction failed ({len(text.strip())} chars), falling back to Claude Vision")
+        vision_result = _claude_vision_parse(content)
+        if vision_result:
+            # Process Vision result same as AI result
+            return _process_ai_result(vision_result, text)
+        else:
+            logger.error("Vision fallback also failed, returning empty result")
+            return parse_release_text(text)
+
     if ai_mode in ("local", "cloud"):
         # AI-FIRST APPROACH: Let AI extract everything, use regex as fallback
-        import logging
-        logger = logging.getLogger(__name__)
         ai = ai_parse_release_text(text) if ai_mode == "local" else remote_ai_parse_release_text(text)
         logger.info(f"AI extraction result type: {type(ai)}, is dict: {isinstance(ai, dict)}")
         if ai:
             logger.info(f"AI keys: {list(ai.keys()) if isinstance(ai, dict) else 'Not a dict'}")
 
         if isinstance(ai, dict):
-            # Start with AI results
-            parsed = {}
-
-            # Log key AI values for debugging blank modal issues
-            logger.info(f"AI releaseNumber: {ai.get('releaseNumber')!r}")
-            logger.info(f"AI customerId: {ai.get('customerId')!r}")
-            logger.info(f"AI shipTo: {ai.get('shipTo')!r}")
-
-            # Use AI values if available, otherwise try regex
-            regex_fallback = parse_release_text(text)
-
-            parsed["releaseNumber"] = ai.get("releaseNumber") or regex_fallback.get("releaseNumber")
-            parsed["customerId"] = ai.get("customerId") or regex_fallback.get("customerId")
-            parsed["customerPO"] = ai.get("customerPO") or regex_fallback.get("customerPO")
-            parsed["releaseDate"] = ai.get("releaseDate") or regex_fallback.get("releaseDate")
-            parsed["shipVia"] = ai.get("shipVia") or regex_fallback.get("shipVia")
-            parsed["fob"] = ai.get("fob") or regex_fallback.get("fob")
-
-            # Ship To
-            ai_ship = ai.get("shipTo") if isinstance(ai.get("shipTo"), dict) else None
-            ship_to_final = ai_ship or regex_fallback.get("shipToRaw")
-
-            # Parse address components if address exists
-            if ship_to_final and ship_to_final.get('address'):
-                parsed_addr = _parse_shipto_address(ship_to_final['address'])
-                ship_to_final.update(parsed_addr)
-
-            parsed["shipToRaw"] = ship_to_final
-
-            # Material
-            if isinstance(ai.get("material"), dict):
-                # Use AI-extracted extraBOLAnalysis, fallback to regex only if AI didn't find it
-                ai_extras = ai.get("material", {}).get("extraBOLAnalysis")
-                regex_extras = regex_fallback.get("material", {}).get("extraBOLAnalysis")
-
-                parsed["material"] = {
-                    "lot": ai.get("material", {}).get("lot"),
-                    "description": ai.get("material", {}).get("description"),
-                    "analysis": regex_fallback.get("material", {}).get("analysis"),
-                    "extraBOLAnalysis": ai_extras or regex_extras,
-                }
-            else:
-                parsed["material"] = regex_fallback.get("material", {})
-
-            # Warehouse
-            parsed["warehouse"] = regex_fallback.get("warehouse", {"name": "CRT", "location": "CINCINNATI"})
-
-            # Quantity
-            parsed["quantityNetTons"] = ai.get("quantityNetTons") or regex_fallback.get("quantityNetTons")
-
-            # Schedule - prefer AI, fallback to regex
-            if isinstance(ai.get("schedule"), list) and ai.get("schedule"):
-                iso_sched = []
-                for row in ai.get("schedule"):
-                    try:
-                        d = row.get("date")
-                        if d and "/" in d:
-                            mm, dd, yyyy = d.split("/")
-                            d = f"{yyyy}-{mm.zfill(2)}-{dd.zfill(2)}"
-                        iso_sched.append({"date": d, "load": int(row.get("load"))})
-                    except Exception:
-                        pass
-                parsed["schedule"] = iso_sched if iso_sched else regex_fallback.get("schedule", [])
-            else:
-                parsed["schedule"] = regex_fallback.get("schedule", [])
-
-            # Carrier
-            parsed["carrier"] = regex_fallback.get("carrier")
-
-            # BOL Requirements (from regex only, not in AI schema)
-            parsed["bolRequirements"] = regex_fallback.get("bolRequirements", [])
-
-            # Critical Delivery Instructions - Two-stage AI extraction
-            # Stage 1: AI extracted all warehouse requirements
-            # Stage 2: Filter to only critical delivery directives
-            warehouse_text = ai.get("allWarehouseRequirements")
-            if warehouse_text:
-                critical = gemini_filter_critical_instructions(warehouse_text.strip())
-                parsed["specialInstructions"] = critical if critical else None
-            else:
-                # No warehouse requirements found by AI
-                parsed["specialInstructions"] = None
-
-            # Raw text preview
-            parsed["rawTextPreview"] = text[:1000]
-
-            # Log final parsed result for debugging
-            logger.info(f"Final parsed releaseNumber: {parsed.get('releaseNumber')!r}, customerId: {parsed.get('customerId')!r}, shipToRaw: {parsed.get('shipToRaw')!r}")
-
-            return parsed
+            return _process_ai_result(ai, text)
         else:
             # AI failed, fall back to regex-only
             return parse_release_text(text)
