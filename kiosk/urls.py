@@ -12,7 +12,6 @@ urlpatterns = [
     path('checkout/<str:code>/', views.checkout_review, name='checkout_review'),
     path('checkout/<str:code>/sign/', views.checkout_sign, name='checkout_sign'),
     path('checkout/<str:code>/complete/', views.checkout_complete, name='checkout_complete'),
-    path('bol/<int:bol_id>/pdf/', views.bol_pdf, name='bol_pdf'),
 
     # Office-facing (desktop)
     path('office/', views.office_queue, name='office_queue'),
