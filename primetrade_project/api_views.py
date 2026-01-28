@@ -114,6 +114,10 @@ def _verify_bearer_jwt(request):
     """
     Verify JWT Bearer token from Authorization header.
 
+    For cross-app API calls (e.g., Sacks Command Center), the token may have
+    been issued for a different app's client_id. We skip audience verification
+    but still verify signature, issuer, and expiration.
+
     Returns:
         tuple: (decoded_claims, error_response)
         - If valid: (claims_dict, None)
@@ -134,16 +138,16 @@ def _verify_bearer_jwt(request):
         jwks_client = PyJWKClient(jwks_url, cache_keys=True)
         signing_key = jwks_client.get_signing_key_from_jwt(token)
 
-        # Decode and verify JWT with full validation
+        # Decode and verify JWT - skip audience check for cross-app tokens
+        # Security: signature, issuer, and expiration are still verified
         decoded = jwt.decode(
             token,
             signing_key.key,
             algorithms=["RS256"],
-            audience=settings.SSO_CLIENT_ID,
             issuer=f"{settings.SSO_BASE_URL}/o",
             options={
                 "verify_signature": True,
-                "verify_aud": True,
+                "verify_aud": False,  # Skip - token may be for different app
                 "verify_iss": True,
                 "verify_exp": True,
             }
@@ -159,12 +163,6 @@ def _verify_bearer_jwt(request):
     except jwt.ExpiredSignatureError:
         return None, JsonResponse(
             {'error': 'Token expired'},
-            status=401
-        )
-    except jwt.InvalidAudienceError:
-        security_logger.warning("JWT Bearer token audience mismatch")
-        return None, JsonResponse(
-            {'error': 'Invalid token audience'},
             status=401
         )
     except jwt.InvalidIssuerError:
