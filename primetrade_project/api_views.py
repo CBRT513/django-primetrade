@@ -224,17 +224,28 @@ def open_releases(request):
     if error_response:
         return error_response
 
-    # Check for primetrade Admin or Office role
+    # Check for Admin or Office role in ANY barge2rail app
+    # Cross-app API calls (e.g., from Sacks Command Center) may have roles
+    # in a different app than primetrade
     application_roles = claims.get('application_roles', {})
-    primetrade_role = application_roles.get('primetrade', {})
-    role = primetrade_role.get('role', '').lower()
+    has_access = False
+    user_role = None
 
-    if role not in ('admin', 'office'):
-        logger.warning(f"[OPEN_RELEASES] Access denied - user role: {role}")
+    for app_name, app_role in application_roles.items():
+        role = app_role.get('role', '').lower() if isinstance(app_role, dict) else ''
+        if role in ('admin', 'office'):
+            has_access = True
+            user_role = f"{app_name}:{role}"
+            break
+
+    if not has_access:
+        logger.warning(f"[OPEN_RELEASES] Access denied - no Admin/Office role in any app")
         return JsonResponse(
             {'error': 'Access denied. Requires Admin or Office role.'},
             status=403
         )
+
+    logger.info(f"[OPEN_RELEASES] Access granted via {user_role}")
 
     # Get query parameters
     try:
