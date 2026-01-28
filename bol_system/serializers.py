@@ -153,7 +153,10 @@ class ReleaseSerializer(serializers.ModelSerializer):
             'id','release_number','release_date','customer_id_text','customer_po',
             'ship_via','fob','ship_to_name','ship_to_street','ship_to_street2','ship_to_city','ship_to_state','ship_to_zip',
             'lot','material_description','quantity_net_tons','status','special_instructions','care_of_co','loads',
-            'customer_ref','ship_to_ref','carrier_ref','lot_ref'
+            'customer_ref','ship_to_ref','carrier_ref','lot_ref',
+            # Chemistry override fields
+            'chemistry_override_acknowledged','chemistry_override_reason','chemistry_override_by','chemistry_override_at',
+            'chemistry_override_c','chemistry_override_si','chemistry_override_s','chemistry_override_p','chemistry_override_mn'
         ]
 
 class AuditLogSerializer(serializers.ModelSerializer):

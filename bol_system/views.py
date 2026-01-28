@@ -699,6 +699,7 @@ def preview_bol(request):
             'releaseNumber': f'{release_obj.release_number}-{release_load.seq}' if release_load else data.get('releaseNumber', ''),
             'care_of_co': release_obj.care_of_co if release_obj else data.get('careOfCo', 'PrimeTrade, LLC'),
             'lot_ref': release_obj.lot_ref if release_obj else None,
+            'release_line': release_load,  # For chemistry override support in PDF generator
         }
 
         # Generate temporary PDF
@@ -874,10 +875,11 @@ def confirm_bol(request):
                 customer_po=customer_po,
                 created_by_email=f'{request.user.username}@primetrade.com',
                 lot_ref=lot_ref,
+                release_line=release_load,  # Link to ReleaseLoad for chemistry override access
                 release_number=f'{release_obj.release_number}-{release_load.seq}' if release_load else '',
                 special_instructions=release_obj.special_instructions if release_load else '',
                 care_of_co=release_obj.care_of_co if release_load else 'PrimeTrade, LLC',
-                chemistry_display=lot_ref.format_chemistry() if lot_ref else ''
+                chemistry_display=release_obj.get_chemistry_display() if release_load else (lot_ref.format_chemistry() if lot_ref else '')
             )
 
             # If load provided, mark shipped and attach

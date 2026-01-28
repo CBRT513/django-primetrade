@@ -806,12 +806,14 @@
         document.getElementById('materialLot').value = rel.lot || '';
         document.getElementById('materialDescription').value = rel.material_description || '';
 
+        // Use override chemistry if acknowledged, otherwise fall back to lot chemistry
         const lot = rel.lot_ref || {};
-        document.getElementById('chemC').value = lot.c ?? '';
-        document.getElementById('chemSi').value = lot.si ?? '';
-        document.getElementById('chemS').value = lot.s ?? '';
-        document.getElementById('chemP').value = lot.p ?? '';
-        document.getElementById('chemMn').value = lot.mn ?? '';
+        const useOverride = rel.chemistry_override_acknowledged;
+        document.getElementById('chemC').value = (useOverride && rel.chemistry_override_c != null) ? rel.chemistry_override_c : (lot.c ?? '');
+        document.getElementById('chemSi').value = (useOverride && rel.chemistry_override_si != null) ? rel.chemistry_override_si : (lot.si ?? '');
+        document.getElementById('chemS').value = (useOverride && rel.chemistry_override_s != null) ? rel.chemistry_override_s : (lot.s ?? '');
+        document.getElementById('chemP').value = (useOverride && rel.chemistry_override_p != null) ? rel.chemistry_override_p : (lot.p ?? '');
+        document.getElementById('chemMn').value = (useOverride && rel.chemistry_override_mn != null) ? rel.chemistry_override_mn : (lot.mn ?? '');
         document.getElementById('specialInstructions').value = rel.special_instructions || '';
         document.getElementById('careOfCo').value = rel.care_of_co || 'PrimeTrade, LLC';
 

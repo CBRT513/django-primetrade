@@ -657,6 +657,29 @@ class Release(TimestampedModel):
     def loads_remaining(self):
         return self.total_loads - self.loads_shipped
 
+    def format_override_chemistry(self):
+        """Format override chemistry for BOL display when chemistry differs from lot."""
+        parts = []
+        if self.chemistry_override_c is not None:
+            parts.append(f"C {self.chemistry_override_c:.3f}%")
+        if self.chemistry_override_si is not None:
+            parts.append(f"Si {self.chemistry_override_si:.3f}%")
+        if self.chemistry_override_s is not None:
+            parts.append(f"S {self.chemistry_override_s:.3f}%")
+        if self.chemistry_override_p is not None:
+            parts.append(f"P {self.chemistry_override_p:.3f}%")
+        if self.chemistry_override_mn is not None:
+            parts.append(f"Mn {self.chemistry_override_mn:.3f}%")
+        return " | ".join(parts)
+
+    def get_chemistry_display(self):
+        """Get chemistry for BOL - uses override if acknowledged, otherwise lot chemistry."""
+        if self.chemistry_override_acknowledged and self.format_override_chemistry():
+            return self.format_override_chemistry()
+        elif self.lot_ref:
+            return self.lot_ref.format_chemistry()
+        return ''
+
 
 class ReleaseLoad(TimestampedModel):
     """
