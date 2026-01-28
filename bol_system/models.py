@@ -454,6 +454,51 @@ class CompanyBranding(TimestampedModel):
         return self.company_name
 
 
+class EmailNotificationSettings(TimestampedModel):
+    """
+    Singleton settings for BOL email notifications.
+    Configure recipients and enable/disable email sending.
+    """
+    is_enabled = models.BooleanField(
+        default=True,
+        help_text="Enable/disable BOL notification emails"
+    )
+    to_emails = models.TextField(
+        default="lbryant@primetradeusa.com",
+        help_text="Primary recipients (one email per line)"
+    )
+    cc_emails = models.TextField(
+        default="orders@primetradeusa.com\ntraffic@barge2rail.com",
+        help_text="CC recipients (one email per line)"
+    )
+
+    class Meta:
+        verbose_name = "Email Notification Settings"
+        verbose_name_plural = "Email Notification Settings"
+
+    def save(self, *args, **kwargs):
+        if EmailNotificationSettings.objects.exists() and not self.pk:
+            raise ValueError("EmailNotificationSettings is a singleton model")
+        super().save(*args, **kwargs)
+
+    @classmethod
+    def get_instance(cls):
+        instance, created = cls.objects.get_or_create(pk=1)
+        return instance
+
+    def get_to_list(self):
+        """Return list of TO email addresses"""
+        return [e.strip() for e in self.to_emails.strip().split('\n') if e.strip()]
+
+    def get_cc_list(self):
+        """Return list of CC email addresses"""
+        return [e.strip() for e in self.cc_emails.strip().split('\n') if e.strip()]
+
+    def __str__(self):
+        status = "Enabled" if self.is_enabled else "Disabled"
+        return f"BOL Email Notifications ({status})"
+
+
 # =============================
 # Lot and Release management (Phase 2)
 # =============================

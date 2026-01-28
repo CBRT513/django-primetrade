@@ -21,9 +21,22 @@ def send_bol_notification(bol, pdf_url):
         bool: True if email sent successfully, False otherwise
     """
     try:
-        # Email recipients
-        to_email = ['lbryant@primetradeusa.com']
-        cc_emails = ['orders@primetradeusa.com', 'traffic@barge2rail.com']
+        # Get email settings from database
+        from .models import EmailNotificationSettings
+        email_settings = EmailNotificationSettings.get_instance()
+
+        # Check if emails are enabled
+        if not email_settings.is_enabled:
+            logger.info(f"BOL notification emails disabled - skipping email for {bol.bol_number}")
+            return True  # Return True since this is intentional, not a failure
+
+        # Email recipients from settings
+        to_email = email_settings.get_to_list()
+        cc_emails = email_settings.get_cc_list()
+
+        if not to_email:
+            logger.warning(f"No TO recipients configured - skipping email for {bol.bol_number}")
+            return False
 
         # Email subject
         subject = f"New BOL: {bol.bol_number} - {bol.buyer_name}"

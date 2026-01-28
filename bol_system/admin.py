@@ -2,7 +2,7 @@ from django.contrib import admin
 from .models import (
     Product, Customer, Carrier, Truck, BOL, BOLCounter, CompanyBranding,
     RoleRedirectConfig, Tenant, Release, ReleaseLoad, Lot, AuditLog, CustomerShipTo,
-    UserCustomerAccess
+    UserCustomerAccess, EmailNotificationSettings
 )
 
 
@@ -101,6 +101,33 @@ class BOLCounterAdmin(admin.ModelAdmin):
 class CompanyBrandingAdmin(admin.ModelAdmin):
     def has_add_permission(self, request):
         return not CompanyBranding.objects.exists()
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(EmailNotificationSettings)
+class EmailNotificationSettingsAdmin(admin.ModelAdmin):
+    list_display = ['__str__', 'is_enabled', 'updated_at']
+    readonly_fields = ['created_at', 'updated_at']
+
+    fieldsets = (
+        ('Email Toggle', {
+            'fields': ('is_enabled',),
+            'description': 'Enable or disable BOL notification emails'
+        }),
+        ('Recipients', {
+            'fields': ('to_emails', 'cc_emails'),
+            'description': 'Enter one email address per line'
+        }),
+        ('Metadata', {
+            'fields': ('created_at', 'updated_at'),
+            'classes': ('collapse',)
+        }),
+    )
+
+    def has_add_permission(self, request):
+        return not EmailNotificationSettings.objects.exists()
 
     def has_delete_permission(self, request, obj=None):
         return False
