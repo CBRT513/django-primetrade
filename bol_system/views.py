@@ -1978,6 +1978,7 @@ def bol_history(request):
                     'bolNo': bol.bol_number,
                     'date': bol.date,
                     'truckNo': bol.truck_number,
+                    'carrierName': bol.carrier_name,
                     'netTons': round(display_weight, 2),  # Best available weight
                     'cbrtWeightTons': round(float(bol.net_tons), 2),  # Always include CBRT weight for reference
                     'pdfUrl': pdf_url,

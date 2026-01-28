@@ -104,6 +104,14 @@ def bol_weights_page(request):
 
 
 @login_required
+@feature_permission_required('bol', 'view')
+@ensure_csrf_cookie
+def bol_list_page(request):
+    """BOL list page - view all BOLs with search and pagination."""
+    return serve(request, 'bol-list.html', document_root=settings.BASE_DIR / 'templates')
+
+
+@login_required
 @feature_permission_required('products', 'view')
 @ensure_csrf_cookie
 def products_page(request):

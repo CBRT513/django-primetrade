@@ -72,6 +72,7 @@ urlpatterns = [
     path('client-schedule.html', primetrade_views.client_schedule_page, name='client_schedule'),
     path('client-release.html', primetrade_views.client_release_page, name='client_release'),
     path('bol-weights.html', primetrade_views.bol_weights_page, name='bol_weights'),
+    path('bols/', primetrade_views.bol_list_page, name='bol_list'),
     path('inventory-report.html', primetrade_views.inventory_report_page, name='inventory_report_page'),
 
     # Authenticated media access (signed URLs for PDFs)
