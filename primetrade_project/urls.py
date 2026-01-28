@@ -43,6 +43,9 @@ urlpatterns = [
     # User Context API for RBAC (frontend permission checking)
     path('api/user/context/', api_views.user_context, name='user_context'),
 
+    # Cross-application API for Sacks Command Center
+    path('api/open-releases/', api_views.open_releases, name='open_releases_api'),
+
     # SSO Authentication URLs (OAuth) - Primary authentication method
     path('login/', sso_auth_views.login_page, name='login'),  # Redirects to SSO automatically
     path('auth/login/', sso_auth_views.sso_login, name='sso_login'),
