@@ -260,22 +260,17 @@ def open_releases(request):
     # Import models here to avoid circular imports
     from bol_system.models import Release, Tenant
 
-    # Get all active tenants
-    tenants = Tenant.objects.filter(is_active=True).order_by('name')
-
     result = {"tenants": []}
+    base_url = getattr(settings, 'PRIMETRADE_BASE_URL', 'https://prt.barge2rail.com')
 
-    for tenant in tenants:
-        # Get open releases for this tenant
-        releases = Release.objects.filter(
-            tenant=tenant,
-            status='OPEN',
-            created_at__date__gte=cutoff_date
-        ).select_related('customer_ref').prefetch_related('loads').order_by('-created_at')
+    # PrimeTrade is effectively single-tenant - get all OPEN releases
+    # Include both tenant-assigned and unassigned (tenant=None) releases
+    releases = Release.objects.filter(
+        status='OPEN',
+        created_at__date__gte=cutoff_date
+    ).select_related('customer_ref').prefetch_related('loads').order_by('-created_at')
 
-        if not releases.exists():
-            continue
-
+    if releases.exists():
         tenant_releases = []
         for release in releases:
             # Calculate load stats
@@ -320,15 +315,12 @@ def open_releases(request):
                 'release_url': f"/releases/{release.id}/view/",
             })
 
-        # Build dashboard URL based on settings
-        base_url = getattr(settings, 'PRIMETRADE_BASE_URL', 'https://prt.barge2rail.com')
-
         result["tenants"].append({
-            'tenant_code': tenant.code,
-            'tenant_name': tenant.name,
+            'tenant_code': 'PRT',
+            'tenant_name': 'PrimeTrade',
             'dashboard_url': f"{base_url}/",
             'releases': tenant_releases,
         })
 
-    logger.info(f"[OPEN_RELEASES] Returned {sum(len(t['releases']) for t in result['tenants'])} releases across {len(result['tenants'])} tenants")
+    logger.info(f"[OPEN_RELEASES] Returned {len(releases)} releases for PrimeTrade")
     return JsonResponse(result)
