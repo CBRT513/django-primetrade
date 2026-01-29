@@ -1447,22 +1447,29 @@ def pending_release_loads(request):
 
             # Parse scheduled date and calculate urgency
             sched_date = datetime.strptime(ld.date, '%Y-%m-%d').date() if isinstance(ld.date, str) else ld.date
-            days_until = (sched_date - today).days
 
-            # Determine urgency level using calendar weeks (Sunday-Saturday)
-            if days_until < 0:
-                urgency = 'overdue'
-            elif days_until == 0:
-                urgency = 'today'
-            elif this_week_start <= sched_date <= this_week_end:
-                urgency = 'this-week'
-            elif next_week_start <= sched_date <= next_week_end:
-                urgency = 'next-week'
+            # Handle loads without a scheduled date
+            if sched_date is None:
+                days_until = None
+                urgency = 'unscheduled'
+                week_num = None
             else:
-                urgency = 'later'
+                days_until = (sched_date - today).days
 
-            # Calculate ISO week number for grouping
-            week_num = sched_date.isocalendar()[1]
+                # Determine urgency level using calendar weeks (Sunday-Saturday)
+                if days_until < 0:
+                    urgency = 'overdue'
+                elif days_until == 0:
+                    urgency = 'today'
+                elif this_week_start <= sched_date <= this_week_end:
+                    urgency = 'this-week'
+                elif next_week_start <= sched_date <= next_week_end:
+                    urgency = 'next-week'
+                else:
+                    urgency = 'later'
+
+                # Calculate ISO week number for grouping
+                week_num = sched_date.isocalendar()[1]
 
             result.append({
                 'loadId': ld.id,
