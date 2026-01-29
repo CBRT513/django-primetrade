@@ -312,7 +312,7 @@ def open_releases(request):
                 'loads_shipped': loads_shipped,
                 'total_tons': total_tons,
                 'tons_remaining': tons_remaining,
-                'release_url': f"/releases/{release.id}/view/",
+                'release_url': f"/api/releases/{release.id}/view/",
             })
 
         result["tenants"].append({
