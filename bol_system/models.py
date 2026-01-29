@@ -13,8 +13,8 @@ class Tenant(models.Model):
     Each tenant represents a distinct customer/organization with isolated data.
     All tenant-scoped models have a ForeignKey to Tenant.
     """
-    name = models.CharField(max_length=100, help_text="Full tenant name (e.g., 'Liberty Steel')")
-    code = models.CharField(max_length=20, unique=True, help_text="Short code (e.g., 'LIBERTY')")
+    name = models.CharField(max_length=100, help_text="Full tenant name (e.g., 'PrimeTrade')")
+    code = models.CharField(max_length=20, unique=True, help_text="Short code (e.g., 'PRT')")
     is_active = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

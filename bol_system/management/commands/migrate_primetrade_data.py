@@ -46,8 +46,8 @@ class Command(BaseCommand):
         )
         parser.add_argument(
             '--tenant-name',
-            default='PrimeTrade (Liberty Steel)',
-            help='Tenant name (default: PrimeTrade (Liberty Steel))'
+            default='PrimeTrade',
+            help='Tenant name (default: PrimeTrade)'
         )
         parser.add_argument(
             '--dry-run',
