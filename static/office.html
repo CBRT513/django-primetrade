@@ -307,6 +307,31 @@
             font-size: 0.75rem;
             color: var(--text-muted);
         }
+
+        /* Button processing state */
+        .btn:disabled {
+            opacity: 0.7;
+            cursor: not-allowed;
+        }
+
+        .btn-processing {
+            position: relative;
+        }
+
+        .btn-processing .spinner {
+            display: inline-block;
+            width: 14px;
+            height: 14px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: #fff;
+            animation: spin 0.8s linear infinite;
+            margin-right: 6px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
     </style>
 </head>
 <body>
@@ -440,7 +465,7 @@
                         <div class="helper-text">Select a waiting driver to mark their load as ready</div>
                     </div>
 
-                    <button type="submit" class="btn btn-primary">Preview BOL</button>
+                    <button type="submit" id="previewBtn" class="btn btn-primary">Preview BOL</button>
                     <span id="status" class="status"></span>
                 </form>
             </div>
@@ -459,7 +484,7 @@
             </div>
             <div class="modal-footer">
                 <button onclick="closePreviewModal()" class="btn btn-secondary">Edit</button>
-                <button onclick="approveBOL()" class="btn btn-primary">Approve & Save</button>
+                <button id="approveBtn" onclick="approveBOL()" class="btn btn-primary">Approve & Save</button>
             </div>
         </div>
     </div>
@@ -547,6 +572,14 @@
 
     async function approveBOL() {
         if (!pendingBOLData) { alert('No BOL data to approve'); return; }
+        const btn = qs("approveBtn");
+        const originalText = btn.innerHTML;
+
+        // Disable button and show processing state
+        btn.disabled = true;
+        btn.classList.add('btn-processing');
+        btn.innerHTML = '<span class="spinner"></span>Processing...';
+
         const s = qs("status");
         showStatus("Saving BOL...", "info");
         try {
@@ -565,6 +598,11 @@
             }
         } catch (e) {
             showStatus("Error: " + (e.message || String(e)), 'error');
+        } finally {
+            // Re-enable button
+            btn.disabled = false;
+            btn.classList.remove('btn-processing');
+            btn.innerHTML = originalText;
         }
     }
 
@@ -752,6 +790,14 @@
 
         qs("f").addEventListener("submit", async (ev) => {
             ev.preventDefault();
+            const btn = qs("previewBtn");
+            const originalText = btn.innerHTML;
+
+            // Disable button and show processing state
+            btn.disabled = true;
+            btn.classList.add('btn-processing');
+            btn.innerHTML = '<span class="spinner"></span>Generating...';
+
             showStatus("Generating preview...", "info");
             const data = Object.fromEntries(new FormData(ev.target).entries());
             if (data.netWeightLbs) { data.netTons = (parseFloat(data.netWeightLbs)/2000).toFixed(2); delete data.netWeightLbs; }
@@ -769,6 +815,12 @@
                 if (res?.ok && res.pdfBase64) { showStatus("", ""); showPreviewModal(res.pdfBase64); }
                 else { showStatus("Preview failed: " + (res.error || "Unknown error"), 'error'); pendingBOLData = null; }
             } catch (e) { showStatus("Error: " + (e.message || String(e)), 'error'); pendingBOLData = null; }
+            finally {
+                // Re-enable button
+                btn.disabled = false;
+                btn.classList.remove('btn-processing');
+                btn.innerHTML = originalText;
+            }
         });
     })().catch(e => alert('Error loading data: ' + e.message));
     </script>
