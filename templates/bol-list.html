@@ -398,7 +398,7 @@
                         <th class="sortable" data-sort="date">Date</th>
                         <th class="sortable" data-sort="buyerName">Customer</th>
                         <th class="sortable" data-sort="productName">Product</th>
-                        <th class="sortable ta-r" data-sort="netTons">Weight (tons)</th>
+                        <th class="sortable ta-r" data-sort="netTons">Bucket (tons)</th>
                         <th>Carrier</th>
                         <th>Truck #</th>
                         <th class="ta-c">PDF</th>
@@ -484,7 +484,7 @@
         pageData.forEach(row => {
             const hasStampedPdf = row.stampedPdfUrl && row.stampedPdfUrl !== '';
             const pdfUrl = hasStampedPdf ? row.stampedPdfUrl : (row.pdfUrl || '#');
-            const weight = row.officialWeightTons ? Number(row.officialWeightTons).toFixed(2) : Number(row.netTons || 0).toFixed(2);
+            const weight = Number(row.netTons || 0).toFixed(2);
 
             html += `
                 <tr>
