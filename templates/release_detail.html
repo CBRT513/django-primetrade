@@ -630,7 +630,7 @@
                 <thead>
                     <tr>
                         <th>Load #</th>
-                        <th>Weight (tons)</th>
+                        <th>Bucket (tons)</th>
                         <th>Status</th>
                         <th>BOL Number</th>
                         <th>Date Shipped</th>
@@ -732,22 +732,12 @@
                 }
             }
 
-            // Weight display
+            // Weight display - always show bucket weight (cbrt_tons)
             let weightCell = '-';
-            if (load.official_weight_tons) {
-                const official = parseFloat(load.official_weight_tons).toFixed(2);
-                const cbrt = parseFloat(load.cbrt_tons || 0).toFixed(2);
-                const variance = (load.official_weight_tons - (load.cbrt_tons || 0)).toFixed(2);
-                const varianceClass = Math.abs(variance) > 0.5 ? 'weight-variance-bad' : 'weight-variance-good';
-                weightCell = `
-                    <div class="weight-official">${official} <span style="font-size: 0.75em; font-weight: 400;">tons</span></div>
-                    <div class="weight-secondary">Est: ${cbrt} <span class="${varianceClass}">(${variance >= 0 ? '+' : ''}${variance})</span></div>
-                `;
-            } else if (load.cbrt_tons) {
+            if (load.cbrt_tons) {
                 const cbrt = parseFloat(load.cbrt_tons).toFixed(2);
                 weightCell = `
-                    <div class="weight-estimate">${cbrt} <span style="font-size: 0.75em; font-weight: 400;">tons</span></div>
-                    <div class="weight-secondary" style="font-style: italic;">Estimate</div>
+                    <div class="weight-primary">${cbrt} <span style="font-size: 0.75em; font-weight: 400;">tons</span></div>
                 `;
             }
 

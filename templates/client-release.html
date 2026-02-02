@@ -314,7 +314,7 @@
             <th>Load #</th>
             <th>Status</th>
             <th>BOL Number</th>
-            <th>Weight (tons)</th>
+            <th>Bucket (tons)</th>
             <th>Date Shipped</th>
             <th>Action</th>
           </tr>
@@ -386,15 +386,10 @@
           }
         }
 
-        // Weight display (official vs CBRT estimate)
+        // Weight display - always show bucket weight (cbrt_tons)
         let weightCell = '-';
-        if (load.official_weight) {
-          weightCell = `<div class="weight-display">
-            <span class="weight-official">${Number(load.official_weight).toFixed(2)} tons</span>
-            ${load.cbrt_weight ? `<span class="weight-estimate">Est: ${Number(load.cbrt_weight).toFixed(2)}</span>` : ''}
-          </div>`;
-        } else if (load.cbrt_weight) {
-          weightCell = `${Number(load.cbrt_weight).toFixed(2)} tons (Est)`;
+        if (load.cbrt_tons) {
+          weightCell = `${Number(load.cbrt_tons).toFixed(2)} tons`;
         }
 
         // Date shipped
