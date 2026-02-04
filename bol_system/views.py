@@ -1140,7 +1140,7 @@ def approve_release(request):
                 product_obj = Product.objects.get(name__iexact=desc)
             except Product.DoesNotExist:
                 product_obj = Product.objects.create(
-                    name=desc,
+                    name=desc[:200],
                     start_tons=Decimal('0'),
                     is_active=True,
                     updated_by=request.user.username,
@@ -1170,49 +1170,49 @@ def approve_release(request):
                 updated_by=request.user.username,
             )
 
-            # Upsert Customer
+            # Upsert Customer (truncate fields to model max_length)
             customer_obj = None
             if customer_id_text:
                 customer_obj, _ = Customer.objects.get_or_create(
-                    customer=customer_id_text,
+                    customer=customer_id_text[:200],
                     defaults={
-                        'address': street or '',
-                        'city': city or '',
+                        'address': (street or '')[:200],
+                        'city': (city or '')[:100],
                         'state': (state or '')[:2],
-                        'zip': zip_code or '',
+                        'zip': (zip_code or '')[:10],
                         'is_active': True,
                     }
                 )
                 rel.customer_ref = customer_obj
 
-            # Upsert Ship-To
+            # Upsert Ship-To (truncate fields to model max_length)
             ship_to_obj = None
             if customer_obj and street and city and state and zip_code:
                 ship_to_obj, _ = CustomerShipTo.objects.get_or_create(
                     customer=customer_obj,
-                    street=street,
-                    city=city,
+                    street=street[:200],
+                    city=city[:100],
                     state=state[:2],
-                    zip=zip_code,
-                    defaults={'name': ship.get('name', ''), 'street2': street2, 'is_active': True}
+                    zip=zip_code[:10],
+                    defaults={'name': ship.get('name', '')[:200], 'street2': street2[:200], 'is_active': True}
                 )
                 # If name or street2 updated, keep latest values
                 updated = False
-                if ship.get('name') and ship_to_obj.name != ship.get('name'):
-                    ship_to_obj.name = ship.get('name')
+                if ship.get('name') and ship_to_obj.name != ship.get('name', '')[:200]:
+                    ship_to_obj.name = ship.get('name', '')[:200]
                     updated = True
-                if street2 and ship_to_obj.street2 != street2:
-                    ship_to_obj.street2 = street2
+                if street2 and ship_to_obj.street2 != street2[:200]:
+                    ship_to_obj.street2 = street2[:200]
                     updated = True
                 if updated:
                     ship_to_obj.save(update_fields=['name', 'street2'])
                 rel.ship_to_ref = ship_to_obj
 
-            # Upsert Carrier
+            # Upsert Carrier (truncate to model max_length)
             carrier_obj = None
             if carrier_name:
                 carrier_obj, _ = Carrier.objects.get_or_create(
-                    carrier_name=carrier_name,
+                    carrier_name=carrier_name[:200],
                     defaults={'is_active': True}
                 )
                 rel.carrier_ref = carrier_obj
@@ -1276,7 +1276,7 @@ def approve_release(request):
                 except Lot.DoesNotExist:
                     # Create draft lot with analysis
                     lot_obj = Lot.objects.create(
-                        code=lot_code,
+                        code=lot_code[:100],
                         product=product_obj,
                         c=Decimal(str(analysis.get('C'))) if analysis.get('C') is not None else None,
                         si=Decimal(str(analysis.get('Si'))) if analysis.get('Si') is not None else None,
