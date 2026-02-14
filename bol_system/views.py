@@ -964,19 +964,11 @@ def balances(request):
         products = Product.objects.filter(is_active=True, **tenant_filter)
         result = []
         for product in products:
-            # Use official weight if available, otherwise fall back to CBRT weight
-            bols = BOL.objects.filter(product=product, **tenant_filter)
-            shipped = 0
-            for bol in bols:
-                try:
-                    # Use official weight if it exists and is not None
-                    if hasattr(bol, 'official_weight_tons') and bol.official_weight_tons is not None:
-                        shipped += float(bol.official_weight_tons)
-                    else:
-                        shipped += float(bol.net_tons)
-                except (TypeError, ValueError) as e:
-                    logger.warning(f"Error processing BOL {bol.id} weight: {e}, using net_tons")
-                    shipped += float(bol.net_tons)
+            # Always use net_tons (bucket weight) — that's what goes on the BOL
+            shipped = float(
+                BOL.objects.filter(product=product, is_void=False, **tenant_filter)
+                .aggregate(total=models.Sum('net_tons'))['total'] or 0
+            )
 
             # Calculate committed: sum of planned_tons from PENDING loads in OPEN releases
             from django.db.models import Sum
@@ -1921,17 +1913,10 @@ def bol_history(request):
                 return Response({'error': 'Product not found'}, status=status.HTTP_404_NOT_FOUND)
 
             bols = base_queryset.filter(product=product).order_by('date')
-            # Use official weight if available, otherwise CBRT weight
-            shipped = 0
-            for bol in bols:
-                try:
-                    if hasattr(bol, 'official_weight_tons') and bol.official_weight_tons is not None:
-                        shipped += float(bol.official_weight_tons)
-                    else:
-                        shipped += float(bol.net_tons)
-                except (TypeError, ValueError) as e:
-                    logger.warning(f"Error processing BOL {bol.id} weight in history: {e}")
-                    shipped += float(bol.net_tons)
+            # Always use net_tons (bucket weight) — that's what goes on the BOL
+            shipped = float(
+                bols.filter(is_void=False).aggregate(total=models.Sum('net_tons'))['total'] or 0
+            )
             start_tons = float(product.start_tons)
             remaining = start_tons - shipped
             summary = {
@@ -2321,7 +2306,7 @@ def inventory_report(request):
         grand_ending = 0
 
         for product in products:
-            bols = BOL.objects.filter(product=product, **get_tenant_filter(request))
+            bols = BOL.objects.filter(product=product, is_void=False, **get_tenant_filter(request))
 
             # Separate BOLs into pre-period and in-period
             shipped_before = 0
@@ -2433,7 +2418,7 @@ def inventory_report_pdf(request):
         grand_ending = 0
 
         for product in products:
-            bols = BOL.objects.filter(product=product, **get_tenant_filter(request))
+            bols = BOL.objects.filter(product=product, is_void=False, **get_tenant_filter(request))
             shipped_before = 0
             shipped_in_period = 0
             period_bols = []

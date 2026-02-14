@@ -58,10 +58,9 @@ class Product(TimestampedModel):
     
     @property
     def shipped_tons(self):
-        """Calculate shipped tons using official weight if available, otherwise CBRT scale weight"""
-        from django.db.models.functions import Coalesce
-        return self.bol_set.aggregate(
-            total=models.Sum(Coalesce('official_weight_tons', 'net_tons'))
+        """Calculate shipped tons using net_tons (bucket weight) from non-voided BOLs"""
+        return self.bol_set.filter(is_void=False).aggregate(
+            total=models.Sum('net_tons')
         )['total'] or 0
     
     @property
