@@ -2502,6 +2502,98 @@ def inventory_report_pdf(request):
 
 
 # =============================================================================
+# Weight Variance Report
+# =============================================================================
+
+@login_required
+@require_role('Admin', 'Office')
+@feature_permission_required('reports', 'view')
+def variance_report(request):
+    """
+    Weight Variance Report — server-side rendered HTML.
+    Query params: product_id (required)
+    """
+    from django.template.loader import render_to_string
+    from bol_system.variance_analytics import compute_variance_report
+
+    product_id = request.GET.get('product_id')
+    products = Product.objects.filter(is_active=True, **get_tenant_filter(request))
+
+    if not product_id and products.exists():
+        product_id = products.first().id
+
+    if not product_id:
+        return DjangoHttpResponse("No products available.", status=404, content_type='text/plain')
+
+    try:
+        data = compute_variance_report(int(product_id), get_tenant_filter(request))
+    except (ValueError, TypeError):
+        return DjangoHttpResponse("Invalid product_id.", status=400, content_type='text/plain')
+
+    if data is None:
+        return DjangoHttpResponse("Product not found.", status=404, content_type='text/plain')
+
+    context = {
+        'product': data['product'],
+        'products': products,
+        'summary': data['summary'],
+        'accuracy': data['accuracy'],
+        'inventory': data['inventory'],
+        'carriers': data['carriers'],
+        'buyers': data['buyers'],
+        'outliers': data['outliers'],
+        'missing': data['missing'],
+    }
+    html = render_to_string('variance-report.html', context, request=request)
+    return DjangoHttpResponse(html)
+
+
+@login_required
+@require_role('Admin', 'Office')
+@feature_permission_required('reports', 'view')
+def variance_report_pdf(request):
+    """
+    Weight Variance Report PDF download.
+    Query params: product_id (required)
+    """
+    from bol_system.variance_analytics import compute_variance_report
+    from bol_system.variance_report_pdf import generate_variance_pdf
+
+    product_id = request.GET.get('product_id')
+    if not product_id:
+        return DjangoHttpResponse("product_id is required.", status=400, content_type='text/plain')
+
+    try:
+        data = compute_variance_report(int(product_id), get_tenant_filter(request))
+    except (ValueError, TypeError):
+        return DjangoHttpResponse("Invalid product_id.", status=400, content_type='text/plain')
+
+    if data is None:
+        return DjangoHttpResponse("Product not found.", status=404, content_type='text/plain')
+
+    report_data = {
+        'product_name': data['product'].name,
+        'summary': data['summary'],
+        'accuracy': data['accuracy'],
+        'inventory': data['inventory'],
+        'carriers': data['carriers'],
+        'buyers': data['buyers'],
+        'outliers': data['outliers'],
+        'missing': data['missing'],
+    }
+
+    try:
+        pdf_bytes = generate_variance_pdf(report_data)
+        response = DjangoHttpResponse(pdf_bytes, content_type='application/pdf')
+        product_name_slug = data['product'].name.replace(' ', '_').lower()
+        response['Content-Disposition'] = f'attachment; filename="variance_report_{product_name_slug}.pdf"'
+        return response
+    except Exception as e:
+        logger.error(f"Error in variance_report_pdf: {str(e)}", exc_info=True)
+        return DjangoHttpResponse(f"Error generating PDF: {str(e)}", status=500, content_type='text/plain')
+
+
+# =============================================================================
 # Client Portal APIs
 # =============================================================================
 

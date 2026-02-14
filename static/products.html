@@ -255,6 +255,7 @@
                     <td class="actions">
                         <button class="btn btn-primary btn-sm" onclick="editProduct(${product.id})">Edit</button>
                         <button class="btn ${isActive ? 'btn-warning' : 'btn-secondary'} btn-sm" onclick="toggleStatus(${product.id}, ${isActive})">${isActive ? 'Deactivate' : 'Activate'}</button>
+                        <a href="/api/variance-report/?product_id=${product.id}" class="btn btn-secondary btn-sm">Variance</a>
                     </td>
                 </tr>
                 <tr class="${isActive ? '' : 'inactive'}" style="border-bottom: 1px solid #e5e7eb;">
