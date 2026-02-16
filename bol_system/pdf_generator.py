@@ -368,6 +368,32 @@ def generate_bol_pdf(bol_data, output_path=None, return_bytes=False):
     ]))
 
     elements.append(sig_table)
+    elements.append(Spacer(1, 0.15*inch))
+
+    # ========== WEIGHT ENTRY FOOTER ==========
+    footer_style = ParagraphStyle(
+        'FooterFields',
+        parent=normal_style,
+        fontSize=10,
+    )
+    driver_style = ParagraphStyle(
+        'DriverField',
+        parent=normal_style,
+        fontSize=12,
+        fontName='Helvetica-Bold',
+    )
+    footer_data = [[
+        Paragraph('Office Use &mdash; Heavy Weight: __________________', footer_style),
+        Paragraph('<b>Please enter your Empty Weight: __________________</b>', driver_style),
+    ]]
+    footer_table = Table(footer_data, colWidths=[4.7*inch, 4.7*inch])
+    footer_table.setStyle(TableStyle([
+        ('VALIGN', (0, 0), (-1, -1), 'MIDDLE'),
+        ('TOPPADDING', (0, 0), (-1, -1), 0),
+        ('BOTTOMPADDING', (0, 0), (-1, -1), 0),
+        ('LEFTPADDING', (0, 0), (-1, -1), 4),
+    ]))
+    elements.append(footer_table)
 
     # Build PDF
     doc.build(elements)
