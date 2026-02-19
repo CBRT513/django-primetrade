@@ -21,6 +21,7 @@ urlpatterns = [
     path('releases/load/<int:load_id>/', views.load_detail_api, name='load_detail_api'),
     path('bol/', views.confirm_bol, name='create_bol'),  # Backward compatibility
     path('bol/<int:bol_id>/', views.bol_detail, name='bol_detail'),
+    path('bol/<int:bol_id>/void/', views.void_bol, name='void_bol'),
     path('bol/<int:bol_id>/set-official-weight/', views.set_official_weight, name='set_official_weight'),
     path('bol/<int:bol_id>/regenerate-pdf/', views.regenerate_bol_pdf, name='regenerate_bol_pdf'),
     path('bol/<int:bol_id>/download/', views.download_bol_pdf, name='download_bol_pdf'),

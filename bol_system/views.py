@@ -1984,7 +1984,11 @@ def bol_history(request):
                     'varianceTons': round(float(bol.weight_variance_tons), 2) if hasattr(bol, 'weight_variance_tons') and bol.weight_variance_tons else None,
                     'variancePercent': round(float(bol.weight_variance_percent), 2) if hasattr(bol, 'weight_variance_percent') and bol.weight_variance_percent else None,
                     'enteredBy': bol.official_weight_entered_by if hasattr(bol, 'official_weight_entered_by') else None,
-                    'enteredAt': bol.official_weight_entered_at.isoformat() if hasattr(bol, 'official_weight_entered_at') and bol.official_weight_entered_at else None
+                    'enteredAt': bol.official_weight_entered_at.isoformat() if hasattr(bol, 'official_weight_entered_at') and bol.official_weight_entered_at else None,
+                    'isVoid': bol.is_void,
+                    'voidedBy': bol.voided_by or None,
+                    'voidedAt': bol.voided_at.isoformat() if bol.voided_at else None,
+                    'voidReason': bol.void_reason or None,
                 }
                 rows.append(row_data)
                 logger.debug(f"Successfully serialized BOL {bol.bol_number}")
@@ -2039,6 +2043,43 @@ def bol_detail(request, bol_id):
             {'error': 'An unexpected error occurred'},
             status=status.HTTP_500_INTERNAL_SERVER_ERROR
         )
+
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+@require_role('Admin', 'Office')
+@feature_permission_required('bol', 'modify')
+def void_bol(request, bol_id):
+    """
+    Void a BOL.
+
+    POST /api/bol/{bol_id}/void/
+    Body: { "reason": "string" }
+    """
+    from .services.bol_service import BOLCreationService
+
+    reason = (request.data.get('reason') or '').strip()
+    if not reason:
+        return Response({'error': 'Void reason is required'}, status=status.HTTP_400_BAD_REQUEST)
+
+    try:
+        bol = BOL.objects.get(id=bol_id, **get_tenant_filter(request))
+    except BOL.DoesNotExist:
+        return Response({'error': 'BOL not found'}, status=status.HTTP_404_NOT_FOUND)
+
+    voided_by = request.session.get('primetrade_role', {}).get('email', 'unknown')
+
+    try:
+        bol = BOLCreationService.void_bol(bol, voided_by, reason)
+        audit(request, 'VOID_BOL', bol, f"Voided BOL {bol.bol_number}: {reason}")
+        return Response({
+            'status': 'voided',
+            'bol_number': bol.bol_number,
+            'voided_at': bol.voided_at.isoformat(),
+            'voided_by': bol.voided_by,
+        })
+    except ValueError as e:
+        return Response({'error': str(e)}, status=status.HTTP_400_BAD_REQUEST)
+
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])
