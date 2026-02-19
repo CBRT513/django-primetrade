@@ -1056,7 +1056,15 @@ def approve_release(request):
         if cancelled_release:
             logger.info(f"Deleting cancelled release {release_number} (ID: {cancelled_release.id}) to allow re-creation by {request.user.username}")
             audit(request, 'RELEASE_DELETED', cancelled_release, f"Deleted cancelled release {release_number} for re-creation")
-            cancelled_release.delete()  # This will cascade delete associated loads
+            # Clear PROTECTED FK references from BOLs before deleting loads
+            load_ids = list(cancelled_release.loads.values_list('id', flat=True))
+            if load_ids:
+                linked_bols = BOL.objects.filter(release_line_id__in=load_ids)
+                for bol in linked_bols:
+                    logger.info(f"Clearing release_line on BOL {bol.bol_number} (was load {bol.release_line_id}) before deleting cancelled release {release_number}")
+                    bol.release_line = None
+                    bol.save(update_fields=['release_line', 'updated_at'])
+            cancelled_release.delete()  # Now safe to cascade delete loads
 
         # Chemistry tolerance (configurable)
         try:
