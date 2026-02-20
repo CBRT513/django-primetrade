@@ -725,6 +725,7 @@
             let actionCell = '';
             if (load.status === 'PENDING') {
                 actionCell = `<button onclick="createBOLForLoad(${load.id})" class="action-btn action-btn-create">Create BOL</button>`;
+                actionCell += ` <button onclick="cancelLoad(${load.id}, ${load.seq})" class="action-btn action-btn-cancel" style="background:#dc2626;color:#fff;margin-left:4px;">Cancel</button>`;
             } else if (load.status === 'SHIPPED') {
                 const pdfUrl = load.bol_stamped_pdf_url || load.bol_pdf_url;
                 if (pdfUrl) {
@@ -771,6 +772,27 @@
 
     function createBOLForLoad(loadId) {
         window.location.href = `/office.html?loadId=${loadId}`;
+    }
+
+    async function cancelLoad(loadId, seq) {
+        if (!confirm(`Cancel load #${seq}? This cannot be undone.`)) return;
+        try {
+            const r = await fetch(`/api/releases/load/${loadId}/`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', ...((window.Utils && Utils.getCSRFToken) ? {'X-CSRFToken': Utils.getCSRFToken()} : {}) },
+                credentials: 'same-origin',
+                body: JSON.stringify({ status: 'CANCELLED' })
+            });
+            const data = await r.json();
+            if (!r.ok) {
+                show(data.error || 'Failed to cancel load', 'error', 4000);
+                return;
+            }
+            show(`Load #${seq} cancelled`, 'success', 3000);
+            loadRelease();
+        } catch (e) {
+            show('Failed to cancel load', 'error', 4000);
+        }
     }
 
     async function loadRelease(){

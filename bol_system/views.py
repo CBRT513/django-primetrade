@@ -1532,10 +1532,43 @@ def load_detail_api(request, load_id):
         return Response({'error': 'Load not found'}, status=status.HTTP_404_NOT_FOUND)
 
     if request.method == 'PATCH':
-        # Update load date (pickup date)
         data = request.data
         updated_fields = []
 
+        # Handle load cancellation
+        if data.get('status') == 'CANCELLED':
+            if load.status == 'SHIPPED':
+                return Response(
+                    {'error': 'Cannot cancel a shipped load. Void the BOL first.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            if load.status == 'CANCELLED':
+                return Response(
+                    {'error': 'Load is already cancelled.'},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            load.status = 'CANCELLED'
+            load.updated_by = getattr(request.user, 'email', str(request.user))
+            load.save(update_fields=['status', 'updated_at', 'updated_by'])
+            audit(request, 'CANCEL_LOAD', load, f"Cancelled load #{load.seq} on release {load.release.release_number}")
+            logger.info(f"Load {load_id} (seq {load.seq}) cancelled on release {load.release.release_number} by {request.user}")
+
+            # If no pending loads remain, mark release COMPLETE
+            release = load.release
+            pending_count = release.loads.filter(status='PENDING').count()
+            if pending_count == 0 and release.status == 'OPEN':
+                release.status = 'COMPLETE'
+                release.save(update_fields=['status', 'updated_at'])
+                audit(request, 'COMPLETE_RELEASE', release, f"Release {release.release_number} auto-completed (no pending loads)")
+                logger.info(f"Release {release.release_number} auto-completed after last pending load cancelled")
+
+            return Response({
+                'ok': True,
+                'load': ReleaseLoadSerializer(load).data,
+                'release_status': release.status
+            })
+
+        # Update load date (pickup date)
         if 'date' in data:
             new_date = data['date']
             if new_date:
