@@ -183,9 +183,9 @@ def generate_eom_inventory_pdf(report_data):
     summary_data = [
         [
             Paragraph("<b>Product</b>", small_style),
-            Paragraph("<b>Beginning</b>", small_style),
-            Paragraph("<b>Shipped</b>", small_style),
-            Paragraph("<b>Ending</b>", small_style),
+            Paragraph("<b>Beginning (NT)</b>", small_style),
+            Paragraph("<b>Shipped (NT)</b>", small_style),
+            Paragraph("<b>Ending (NT)</b>", small_style),
         ]
     ]
 
@@ -281,7 +281,7 @@ def generate_eom_inventory_pdf(report_data):
         fontSize=7,
         textColor=colors.HexColor('#888888'),
     )
-    story.append(Paragraph("All weights are Bucket weights (net tons)", legend_style))
+    story.append(Paragraph("All weights are Bucket weights in Net Tons (Short Tons, 2,000 lbs)", legend_style))
 
     story.append(Spacer(1, 0.05 * inch))
     story.append(line_table)

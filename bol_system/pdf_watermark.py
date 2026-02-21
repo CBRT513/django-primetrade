@@ -12,6 +12,8 @@ from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
 import logging
 
+from bol_system.utils.weight_constants import LBS_PER_SHORT_TON
+
 logger = logging.getLogger(__name__)
 
 
@@ -48,15 +50,15 @@ def create_watermark_stamp(official_weight_tons, variance_tons, variance_percent
 
     # Official weight in large text
     c.setFont("Helvetica-Bold", 18)
-    official_lbs = int(official_weight_tons * 2000)
+    official_lbs = int(official_weight_tons * int(LBS_PER_SHORT_TON))
     c.drawString(x_pos, y_pos + 0.30*inch, f"{official_lbs:,} lbs")
     c.setFont("Helvetica-Bold", 14)
-    c.drawString(x_pos + 2.0*inch, y_pos + 0.30*inch, f"({official_weight_tons:.2f} t)")
+    c.drawString(x_pos + 2.0*inch, y_pos + 0.30*inch, f"({official_weight_tons:.2f} NT)")
 
     # Variance line with color coding
     c.setFont("Helvetica", 9)
     variance_sign = '+' if variance_tons >= 0 else ''
-    variance_text = f"Variance: {variance_sign}{variance_tons:.2f} t ({variance_sign}{variance_percent:.1f}%)"
+    variance_text = f"Variance: {variance_sign}{variance_tons:.2f} NT ({variance_sign}{variance_percent:.1f}%)"
 
     # Color code variance: green for small, amber for medium, red for large
     abs_variance_pct = abs(variance_percent)

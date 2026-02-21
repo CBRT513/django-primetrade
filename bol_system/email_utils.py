@@ -6,6 +6,8 @@ from django.core.mail import EmailMessage
 from django.conf import settings
 import requests
 
+from bol_system.utils.weight_constants import LBS_PER_SHORT_TON
+
 logger = logging.getLogger(__name__)
 
 
@@ -50,7 +52,7 @@ BOL Number:      {bol.bol_number}
 Date:            {bol.date}
 Customer:        {bol.buyer_name}
 Product:         {bol.product_name}
-Quantity:        {bol.net_tons} tons ({bol.net_tons * 2000:.0f} lbs)
+Quantity:        {bol.net_tons} NT ({bol.net_tons * LBS_PER_SHORT_TON:.0f} lbs)
 Carrier:         {bol.carrier_name}
 Truck #:         {bol.truck_number or 'N/A'}
 Trailer #:       {bol.trailer_number or 'N/A'}

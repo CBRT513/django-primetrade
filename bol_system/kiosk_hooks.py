@@ -7,6 +7,7 @@ from django.utils import timezone
 
 from .models import BOL, CompanyBranding
 from .pdf_generator import generate_bol_pdf
+from .utils.weight_constants import LBS_PER_SHORT_TON
 
 
 def search_bols(query: str, filters: dict = None, request=None) -> list[dict]:
@@ -75,11 +76,11 @@ def get_bol_detail(bol_id: int) -> dict:
                 'description': bol.product_name or 'Pig Iron',
                 'quantity': float(bol.net_tons) if bol.net_tons else 0,
                 'unit': 'tons',
-                'weight_lbs': float(bol.net_tons * 2000) if bol.net_tons else 0,
+                'weight_lbs': float(bol.net_tons * LBS_PER_SHORT_TON) if bol.net_tons else 0,
                 'notes': '',
             }
         ],
-        'total_weight_lbs': float(bol.net_tons * 2000) if bol.net_tons else 0,
+        'total_weight_lbs': float(bol.net_tons * LBS_PER_SHORT_TON) if bol.net_tons else 0,
         'total_items': 1,
         'signature_captured': bool(bol.signature),
         'signed_at': bol.signed_at.isoformat() if bol.signed_at else None,

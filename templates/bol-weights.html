@@ -531,8 +531,8 @@
                         <th class="sortable" data-sort="date">Date</th>
                         <th class="sortable" data-sort="buyerName">Customer</th>
                         <th class="sortable" data-sort="productName">Product</th>
-                        <th class="sortable ta-r" data-sort="cbrtWeightTons">CBRT Weight</th>
-                        <th class="sortable ta-r" data-sort="officialWeightTons">Official</th>
+                        <th class="sortable ta-r" data-sort="cbrtWeightTons">CBRT Weight (NT)</th>
+                        <th class="sortable ta-r" data-sort="officialWeightTons">Official (NT)</th>
                         <th class="sortable ta-r" data-sort="variancePercent">Variance</th>
                         <th class="ta-c">Status</th>
                         <th class="ta-c">Action</th>
@@ -695,7 +695,7 @@
                 if (absPercent >= 5 || Math.abs(variance) >= 0.5) varianceClass = 'variance-critical';
                 else if (absPercent >= 2 || Math.abs(variance) >= 0.2) varianceClass = 'variance-warning';
                 const sign = variance >= 0 ? '+' : '';
-                varianceHTML = `<span class="${varianceClass}">${sign}${variance.toFixed(2)}t (${sign}${variancePercent.toFixed(1)}%)</span>`;
+                varianceHTML = `<span class="${varianceClass}">${sign}${variance.toFixed(2)} NT (${sign}${variancePercent.toFixed(1)}%)</span>`;
             }
 
             const statusBadge = hasOfficialWeight ? '<span class="badge badge-official">Official</span>' : '<span class="badge badge-pending">Pending</span>';
@@ -761,7 +761,7 @@
         currentBOL = bol;
         document.getElementById('modalBOLNumber').textContent = bol.bolNo || '-';
         document.getElementById('modalCustomer').textContent = bol.buyerName || '-';
-        document.getElementById('modalCBRTWeight').textContent = Number(bol.cbrtWeightTons || 0).toFixed(2) + ' tons';
+        document.getElementById('modalCBRTWeight').textContent = Number(bol.cbrtWeightTons || 0).toFixed(2) + ' NT';
         document.getElementById('officialWeightInput').value = '';
         document.getElementById('weightModal').classList.add('active');
         setTimeout(() => document.getElementById('officialWeightInput').focus(), 100);
@@ -779,10 +779,10 @@
             alert('Please enter a valid weight greater than 0');
             return;
         }
-        const weightTons = Number(weightLbs) / 2000;
+        const weightTons = Number(weightLbs) / 2000;  // LBS_PER_SHORT_TON
         try {
             const result = await postJSON(`/api/bol/${currentBOL.id}/set-official-weight/`, { officialWeightTons: weightTons });
-            alert(`Official weight set!\n\nBOL: ${result.bolNumber}\nOfficial: ${result.officialWeightTons} tons (${weightLbs} lbs)\nVariance: ${result.varianceTons >= 0 ? '+' : ''}${result.varianceTons} tons (${result.variancePercent >= 0 ? '+' : ''}${result.variancePercent}%)`);
+            alert(`Official weight set!\n\nBOL: ${result.bolNumber}\nOfficial: ${result.officialWeightTons} NT (${weightLbs} lbs)\nVariance: ${result.varianceTons >= 0 ? '+' : ''}${result.varianceTons} NT (${result.variancePercent >= 0 ? '+' : ''}${result.variancePercent}%)`);
             closeWeightModal();
             loadBOLs();
         } catch (err) {

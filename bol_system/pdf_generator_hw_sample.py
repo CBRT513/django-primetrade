@@ -16,6 +16,7 @@ from io import BytesIO
 from django.conf import settings
 from django.core.files.storage import default_storage
 from django.core.files.base import ContentFile
+from bol_system.utils.weight_constants import LBS_PER_SHORT_TON
 
 
 def generate_bol_pdf(bol_data, output_path=None):
@@ -169,8 +170,8 @@ def generate_bol_pdf(bol_data, output_path=None):
     if hasattr(data, 'release_number') and data.release_number:
         release_num = data.release_number
 
-    # Calculate weights (short tons: 2000 lbs/ton)
-    total_weight_lbs = int(float(data.net_tons) * 2000) if data.net_tons else 0
+    # Calculate weights (short tons → lbs)
+    total_weight_lbs = int(float(data.net_tons) * int(LBS_PER_SHORT_TON)) if data.net_tons else 0
     net_tons = float(data.net_tons) if data.net_tons else 0
 
     # Left column: Ship From + Consignee
