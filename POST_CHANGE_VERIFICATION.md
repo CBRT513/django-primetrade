@@ -36,7 +36,7 @@ grep -rn "from.*<module>.*import\|import.*<module>" --include="*.py" .
 ```
 
 ### 2. Silent Failure Audit
-Find every try/except block in changed files AND files that import changed modules:
+Find every try/except block in changed files. Then manually check files that import changed modules — the script flags changed files only, importers require manual grep:
 ```bash
 # Find exception handlers in affected files
 grep -n "except.*:" <affected_files>

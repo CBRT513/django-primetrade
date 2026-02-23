@@ -9,7 +9,13 @@ At any integration boundary — email sends, PDF generation, CSV/Excel exports, 
 ### If you catch an exception, you MUST:
 1. **Log at ERROR level** (not warning, not info)
 2. **Include context** — at minimum: the record ID, the function name, and the exception message
-3. **Surface the failure** — return an error state that is visible somewhere (admin UI, Sentry alert, task status, API error response)
+3. **Surface the failure** — do at least ONE of the following:
+   - **Re-raise** the exception (let the caller handle it)
+   - **Return a typed error** object or dict with error details (e.g., `{'email_sent': False, 'error': str(e)}`)
+   - **Mark status on the record** and save it (e.g., `bol.email_status = 'FAILED'; bol.save()`)
+   - **Capture to Sentry** via `sentry_sdk.capture_exception(e)`
+
+   Logging at error level alone is NOT sufficient to "surface" a failure. The failure must be discoverable by someone who is not reading logs.
 
 ### You MUST NOT:
 - `except Exception: return False` (swallows everything, surfaces nothing)
