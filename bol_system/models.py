@@ -3,7 +3,7 @@ from django.core.validators import RegexValidator
 from datetime import datetime
 import logging
 
-from bol_system.utils.weight_constants import LBS_PER_SHORT_TON
+from bol_system.utils.weight_constants import short_tons_to_lbs
 
 logger = logging.getLogger(__name__)
 
@@ -357,7 +357,7 @@ class BOL(TimestampedModel):
     def total_weight_lbs(self):
         if self.net_tons is None:
             return 0.0
-        return float(self.net_tons) * int(LBS_PER_SHORT_TON)
+        return float(short_tons_to_lbs(self.net_tons))
 
     @property
     def effective_weight_tons(self):
