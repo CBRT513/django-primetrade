@@ -779,7 +779,7 @@
             alert('Please enter a valid weight greater than 0');
             return;
         }
-        const weightTons = Number(weightLbs) / 2000;  // LBS_PER_SHORT_TON
+        const weightTons = Number(weightLbs) / 2000; // 2000 lbs per Net Ton (Short Ton) — see weight_constants.py
         try {
             const result = await postJSON(`/api/bol/${currentBOL.id}/set-official-weight/`, { officialWeightTons: weightTons });
             alert(`Official weight set!\n\nBOL: ${result.bolNumber}\nOfficial: ${result.officialWeightTons} NT (${weightLbs} lbs)\nVariance: ${result.varianceTons >= 0 ? '+' : ''}${result.varianceTons} NT (${result.variancePercent >= 0 ? '+' : ''}${result.variancePercent}%)`);

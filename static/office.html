@@ -709,8 +709,8 @@
 
     qs("netWeightLbs").addEventListener('input', function() {
         const lbs = parseFloat(this.value) || 0;
-        const tons = (lbs / 2000).toFixed(2);
-        qs("weightTonsDisplay").textContent = lbs > 0 ? `≈ ${tons} tons` : '';
+        const tons = (lbs / 2000).toFixed(2); // 2000 lbs per Net Ton (Short Ton) — see weight_constants.py
+        qs("weightTonsDisplay").textContent = lbs > 0 ? `≈ ${tons} NT` : '';
     });
 
     (async () => {
@@ -784,7 +784,7 @@
             qs('buyerName').value = chosen.customer?.name || '';
             if (chosen.carrier?.id) { qs('carrier').value = chosen.carrier.id; updateTruckOptions(); }
             const nt = document.querySelector('input[name=netWeightLbs]');
-            if (nt && chosen.plannedTons) { nt.value = Math.round(Number(chosen.plannedTons)*2000); nt.dispatchEvent(new Event('input')); }
+            if (nt && chosen.plannedTons) { nt.value = Math.round(Number(chosen.plannedTons)*2000); nt.dispatchEvent(new Event('input')); } // 2000 lbs per Net Ton (Short Ton) — see weight_constants.py
         });
         window._loadsCache = await getJSON('/api/releases/pending-loads/');
 
@@ -800,7 +800,7 @@
 
             showStatus("Generating preview...", "info");
             const data = Object.fromEntries(new FormData(ev.target).entries());
-            if (data.netWeightLbs) { data.netTons = (parseFloat(data.netWeightLbs)/2000).toFixed(2); delete data.netWeightLbs; }
+            if (data.netWeightLbs) { data.netTons = (parseFloat(data.netWeightLbs)/2000).toFixed(2); delete data.netWeightLbs; } // 2000 lbs per Net Ton (Short Ton) — see weight_constants.py
             if (!data.productId) { const ps = qs('product'); if (ps?.value) data.productId = ps.value; }
             if (!data.buyerName) { const bf = qs('buyerName'); if (bf?.value) data.buyerName = bf.value; }
             if (!data.shipTo) { const sa = qs('shipToAddress'); if (sa?.value) data.shipTo = sa.value; }
