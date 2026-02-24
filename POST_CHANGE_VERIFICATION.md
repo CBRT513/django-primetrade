@@ -90,6 +90,32 @@ If the change touches code used by integration boundaries:
 python manage.py test
 ```
 
+### 8. Business Logic Spot-Check (Required for any change affecting displayed numbers)
+
+Code review catches code bugs. Only hand-calculated test cases catch business logic bugs.
+
+After any change that affects weights, billing, quantities, or financial displays:
+
+1. **Pick 2-3 test scenarios with known inputs** (e.g., 30 bags × 1.8 MT)
+2. **Calculate the correct outputs by hand** for every screen that displays a number:
+   - BOL line item weight
+   - Inventory summary totals
+   - Dashboard rollups
+   - PDF/CSV exports
+   - Billing amounts
+3. **Enter the test data in dev**
+4. **Compare every displayed number against your hand calculations**
+
+If any screen shows a number that doesn't match your paper, there's a bug — regardless of what the code review said.
+
+This step catches:
+- Pre-existing bugs preserved through refactors
+- Wrong function with right math (e.g., lbs_to_metric_tons where lbs_to_short_tons was needed)
+- Misleading comments that fool code reviewers
+- Coincidental numbers that appear correct in code but produce wrong results
+
+**This is not optional for changes touching weight, billing, or financial calculations.**
+
 ## Evidence Required
 
 Before merging, the developer or AI assistant MUST provide:
@@ -98,6 +124,7 @@ Before merging, the developer or AI assistant MUST provide:
 3. List of all exception handlers in affected files and whether they comply with SILENT_FAILURE_POLICY.md
 4. List of integration touchpoints affected and how each was verified
 5. Test results (or explicit statement that no tests exist + manual verification done)
+6. For changes affecting displayed numbers: hand-calculated test cases with expected values, and confirmation that every display path matches
 
 ## For AI Assistants (Claude Code, etc.)
 
