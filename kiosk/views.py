@@ -1,7 +1,10 @@
+from django.contrib.auth.decorators import login_required
 from django.shortcuts import render, redirect, get_object_or_404
 from django.http import JsonResponse, HttpResponse
 from django.views.decorators.http import require_http_methods
 from django.utils import timezone
+
+from primetrade_project.decorators import require_role
 
 from .models import DriverSession
 from .services import generate_session_code, send_checkin_sms, expire_old_sessions
@@ -129,6 +132,8 @@ def checkout_complete(request, code):
 
 # === Office-Facing Views ===
 
+@login_required
+@require_role('Admin', 'Office')
 def office_queue(request):
     """Office queue view - see all waiting/assigned/ready drivers."""
     expire_old_sessions()  # Clean up expired sessions
@@ -149,12 +154,16 @@ def office_queue(request):
     })
 
 
+@login_required
+@require_role('Admin', 'Office')
 def office_assign(request, session_id):
     """Assign BOL to driver session (form view)."""
     session = get_object_or_404(DriverSession, id=session_id)
     return render(request, 'kiosk/office/assign.html', {'session': session})
 
 
+@login_required
+@require_role('Admin', 'Office')
 @require_http_methods(["POST"])
 def office_mark_ready(request, session_id):
     """Mark session as ready for pickup."""
@@ -164,6 +173,8 @@ def office_mark_ready(request, session_id):
     return redirect('kiosk:office_queue')
 
 
+@login_required
+@require_role('Admin', 'Office')
 @require_http_methods(["POST"])
 def office_cancel(request, session_id):
     """Cancel a driver session."""
@@ -175,6 +186,8 @@ def office_cancel(request, session_id):
 
 # === API Views ===
 
+@login_required
+@require_role('Admin', 'Office')
 def api_bol_search(request):
     """Search BOLs for assignment (AJAX)."""
     query = request.GET.get('q', '')
@@ -185,6 +198,8 @@ def api_bol_search(request):
     return JsonResponse({'results': results})
 
 
+@login_required
+@require_role('Admin', 'Office')
 def api_waiting_drivers(request):
     """Get list of waiting drivers for BOL form dropdown."""
     from datetime import timedelta
@@ -207,6 +222,8 @@ def api_waiting_drivers(request):
     return JsonResponse({'drivers': results})
 
 
+@login_required
+@require_role('Admin', 'Office')
 @require_http_methods(["POST"])
 def api_assign_bol(request, session_id):
     """Assign BOL to session (AJAX)."""
@@ -219,7 +236,7 @@ def api_assign_bol(request, session_id):
     session.bol_number = bol_number
     session.status = 'assigned'
     session.assigned_at = timezone.now()
-    session.assigned_by = request.user.username if request.user.is_authenticated else 'office'
+    session.assigned_by = request.user.username
     session.save()
 
     return JsonResponse({'success': True})
