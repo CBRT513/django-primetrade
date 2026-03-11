@@ -651,6 +651,8 @@
                 document.getElementById("usernameDisplay").textContent = "Welcome";
             }
 
+            // Ensure CSRF cookie is set before any POST operations
+            await fetch('/api/csrf/', { credentials: 'same-origin' });
             loadCarriers();
         });
 
