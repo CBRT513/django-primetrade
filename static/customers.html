@@ -216,6 +216,8 @@
         let customers = [];
         document.addEventListener('DOMContentLoaded', async () => {
             try { const user = await getJSON("/api/auth/me/"); document.getElementById("usernameDisplay").textContent = user?.username ? `Welcome, ${user.username}` : "Welcome"; } catch (e) { document.getElementById("usernameDisplay").textContent = "Welcome"; }
+            // Ensure CSRF cookie is set before any POST operations
+            await fetch('/api/csrf/', { credentials: 'same-origin' });
             loadCustomers();
             document.getElementById('state').addEventListener('input', (e) => { e.target.value = e.target.value.toUpperCase(); });
         });
